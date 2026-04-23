@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分布式共享数据管理系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="app-header">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="logo-box">DS</div>
+      <div>
+        <div class="h-title">分布式共享数据管理系统</div>
+        <div class="h-sub">DISTRIBUTED SHARED DATA MANAGEMENT SYSTEM v3.0</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="h-tag" style="color:#00e888;background:#00e88815;border:1px solid #00e88830">RDMA 跨节点</span>
+      <span class="h-tag" style="color:#00d0f0;background:#00d0f015;border:1px solid #00d0f030">3节点在线</span>
+      <span id="clock" class="h-clock"></span>
+    </div>
+  </header>
+
+  <!-- ===== BODY ===== -->
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section-label">黑板</div>
+      <div class="sidebar-btn sidebar-btn-disabled">① 对象总览</div>
+      <div class="sidebar-btn sidebar-btn-disabled">② 对象生命周期管理</div>
+      <div class="sidebar-btn sidebar-btn-disabled">④ 快照创建与恢复</div>
+      <div class="sidebar-sep"></div>
+      <div class="sidebar-section-label">网存算</div>
+      <button class="sidebar-btn active" onclick="goPage('m3',this)">③ 跨节点同步</button>
+      <button class="sidebar-btn" onclick="goPage('m5',this)">⑤ 系统吞吐量测试</button>
+      <button class="sidebar-btn" onclick="goPage('m6',this)">⑥ 分级存储</button>
+      <div class="sidebar-sep"></div>
+      <div class="sidebar-info">
+        分布式存储集群<br>
+        3 OSD · 3 MON<br>
+        RDMA: async+rdma<br>
+        Public: 10.26.42.0/24<br>
+        Cluster: 192.168.0.0/24
+      </div>
+    </nav>
+
+    <!-- Main content area -->
+    <div class="main-area">
+      <div id="pg-m3" class="pg"></div>
+      <div id="pg-m5" class="pg hidden"></div>
+      <div id="pg-m6" class="pg hidden"></div>
+    </div>
+
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script>
+    // 双节点部署配置
+    window.API_BASE_A = 'http://127.0.0.1:5000';
+    window.API_BASE_B = 'http://127.0.0.1:5001';
+    // 兼容单节点模式
+    window.API_BASE = window.API_BASE_A;
+    // 获取指定节点的API地址
+    window.getNodeAPI = function (node) {
+      return node === 'A' ? window.API_BASE_A : window.API_BASE_B;
+    };
+  </script>
+  <script src="utils.js"></script>
+  <script src="m3_sync.js"></script>
+  <script src="m5_perf.js"></script>
+  <script src="m6_tiering.js"></script>
+  <script>
+    renderM3();
+    renderM5();
+    renderM6();
+    tick();
+  </script>
+</body>
+
+</html>

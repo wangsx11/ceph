@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+/* =============================================
+   字体缩放 — 只需修改这一个值
+   推荐范围: 10px(紧凑) ~ 15px(宽松), 默认 13px
+   ============================================= */
+:root { --base: 13px; }
+html  { font-size: var(--base); }
+
+/* rem 换算: 以 10px 为基准设计, 改 --base 即可等比缩放
+   10px → 1rem | 11px → 1.1rem | 12px → 1.2rem
+   13px → 1.3rem | 14px → 1.4rem | 16px → 1.6rem */
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1b2a3d;color:#d0dbe8;font-family:'Rajdhani','Microsoft YaHei',sans-serif;min-height:100vh;display:flex;flex-direction:column;font-size:1.2rem}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#1b2a3d}::-webkit-scrollbar-thumb{background:#3a5068;border-radius:3px}
+.mono{font-family:'Share Tech Mono',monospace}
+
+/* Layout */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:linear-gradient(90deg,#1e3148,#243a52);border-bottom:1px solid #2d4a66;flex-shrink:0}
+.app-body{display:flex;flex:1;overflow:hidden}
+.sidebar{width:260px;background:#162232;border-right:1px solid #2d4a66;display:flex;flex-direction:column;padding:12px 0;flex-shrink:0;overflow-y:auto}
+.sidebar-section-label{padding:10px 18px 6px;font-size:1.4rem;font-weight:700;letter-spacing:1px;color:#c0d8f0;font-family:'Rajdhani','Microsoft YaHei',sans-serif}
+.sidebar-btn{display:flex;align-items:center;gap:10px;padding:9px 18px 9px 28px;font-size:1.2rem;font-weight:600;font-family:'Rajdhani',sans-serif;letter-spacing:.5px;color:#c0d8f0;background:transparent;border:none;cursor:pointer;transition:all .25s;border-left:3px solid transparent;text-align:left;white-space:nowrap}
+.sidebar-btn:hover{color:#e4edf6;background:#1e3148}
+.sidebar-btn.active{color:#00e0ff;background:linear-gradient(90deg,#00e0ff10,transparent);border-left-color:#00e0ff}
+.sidebar-btn-disabled{cursor:default;pointer-events:none}
+.sidebar-sep{height:1px;background:#2d4a66;margin:8px 16px}
+.sidebar-info{padding:12px 18px;font-size:1.1rem;color:#506880;line-height:1.7}
+.main-area{flex:1;overflow-y:auto;padding:20px;background:#1f3347}
+
+/* Header */
+.logo-box{width:34px;height:34px;border-radius:6px;background:linear-gradient(135deg,#00c8ff,#00e888);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.5rem;color:#0d1b2a}
+.h-title{font-size:1.6rem;font-weight:700;color:#e4edf6;letter-spacing:2px}
+.h-sub{font-size:1rem;color:#5a7a96;letter-spacing:1px}
+.h-tag{display:inline-block;padding:2px 8px;font-size:1.1rem;font-weight:600;font-family:'Share Tech Mono',monospace;border-radius:3px;letter-spacing:.5px}
+.h-clock{font-family:'Share Tech Mono',monospace;font-size:1.4rem;color:#00d0f0}
+
+/* Cards */
+.card{background:#243a52;border:1px solid #2d4a66;border-radius:8px;overflow:hidden}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #2d4a66;background:linear-gradient(90deg,#2a4260,#243a52)}
+.card-head-l{display:flex;align-items:center;gap:8px}
+.card-bar{width:3px;height:14px;border-radius:2px}
+.card-title{font-size:1.3rem;font-weight:600;color:#c0d8f0;letter-spacing:1px}
+.card-body{padding:14px}
+
+/* Tags & Dots */
+.tag{display:inline-block;padding:2px 7px;font-size:1.1rem;font-weight:600;font-family:'Share Tech Mono',monospace;border-radius:3px;letter-spacing:.5px}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot-pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+
+/* Progress */
+.prog-track{flex:1;height:6px;background:#1b2a3d;border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .8s}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.span2{grid-column:span 2}
+
+/* Table */
+.dtable{width:100%;border-collapse:collapse;font-size:1.2rem;font-family:'Share Tech Mono',monospace}
+.dtable th{padding:7px 8px;text-align:left;color:#5a7a96;font-weight:500;font-size:1.1rem;border-bottom:1px solid #2d4a66}
+.dtable td{padding:7px 8px;border-bottom:1px solid #2d4a6622}
+.dtable tr{cursor:pointer;transition:background .15s}
+.dtable tr:hover{background:#2d4a6633}
+
+/* Event log */
+.elog{max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.eitem{padding:8px 10px;border-radius:0 4px 4px 0;font-size:1.2rem;font-family:'Share Tech Mono',monospace;line-height:1.6;border-left:2px solid #2d4a66;background:#1e324a}
+.eitem.latest{background:#00e0ff08;border-left-color:#00e0ff;animation:slideIn .3s}
+
+/* Buttons */
+.btn{padding:8px 18px;font-size:1.3rem;font-weight:600;font-family:'Rajdhani',sans-serif;letter-spacing:1px;border:1px solid;border-radius:5px;cursor:pointer;transition:all .2s}
+.btn-primary{color:#0d1b2a;background:#00d0f0;border-color:#00d0f0}
+.btn-primary:hover{background:#00bde0;box-shadow:0 0 12px #00d0f044}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-success{color:#0d1b2a;background:#00e888;border-color:#00e888}
+.btn-success:hover{background:#00d478}
+.btn-success:disabled{opacity:.4;cursor:not-allowed}
+.btn-warning{color:#0d1b2a;background:#ffb020;border-color:#ffb020}
+.btn-warning:hover{background:#f0a010}
+.btn-danger{color:#fff;background:#ff4050;border-color:#ff4050}
+.btn-danger:hover{background:#e83545}
+.btn-outline{color:#7a95b0;background:transparent;border-color:#3a5068}
+.btn-outline:hover{color:#c0d8f0;border-color:#5a7a96}
+.btn-sm{padding:5px 12px;font-size:1.2rem}
+.btn-round-1{color:#0d1b2a;background:#ff6060;border-color:#ff6060}
+.btn-round-2{color:#0d1b2a;background:#f0c030;border-color:#f0c030}
+.btn-round-3{color:#0d1b2a;background:#40a0ff;border-color:#40a0ff}
+
+/* Metric & Stat */
+.metric{text-align:center}
+.metric-v{font-size:2.2rem;font-weight:700;font-family:'Share Tech Mono',monospace;line-height:1}
+.metric-u{font-size:1.2rem;color:#5a7a96;margin-left:2px}
+.metric-l{font-size:1.1rem;color:#5a7a96;margin-top:3px;letter-spacing:.5px}
+.sbox{padding:8px;background:#1b2a3d;border-radius:5px;text-align:center}
+.sbox-l{font-size:1rem;color:#5a7a96}
+.sbox-v{font-size:1.5rem;font-weight:700;font-family:'Share Tech Mono',monospace}
+
+/* Control panel */
+.ctrl-panel{padding:14px;background:#1e324a;border:1px solid #2d4a66;border-radius:8px;margin-bottom:14px}
+.ctrl-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ctrl-label{font-size:1.2rem;color:#7a95b0;min-width:50px}
+.ctrl-input{padding:5px 10px;font-size:1.2rem;font-family:'Share Tech Mono',monospace;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0;width:100px}
+.ctrl-select{padding:5px 10px;font-size:1.2rem;font-family:'Share Tech Mono',monospace;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0}
+.ctrl-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:5px;font-size:1.3rem;font-family:'Share Tech Mono',monospace}
+.ctrl-status.running{background:#00e88815;border:1px solid #00e88833;color:#00e888}
+.ctrl-status.idle{background:#5a7a9615;border:1px solid #5a7a9633;color:#7a95b0}
+.ctrl-status.done{background:#00d0f015;border:1px solid #00d0f033;color:#00d0f0}
+
+/* Steps */
+.steps{display:flex;gap:4px;margin:10px 0}
+.step{flex:1;height:4px;border-radius:2px;background:#2d4a66;transition:background .5s}
+.step.done{background:#00e888}
+.step.active{background:#00d0f0;animation:pulse 1s infinite}
+
+/* Shared folder (m3) */
+.shared-folder{display:flex;align-items:center;justify-content:center;gap:20px;padding:16px;background:#0d1b2a;border:2px dashed #2d4a66;border-radius:12px;margin:10px 0}
+.shared-folder-icon{font-size:4.8rem;filter:drop-shadow(0 0 8px #00d0f044)}
+
+/* RDMA labels */
+.border-rdma{border:2px solid #4488ff !important;box-shadow:0 0 8px #4488ff22}
+.label-rdma{background:#4488ff20;color:#6aadff;border:1px solid #4488ff40;font-size:1rem;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace}
+.label-store{background:#00e88820;color:#00e888;border:1px solid #00e88840;font-size:1rem;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace}
+
+/* Tier block (m6) */
+.tier-block{padding:18px;background:#1b2a3d;border-radius:8px;position:relative;overflow:hidden;text-align:center}
+.tier-bg{position:absolute;bottom:0;left:0;right:0;transition:height 1s}
+.tier-content{position:relative}
+.tier-icon{font-size:2.8rem}
+.tier-count{font-size:3.2rem;font-weight:700;color:#e4edf6;font-family:'Share Tech Mono',monospace;margin:6px 0}
+
+/* Deploy detail (m6) */
+.deploy-detail{background:#0d1b2a;border:1px solid #2d4a66;border-radius:6px;padding:12px;font-size:1.2rem;line-height:1.9;font-family:'Share Tech Mono',monospace;display:none}
+.deploy-detail.show{display:block}
+
+/* Config row */
+.cfg-row{padding:7px 10px;background:#1b2a3d;border-radius:4px;display:flex;justify-content:space-between;font-size:1.2rem}
+.cfg-l{color:#5a7a96}
+.cfg-v{color:#c0d8f0;font-family:'Share Tech Mono',monospace}
+
+.hidden{display:none!important}
+@media(max-width:1200px){.g3{grid-template-columns:1fr 1fr}}

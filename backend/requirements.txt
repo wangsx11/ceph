@@ -1,0 +1,4 @@
+flask>=2.3.0
+flask-cors>=4.0.0
+# python3-rados 通过系统包安装: apt install python3-rados
+# 或者通过 pip install rados (需要 librados-dev)
