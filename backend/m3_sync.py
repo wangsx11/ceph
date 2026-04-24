@@ -7,14 +7,9 @@ import time
 
 from flask import Blueprint, jsonify, request
 
-from mock import USE_MOCK
-
-if USE_MOCK:
-    from mock.m3_mock import MockSyncModule
-else:
-    import rados
-    from ceph_manager import ceph_mgr
-    from utils import ts, compute_hash, get_obj_size
+import rados
+from ceph_manager import ceph_mgr
+from utils import ts, compute_hash, get_obj_size
 
 from config import SYNC_POOL, CURRENT_NODE, NODE_A, NODE_B
 from utils import mil_name
@@ -198,11 +193,7 @@ class SyncModule:
             return {"error": f"对象 {name} 不存在"}
 
 
-if USE_MOCK:
-    sync_module = MockSyncModule()
-    print("[M3] Mock 模式已启用")
-else:
-    sync_module = SyncModule()
+sync_module = SyncModule()
 
 # ============================================================
 # M3 Blueprint

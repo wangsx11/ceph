@@ -12,11 +12,7 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 
-from mock import USE_MOCK
-
-if not USE_MOCK:
-    from ceph_manager import ceph_mgr
-
+from ceph_manager import ceph_mgr
 from config import CEPH_CONF, CURRENT_NODE
 from m3_sync import m3_bp
 from m5_perf import m5_bp
@@ -40,15 +36,6 @@ app.register_blueprint(m6_bp)
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    if USE_MOCK:
-        return jsonify({
-            "ok": True,
-            "ceph_connected": False,
-            "mock_mode": True,
-            "fsid": "mock-fsid-0000-1111-2222-333344445555",
-            "node": CURRENT_NODE,
-            "timestamp": ts(),
-        })
     try:
         ceph_mgr.init()
         return jsonify({
@@ -67,7 +54,6 @@ def health():
 # ============================================================
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    mode = "Mock模式" if USE_MOCK else "真实模式"
-    print(f"[Server] 启动分布式存储后端 on :{port} ({mode})")
+    print(f"[Server] 启动分布式存储后端 on :{port}")
     print(f"[Server] 节点: {CURRENT_NODE}, Ceph配置: {CEPH_CONF}")
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)

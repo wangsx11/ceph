@@ -10,18 +10,13 @@ from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, request
 
-from mock import USE_MOCK
-
-if not USE_MOCK:
-    from ceph_manager import ceph_mgr
-    from config import (
-        BACKUP_POOL, COLD_POOL, DEMOTE_HOT, DEMOTE_WARM, HOT_PATH, MIGRATION_COOLDOWN,
-        MIGRATION_FILE, STATS_FILE, THRESHOLD_HOT, THRESHOLD_WARM,
-        TIME_DECAY_ALPHA, TIME_WINDOW, TIERING_DATA_DIR, WARM_POOL,
-    )
-    from utils import compute_hash, mil_name, ts
-else:
-    from mock.m6_mock import MockTieringModule
+from ceph_manager import ceph_mgr
+from config import (
+    BACKUP_POOL, COLD_POOL, DEMOTE_HOT, DEMOTE_WARM, HOT_PATH, MIGRATION_COOLDOWN,
+    MIGRATION_FILE, STATS_FILE, THRESHOLD_HOT, THRESHOLD_WARM,
+    TIME_DECAY_ALPHA, TIME_WINDOW, TIERING_DATA_DIR, WARM_POOL,
+)
+from utils import compute_hash, mil_name, ts
 
 # ============================================================
 # TieringModule
@@ -589,11 +584,7 @@ class TieringModule:
         return {"ok": True}
 
 
-if USE_MOCK:
-    tiering_module = MockTieringModule()
-    print("[M6] Mock 模式已启用")
-else:
-    tiering_module = TieringModule()
+tiering_module = TieringModule()
 
 # ============================================================
 # M6 Blueprint
@@ -641,18 +632,6 @@ def m6_reset():
 @m6_bp.route("/api/m6/snapshot/<name>", methods=["GET"])
 def m6_snapshot_detail(name):
     """获取快照详情 — 读取快照记录文件"""
-    if USE_MOCK:
-        # Mock 模式下从内存中的 snapshot_events 返回摘要
-        for snap in tiering_module._snapshot_events:
-            if snap.get("name") == name:
-                return jsonify({
-                    "ok": True,
-                    "name": name,
-                    "timestamp": snap.get("ts", ""),
-                    "count": snap.get("count", 0),
-                    "objects": [],
-                })
-        return jsonify({"ok": False, "error": "快照不存在"}), 404
     try:
         snap_file = os.path.join(TIERING_DATA_DIR, f"{name}.json")
         if not os.path.exists(snap_file):

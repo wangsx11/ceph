@@ -1,46 +1,32 @@
 # -*- coding: utf-8 -*-
-"""模块五 (M5): 系统吞吐量与性能测试 — 裸 RDMA (ib_send_bw / ib_send_lat)"""
+"""模块五 (M5): 系统吞吐量与性能测试 — 基于 Ceph RADOS 对象读写"""
 import json
 import os
 import random
-import re
-import subprocess
 import threading
 import time
 
 from flask import Blueprint, Response, jsonify, request
 
-from mock import USE_MOCK
-
-if not USE_MOCK:
-    pass  # 裸 RDMA 模式不依赖 Ceph
-else:
-    from mock.m5_mock import MockPerfModule
+from ceph_manager import ceph_mgr
+from config import PERF_POOL
 
 # ============================================================
 # 常量
 # ============================================================
 MSG_SIZE = 1024          # 1 KB 对象
-RDMA_DEV = "mlx5_0"
-GID_INDEX = 3
-LINK_BW_MBPS = 12500.0  # 100Gbps = 12500 MB/s
+CONCURRENCY = 32         # 并发线程数
+TEST_DURATION = 12       # 每轮测试持续时间（秒）
+READ_RATIO = 0.7         # 读写比 70% 读 / 30% 写
 
-# xfusion4 server 使用 ~/bin/ 版本 (v5.60)，与 xfusion3 系统版 (v5.60) 兼容
-# xfusion4 系统版 (v6.23) 不兼容 xfusion3
-SERVER_IB_BW = "~/bin/ib_send_bw"
-SERVER_IB_LAT = "~/bin/ib_send_lat"
-CLIENT_IB_BW = "/usr/bin/ib_send_bw"
-CLIENT_IB_LAT = "/usr/bin/ib_send_lat"
+LINK_BW_MBPS = float(os.environ.get("LINK_BW_MBPS", "12500"))  # 100Gbps = 12500 MB/s
 
-REMOTE_HOST = os.environ.get("REMOTE_HOST", "192.168.0.214")
-REMOTE_USER = os.environ.get("REMOTE_USER", "wangshouxin")
+# 三轮对象数量
+OBJ_COUNTS = {1: 10000, 2: 50000, 3: 100000}
 
-# 三轮衰减系数：模拟对象数增加对性能的影响
-ROUND_DECAY = {1: 1.0, 2: 0.92, 3: 0.85}
-# 三轮延迟基线（μs）：对象数越多延迟越高
-ROUND_LAT_BASE = {1: 2.80, 2: 3.10, 3: 3.45}
-
-# 模块级 RDMA 计数器状态（用于实时曲线采集）
+# ============================================================
+# RDMA 网卡计数器采集（保留，用于网络使用率监控）
+# ============================================================
 _rdma_last = {"ts": 0.0, "rcv": 0, "xmit": 0}
 
 
@@ -80,232 +66,146 @@ def get_rdma_stats():
     return {"rcv_mbps": round(rcv_mbps, 2), "xmit_mbps": round(xmit_mbps, 2)}
 
 
-def _parse_bw_output(output):
-    """解析 ib_send_bw 输出，返回 (bw_avg_mbps, msg_rate_mpps) 或 None"""
-    # 匹配最后一行数据：#bytes  #iterations  BW peak  BW average  MsgRate
-    # 例: 1024       9409400          0.00               3062.96		   3.136471
-    for line in reversed(output.strip().split('\n')):
-        line = line.strip()
-        if not line or line.startswith('#') or line.startswith('-'):
-            continue
-        parts = line.split()
-        if len(parts) >= 5:
-            try:
-                bw_avg = float(parts[-2])
-                msg_rate = float(parts[-1])
-                return bw_avg, msg_rate
-            except (ValueError, IndexError):
-                continue
-    return None
-
-
-def _parse_lat_output(output):
-    """解析 ib_send_lat 输出，返回 dict 或 None
-    -D 模式输出: #bytes  #iterations  t_avg[usec]  tps average
-    -n 模式输出: #bytes  #iterations  t_min  t_max  t_typical  t_avg  t_stdev  99%  99.9%
-    """
-    for line in reversed(output.strip().split('\n')):
-        line = line.strip()
-        if not line or line.startswith('#') or line.startswith('-'):
-            continue
-        parts = line.split()
-        if len(parts) >= 4:
-            try:
-                if len(parts) >= 9:
-                    # -n 模式：有 percentile 数据
-                    return {
-                        "avg": float(parts[5]),
-                        "p99": float(parts[7]),
-                        "p999": float(parts[8]),
-                    }
-                else:
-                    # -D 模式：只有 avg
-                    return {
-                        "avg": float(parts[2]),
-                        "p99": None,
-                        "p999": None,
-                    }
-            except (ValueError, IndexError):
-                continue
-    return None
-
-
-def _kill_perftest(remote=True, local=True):
-    """清理所有 ib_send 进程"""
-    if remote:
-        try:
-            subprocess.run(
-                ["ssh", "-o", "StrictHostKeyChecking=no",
-                 f"{REMOTE_USER}@{REMOTE_HOST}",
-                 "pkill -9 -f ib_send"],
-                capture_output=True, timeout=5
-            )
-        except Exception:
-            pass
-    if local:
-        try:
-            subprocess.run(["pkill", "-9", "-f", "ib_send"],
-                           capture_output=True, timeout=5)
-        except Exception:
-            pass
-
+# ============================================================
+# PerfModule — Ceph RADOS 性能测试
+# ============================================================
 
 class PerfModule:
-    """M5: 裸 RDMA 性能测试 (ib_send_bw / ib_send_lat)"""
+    """M5: 基于 Ceph RADOS 的对象读写性能测试"""
 
     def __init__(self):
         self._running = False
         self._phase = "idle"
-        self._results = {}
-        self._results_b = {}
-        self._summary = {}
-        self._node_mode = {}
+        self._results = {}        # {round_num: [data_point, ...]}
+        self._summary = {}        # {round_num: summary_dict}
+        self._all_latencies = {}  # {round_num: [lat_us, ...]} 用于计算百分位
         self._lock = threading.Lock()
-        self.current_node = os.environ.get("CURRENT_NODE", "A")
-        self.remote_host = REMOTE_HOST
-        self.remote_user = REMOTE_USER
 
     # ----------------------------------------------------------
-    # 裸 RDMA 带宽测试
+    # 预填充对象
     # ----------------------------------------------------------
-    def _run_rdma_bw(self, round_num, qp_count, duration=12):
-        """运行 ib_send_bw，期间每秒采集 IB 计数器生成实时数据点。
-        返回 (bw_avg_mbps, msg_rate_mpps) 或 None。
-        """
-        port = 19300 + round_num * 10
-        post_list = 32  # -l 32 提升吞吐
-        decay = ROUND_DECAY.get(round_num, 1.0)
-        lat_base = ROUND_LAT_BASE.get(round_num, 2.80)
+    def _prefill_objects(self, round_num, count):
+        """向 perf_pool 预填充指定数量的 1KB 对象"""
+        ceph_mgr.create_pool(PERF_POOL)
+        ioctx = ceph_mgr.open_ioctx(PERF_POOL)
+        data = os.urandom(MSG_SIZE)
+        try:
+            for i in range(count):
+                ioctx.write_full(f"perf_obj_{round_num}_{i:06d}", data)
+                # 每 1000 个对象打印一次进度
+                if (i + 1) % 1000 == 0:
+                    print(f"[M5] 预填充进度: {i + 1}/{count}")
+        finally:
+            ioctx.close()
+        print(f"[M5] 预填充完成: {count} 个对象写入 {PERF_POOL}")
 
-        # 1. 在 xfusion4 上启动 server（后台）
-        server_cmd = (
-            f"{SERVER_IB_BW} -d {RDMA_DEV} -x {GID_INDEX} "
-            f"-s {MSG_SIZE} -q {qp_count} -l {post_list} "
-            f"-D {duration} -F -p {port}"
-        )
-        ssh_server = subprocess.Popen(
-            ["ssh", "-o", "StrictHostKeyChecking=no",
-             f"{self.remote_user}@{self.remote_host}", server_cmd],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
+    # ----------------------------------------------------------
+    # 工作线程
+    # ----------------------------------------------------------
+    def _worker(self, round_num, obj_count, stop_event, stats):
+        """单个工作线程：随机读写对象，记录操作数和延迟"""
+        ioctx = ceph_mgr.open_ioctx(PERF_POOL)
+        local_ops = 0
+        local_bytes = 0
+        local_lats = []
+        try:
+            while not stop_event.is_set():
+                name = f"perf_obj_{round_num}_{random.randint(0, obj_count - 1):06d}"
+                t0 = time.perf_counter()
+                try:
+                    if random.random() < READ_RATIO:
+                        ioctx.read(name, MSG_SIZE)
+                    else:
+                        ioctx.write_full(name, os.urandom(MSG_SIZE))
+                    lat_us = (time.perf_counter() - t0) * 1_000_000
+                    local_ops += 1
+                    local_bytes += MSG_SIZE
+                    local_lats.append(lat_us)
+                except Exception:
+                    pass  # 单次操作失败不中断线程
 
-        # 等待 server 就绪
-        time.sleep(2)
+                # 批量刷新到共享 stats（每 100 次），减少锁竞争
+                if local_ops % 100 == 0:
+                    with stats["lock"]:
+                        stats["ops"] += local_ops
+                        stats["bytes"] += local_bytes
+                        stats["latencies"].extend(local_lats)
+                    local_ops = 0
+                    local_bytes = 0
+                    local_lats = []
+        finally:
+            # 刷新剩余
+            if local_ops > 0:
+                with stats["lock"]:
+                    stats["ops"] += local_ops
+                    stats["bytes"] += local_bytes
+                    stats["latencies"].extend(local_lats)
+            ioctx.close()
 
-        # 2. 在 xfusion3 上启动 client（后台线程）
-        client_cmd = [
-            CLIENT_IB_BW, "-d", RDMA_DEV, "-x", str(GID_INDEX),
-            "-s", str(MSG_SIZE), "-q", str(qp_count),
-            "-l", str(post_list),
-            "-D", str(duration), "-F", "-p", str(port),
-            REMOTE_HOST
-        ]
-        client_result = {"stdout": "", "stderr": ""}
-
-        def run_client():
-            try:
-                r = subprocess.run(client_cmd, capture_output=True, text=True,
-                                   timeout=duration + 30)
-                client_result["stdout"] = r.stdout
-                client_result["stderr"] = r.stderr
-            except Exception as e:
-                client_result["stderr"] = str(e)
-
-        client_thread = threading.Thread(target=run_client, daemon=True)
-        client_thread.start()
-
-        # 3. 在测试期间每秒采集 IB 计数器，生成实时数据点
-        # 先做一次预读以初始化计数器差值
+    # ----------------------------------------------------------
+    # 每秒采集一次指标
+    # ----------------------------------------------------------
+    def _collect_loop(self, round_num, stop_event, stats):
+        """每秒从 stats 中采集指标，生成实时数据点"""
+        # 初始化 RDMA 计数器
         get_rdma_stats()
         time.sleep(1)
 
-        # 提前 3 秒停止采集，避免 ib_send_bw 结束前流量下降污染曲线
-        bw_start = time.time()
-        bw_stop_time = bw_start + duration - 3
-        while time.time() < bw_stop_time and self._running:
+        prev_ops = 0
+        prev_bytes = 0
+
+        while not stop_event.is_set():
             time.sleep(1.0)
+
+            with stats["lock"]:
+                cur_ops = stats["ops"]
+                cur_bytes = stats["bytes"]
+                cur_lats = list(stats["latencies"])
+
+            delta_ops = cur_ops - prev_ops
+            delta_bytes = cur_bytes - prev_bytes
+            prev_ops = cur_ops
+            prev_bytes = cur_bytes
+
+            # 该秒的延迟（取最近 delta_ops 条）
+            recent_lats = cur_lats[-delta_ops:] if delta_ops > 0 else []
+            avg_lat = sum(recent_lats) / len(recent_lats) if recent_lats else 0
+
+            iops = delta_ops
+            tp_mbps = delta_bytes / 1048576  # MB/s
+
+            # RDMA 网卡数据
             rdma = get_rdma_stats()
-            if rdma:
-                xmit_mbps = rdma["xmit_mbps"] * decay
-                # IOPS = xmit_bytes_per_sec / msg_size
-                iops = xmit_mbps * 1048576 / MSG_SIZE
-                net_util = (xmit_mbps / LINK_BW_MBPS) * 100
+            rdma_mbps = rdma["xmit_mbps"] if rdma else None
+            net_util = (rdma_mbps / LINK_BW_MBPS * 100) if rdma_mbps is not None else None
 
-                # ±3% 高斯抖动，让曲线有自然波动
-                iops += random.gauss(0, iops * 0.03)
-                xmit_mbps_j = xmit_mbps + random.gauss(0, xmit_mbps * 0.03)
-                net_util += random.gauss(0, net_util * 0.03)
-
-                lat_j = lat_base + random.gauss(0, lat_base * 0.03)
-
-                dp = {
-                    "iops": round(max(0, iops), 1),
-                    "tp": round(max(0, xmit_mbps_j), 2),
-                    "lat": round(max(0.1, lat_j), 2),
-                    "rdma": round(max(0, xmit_mbps_j), 2),
-                    "net_util": round(max(0, net_util), 2),
-                    "rdma_real": True,
-                    "ts": time.time(),
-                }
-                with self._lock:
-                    self._results[round_num].append(dp)
-
-        # 4. 等待 client 完成
-        client_thread.join(timeout=duration + 30)
-        ssh_server.wait(timeout=10)
-
-        # 5. 解析输出
-        output = client_result["stdout"] + client_result["stderr"]
-        print(f"[M5] ib_send_bw output (round={round_num}, q={qp_count}):\n{output}")
-        result = _parse_bw_output(output)
-        return result
+            dp = {
+                "iops": round(iops, 1),
+                "tp": round(tp_mbps, 2),
+                "lat": round(avg_lat, 2),
+                "rdma": round(rdma_mbps, 2) if rdma_mbps is not None else None,
+                "net_util": round(net_util, 2) if net_util is not None else None,
+                "ts": time.time(),
+            }
+            with self._lock:
+                self._results[round_num].append(dp)
 
     # ----------------------------------------------------------
-    # 裸 RDMA 延迟测试
+    # 计算延迟百分位
     # ----------------------------------------------------------
-    def _run_rdma_lat(self, round_num):
-        """运行 ib_send_lat 获取延迟数据。返回 dict 或 None。"""
-        port = 19300 + round_num * 10 + 1
-
-        # 在 xfusion4 上启动 server
-        server_cmd = (
-            f"{SERVER_IB_LAT} -d {RDMA_DEV} -x {GID_INDEX} "
-            f"-s {MSG_SIZE} -n 10000 -F -p {port}"
-        )
-        ssh_server = subprocess.Popen(
-            ["ssh", "-o", "StrictHostKeyChecking=no",
-             f"{self.remote_user}@{self.remote_host}", server_cmd],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-
-        time.sleep(2)
-
-        # 在 xfusion3 上运行 client
-        client_cmd = [
-            CLIENT_IB_LAT, "-d", RDMA_DEV, "-x", str(GID_INDEX),
-            "-s", str(MSG_SIZE), "-n", "10000", "-F", "-p", str(port),
-            REMOTE_HOST
-        ]
-        try:
-            r = subprocess.run(client_cmd, capture_output=True, text=True, timeout=30)
-            output = r.stdout + r.stderr
-        except Exception as e:
-            output = str(e)
-
-        ssh_server.wait(timeout=10)
-
-        print(f"[M5] ib_send_lat output (round={round_num}):\n{output}")
-        return _parse_lat_output(output)
+    @staticmethod
+    def _percentile(sorted_lats, pct):
+        if not sorted_lats:
+            return 0
+        idx = int(len(sorted_lats) * pct / 100)
+        idx = min(idx, len(sorted_lats) - 1)
+        return sorted_lats[idx]
 
     # ----------------------------------------------------------
     # 测试流程编排
     # ----------------------------------------------------------
     def start_round(self, round_num):
-        qp_counts = {1: 2, 2: 4, 3: 8}
-        obj_counts = {1: 10000, 2: 50000, 3: 100000}
-        qp = qp_counts.get(round_num, 1)
-        obj_count = obj_counts.get(round_num, 10000)
-        duration = 12
+        obj_count = OBJ_COUNTS.get(round_num, 10000)
 
         if self._running:
             return {"error": "测试正在运行中"}
@@ -316,90 +216,112 @@ class PerfModule:
 
         def run():
             try:
-                # 清理旧进程
+                # === Phase 1: 预填充 ===
                 self._phase = "preparing"
-                _kill_perftest()
-                time.sleep(1)
+                print(f"[M5] 第{round_num}轮: 预填充 {obj_count} 个对象到 {PERF_POOL}")
+                self._prefill_objects(round_num, obj_count)
 
-                # 带宽测试
+                # === Phase 2: 并发测试 ===
                 self._phase = "testing"
-                print(f"[M5] 开始裸RDMA带宽测试 (round={round_num}, q={qp}, msg={MSG_SIZE}B)")
-                bw_result = self._run_rdma_bw(round_num, qp, duration)
+                print(f"[M5] 第{round_num}轮: 启动 {CONCURRENCY} 线程并发测试, 持续 {TEST_DURATION}s")
 
-                if bw_result:
-                    bw_avg, msg_rate = bw_result
-                    print(f"[M5] BW avg={bw_avg} MB/s, MsgRate={msg_rate} Mpps")
-                else:
-                    bw_avg, msg_rate = 0, 0
-                    print(f"[M5] ib_send_bw 解析失败")
+                stats = {
+                    "lock": threading.Lock(),
+                    "ops": 0,
+                    "bytes": 0,
+                    "latencies": [],
+                }
+                stop_event = threading.Event()
 
-                # 延迟测试
-                print(f"[M5] 开始裸RDMA延迟测试 (round={round_num})")
-                _kill_perftest()
-                time.sleep(1)
-                lat_result = self._run_rdma_lat(round_num)
+                # 启动工作线程
+                workers = []
+                for _ in range(CONCURRENCY):
+                    t = threading.Thread(
+                        target=self._worker,
+                        args=(round_num, obj_count, stop_event, stats),
+                        daemon=True,
+                    )
+                    t.start()
+                    workers.append(t)
 
-                if lat_result:
-                    avg_lat = lat_result["avg"]
-                    p99_lat = lat_result["p99"] or avg_lat * 1.1
-                    print(f"[M5] Latency avg={avg_lat}μs, P99={p99_lat}μs")
-                else:
-                    avg_lat, p99_lat = 0, 0
-                    print(f"[M5] ib_send_lat 解析失败")
+                # 启动采集线程
+                collector = threading.Thread(
+                    target=self._collect_loop,
+                    args=(round_num, stop_event, stats),
+                    daemon=True,
+                )
+                collector.start()
 
-                # 回填延迟到数据点：使用该轮延迟基线 + ±3% 抖动
-                decay = ROUND_DECAY.get(round_num, 1.0)
-                lat_base = ROUND_LAT_BASE.get(round_num, 2.80)
-                with self._lock:
-                    for dp in self._results.get(round_num, []):
-                        dp["lat"] = round(max(0.1, lat_base + random.gauss(0, lat_base * 0.03)), 2)
+                # 等待测试时间结束
+                time.sleep(TEST_DURATION)
+                stop_event.set()
 
-                # 构建 summary（应用衰减系数）
+                # 等待所有线程退出
+                for t in workers:
+                    t.join(timeout=5)
+                collector.join(timeout=3)
+
+                # === Phase 3: 汇总 ===
+                with stats["lock"]:
+                    total_ops = stats["ops"]
+                    total_bytes = stats["bytes"]
+                    all_lats = sorted(stats["latencies"])
+
+                avg_lat = sum(all_lats) / len(all_lats) if all_lats else 0
+                p50 = self._percentile(all_lats, 50)
+                p90 = self._percentile(all_lats, 90)
+                p99 = self._percentile(all_lats, 99)
+
+                avg_iops = total_ops / TEST_DURATION
+                avg_tp = total_bytes / TEST_DURATION / 1048576
+
+                # RDMA 取最后一次采集的值
                 data_points = self._results.get(round_num, [])
-                bw_avg_d = bw_avg * decay
-                msg_rate_d = msg_rate * decay
+                last_rdma = None
+                last_net = None
+                for dp in reversed(data_points):
+                    if dp.get("rdma") is not None:
+                        last_rdma = dp["rdma"]
+                        last_net = dp["net_util"]
+                        break
 
                 summary = {
                     "count": obj_count,
-                    "iops": round(msg_rate_d * 1e6, 1),
-                    "tp": round(bw_avg_d, 2),
-                    "avg": round(lat_base, 2),
-                    "p50": round(lat_base * 0.95, 2),
-                    "p90": round(lat_base * 1.02, 2),
-                    "p99": round(lat_base * 1.10, 2),
-                    "rdma": round(bw_avg_d, 2),
-                    "net_util": round(bw_avg_d / LINK_BW_MBPS * 100, 2),
-                    "rdma_real": True,
+                    "iops": round(avg_iops, 1),
+                    "tp": round(avg_tp, 2),
+                    "avg": round(avg_lat, 2),
+                    "p50": round(p50, 2),
+                    "p90": round(p90, 2),
+                    "p99": round(p99, 2),
+                    "rdma": last_rdma,
+                    "net_util": last_net,
                     "node_mode": "dual",
-                    "total_ops": int(msg_rate_d * 1e6 * duration),
-                    "duration": duration,
+                    "total_ops": total_ops,
+                    "duration": TEST_DURATION,
                     "dual_node": True,
-                    "node_a_iops": round(msg_rate_d * 1e6, 1),
-                    "node_b_iops": round(msg_rate_d * 1e6, 1),
+                    "node_a_iops": round(avg_iops / 2, 1),
+                    "node_b_iops": round(avg_iops / 2, 1),
                 }
                 with self._lock:
                     self._summary[round_num] = summary
 
                 self._phase = "done"
-                print(f"[M5] 第{round_num}轮完成: BW={bw_avg}MB/s, IOPS={msg_rate*1e6:.0f}, Lat={avg_lat}μs")
+                print(f"[M5] 第{round_num}轮完成: IOPS={avg_iops:.0f}, TP={avg_tp:.2f}MB/s, "
+                      f"Lat avg={avg_lat:.1f}μs p99={p99:.1f}μs, 总操作={total_ops}")
+
             except Exception as e:
                 print(f"[M5] 测试出错: {e}")
                 import traceback; traceback.print_exc()
                 self._phase = "done"
             finally:
                 self._running = False
-                _kill_perftest()
 
         threading.Thread(target=run, daemon=True).start()
         return {"started": True, "round": round_num, "count": obj_count, "dual_node": True}
 
     def start_round_remote_only(self, round_num):
-        """裸 RDMA 模式下远程节点不需要单独启动，返回 noop"""
+        """远程节点启动（Ceph 模式下由集群处理分布式，无需单独操作）"""
         return {"started": True, "round": round_num, "remote": True}
-
-    def start_remote_round(self, round_num, obj_count, duration, concurrency):
-        """兼容旧接口，裸 RDMA 模式下不需要"""
-        return {"started": True}
 
     def get_status(self):
         with self._lock:
@@ -423,21 +345,14 @@ class PerfModule:
         if self._running:
             self._running = False
             time.sleep(2)
-        _kill_perftest()
         with self._lock:
             self._results = {}
-            self._results_b = {}
             self._summary = {}
-            self._node_mode = {}
         return {"ok": True}
 
 
-if USE_MOCK:
-    perf_module = MockPerfModule()
-    print("[M5] Mock 模式已启用")
-else:
-    perf_module = PerfModule()
-    print("[M5] 裸 RDMA 模式 (ib_send_bw / ib_send_lat)")
+perf_module = PerfModule()
+print(f"[M5] Ceph RADOS 性能测试模式 (pool: {PERF_POOL})")
 
 # ============================================================
 # Flask Blueprint
