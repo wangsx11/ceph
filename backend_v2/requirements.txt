@@ -1,0 +1,7 @@
+flask>=2.3.0
+flask-cors>=4.0.0
+# python3-rados must be installed via system package on most distros:
+#   apt install python3-rados   (Debian/Ubuntu)
+#   dnf install python3-rados   (RHEL/CentOS)
+# If your Ceph cluster ships librados-dev headers you may alternatively:
+#   pip install rados
