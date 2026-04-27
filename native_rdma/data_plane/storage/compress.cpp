@@ -62,6 +62,21 @@ bool CompressEngine::decompress(CompressAlgo a, const std::string& in, std::stri
         return true;
     }
 #endif
+#if defined(NR_USE_LZ4)
+    if (a == CompressAlgo::LZ4) {
+        // LZ4 has no frame header: try expanding the output until it fits,
+        // capped at 16x the compressed size (demo-safe; real code would
+        // prepend the original size in a 4-byte header).
+        for (int mult = 4; mult <= 16; mult *= 2) {
+            size_t cap = in.size() * (size_t)mult + 64;
+            out->resize(cap);
+            int n = LZ4_decompress_safe(in.data(), &(*out)[0],
+                                        (int)in.size(), (int)cap);
+            if (n >= 0) { out->resize((size_t)n); return true; }
+        }
+        return false;
+    }
+#endif
     *out = in;
     return true;
 }

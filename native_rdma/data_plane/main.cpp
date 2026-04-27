@@ -9,6 +9,8 @@
 #include "mempool/pool_registry.h"
 #include "storage/tier_engine.h"
 #include "storage/io_scheduler.h"
+#include "storage/prefetcher.h"
+#include "storage/compress.h"
 #include "qos/qos_sched.h"
 #include "batch/batch_aggregator.h"
 #include "replication/heartbeat.h"
@@ -44,6 +46,7 @@ struct Args {
     std::string uds_path   = "/tmp/native_rdma-dp.sock";
     std::string metrics_shm= "/tmp/native_rdma-metrics.shm";
     size_t      slab_bytes_1k = 1ULL * 1024 * 1024 * 1024;  // 1GB slab
+    size_t      slab_slot_size = 1024;                      // W4 bw: configurable slot size
     std::string snap_dir   = "/dev/shm/native_rdma_snap";
     // W4: multi-tier storage backing paths.
     std::string nvme_path  = "/dev/shm/native_rdma_warm";
@@ -68,6 +71,8 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--uds")         a.uds_path = v;
         else if (k == "--metrics-shm")a.metrics_shm = v;
         else if (k == "--snap-dir")    a.snap_dir = v;
+        else if (k == "--slab-slot-size") a.slab_slot_size = std::stoull(v);
+        else if (k == "--slab-total-bytes") a.slab_bytes_1k = std::stoull(v);
         else if (k == "--nvme-path")  a.nvme_path = v;
         else if (k == "--hdd-path")   a.hdd_path = v;
         else if (k == "--dram-demote-idle-ms") a.dram_demote_idle_ms = std::stoull(v);
@@ -114,10 +119,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // 2) Slab pool for 1KB objects
+    // 2) Slab pool (configurable slot size for bandwidth tests)
     nr::SlabPool slab;
     nr::SlabPool::Config scfg;
-    scfg.slot_size   = 1024;
+    scfg.slot_size   = args.slab_slot_size;
     scfg.total_bytes = args.slab_bytes_1k;
     scfg.use_hugepage= true;
     if (!slab.init(core, scfg)) {
@@ -152,6 +157,10 @@ int main(int argc, char** argv) {
     tcfg.dram_demote_idle_ns  = args.dram_demote_idle_ms * 1000000ULL;
     tcfg.nvme_demote_idle_ns  = args.nvme_demote_idle_ms * 1000000ULL;
     tier.init(tcfg);
+
+    // Prefetcher (W4 M1-3): stride + Markov-1 prediction over GET accesses.
+    nr::Prefetcher prefetcher;
+    prefetcher.init({});
 
     // IoScheduler: FG (NVMe warm) + BG (HDD cold), both via io_uring.
     // Backing directories must exist; create if missing.
@@ -484,6 +493,8 @@ int main(int argc, char** argv) {
             *resp = "{\"ok\":false,\"err\":\"not found\"}";
             return;
         }
+        // Feed access history to prefetcher (before any promote).
+        prefetcher.on_access(k);
         uint32_t sz = meta.size;
         const char* hit_kind = "local";
         // Cold hit: object lives on NVMe/HDD, promote it back to DRAM first.
@@ -544,16 +555,32 @@ int main(int argc, char** argv) {
             // Read object bytes from whichever tier owns it.
             if (m.tier == nr::Tier::DRAM) {
                 dat.write((const char*)slab.base_addr() + m.offset, m.size);
-            } else {
+            } else if (m.tier == nr::Tier::NVME) {
                 scratch.assign(m.size, 0);
-                auto prio = (m.tier == nr::Tier::NVME)
-                    ? nr::IoScheduler::Prio::FG : nr::IoScheduler::Prio::BG;
-                int r = io.sync_read(prio, scratch.data(), m.size, m.offset);
-                if (r == (int)m.size) {
-                    dat.write(scratch.data(), m.size);
-                } else {
-                    // Best-effort: write zeros so offsets in idx stay consistent.
+                int r = io.sync_read(nr::IoScheduler::Prio::FG, scratch.data(),
+                                     m.size, m.offset);
+                if (r == (int)m.size) dat.write(scratch.data(), m.size);
+                else dat.write(std::string(m.size, '\0').data(), m.size);
+            } else {
+                // HDD: read compressed_size bytes, decompress if needed.
+                uint32_t on_disk = m.compressed_size ? m.compressed_size : m.size;
+                std::string enc(on_disk, '\0');
+                int r = io.sync_read(nr::IoScheduler::Prio::BG, enc.data(),
+                                     on_disk, m.offset);
+                if (r != (int)on_disk) {
                     dat.write(std::string(m.size, '\0').data(), m.size);
+                } else if (m.algo != 0) {
+                    std::string dec;
+                    auto algo = (m.algo == 1) ? nr::CompressAlgo::ZSTD
+                                              : nr::CompressAlgo::LZ4;
+                    if (nr::CompressEngine::decompress(algo, enc, &dec)
+                        && dec.size() == m.size) {
+                        dat.write(dec.data(), dec.size());
+                    } else {
+                        dat.write(std::string(m.size, '\0').data(), m.size);
+                    }
+                } else {
+                    dat.write(enc.data(), m.size);
                 }
             }
             nobj++; nbytes += m.size;
@@ -632,6 +659,50 @@ int main(int argc, char** argv) {
         resp->assign(buf, n);
     };
 
+    auto do_prefetch_stats = [&](const std::string& body, std::string* resp) {
+        auto st = prefetcher.stats();
+        auto preds = prefetcher.predict(body);
+        std::string out;
+        char hdr[200];
+        int n = std::snprintf(hdr, sizeof(hdr),
+            "{\"ok\":true,\"total\":%lu,\"hits_stride\":%lu,\"hits_markov\":%lu,"
+            "\"query\":\"%s\",\"predicted\":[",
+            (unsigned long)st.total_access,
+            (unsigned long)st.hits_stride,
+            (unsigned long)st.hits_markov,
+            body.c_str());
+        out.assign(hdr, n);
+        bool first = true;
+        for (auto& p : preds) {
+            if (p.size() > 120) continue;
+            if (!first) out.push_back(',');
+            first = false;
+            out.push_back('"');
+            for (char c : p) {
+                if (c == '"' || c == '\\') { out.push_back('\\'); out.push_back(c); }
+                else if ((unsigned char)c < 0x20) out.push_back('?');
+                else out.push_back(c);
+            }
+            out.push_back('"');
+        }
+        out.append("]}");
+        *resp = std::move(out);
+    };
+
+    auto do_compress_stats = [&](std::string* resp) {
+        auto s = tier.compress_stats();
+        double ratio = (s.raw_bytes > 0)
+            ? (double)s.cmp_bytes / (double)s.raw_bytes : 0.0;
+        char buf[256];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"raw_bytes\":%lu,\"cmp_bytes\":%lu,"
+            "\"objects\":%lu,\"ratio\":%.4f,\"saved_bytes\":%ld}",
+            (unsigned long)s.raw_bytes, (unsigned long)s.cmp_bytes,
+            (unsigned long)s.n_compressed, ratio,
+            (long)((long long)s.raw_bytes - (long long)s.cmp_bytes));
+        resp->assign(buf, n);
+    };
+
     nr::UdsServer uds;
     uds.set_handler([&](const std::string& kind, const std::string& body,
                         std::string* resp) {
@@ -652,6 +723,8 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);
         else if (kind == "RPC_TIER_STATS")  do_tier_stats(resp);
         else if (kind == "RPC_TIER_DEMOTE") do_tier_demote(body, resp);
+        else if (kind == "RPC_PREFETCH_STATS") do_prefetch_stats(body, resp);
+        else if (kind == "RPC_COMPRESS_STATS") do_compress_stats(resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }

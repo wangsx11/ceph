@@ -34,6 +34,8 @@ exec "$BIN" \
     --data-port="$DATA_PORT" \
     --uds="$UDS_PATH" \
     --metrics-shm="$METRICS_SHM" \
+    --slab-slot-size="${SLAB_SLOT_SIZE:-1024}" \
+    --slab-total-bytes="${SLAB_TOTAL_BYTES:-1073741824}" \
     --nvme-path="${NVME_PATH:-/dev/shm/native_rdma_warm}" \
     --hdd-path="${HDD_PATH:-/dev/shm/native_rdma_cold}" \
     --dram-demote-idle-ms="${DRAM_DEMOTE_IDLE_MS:-10000}" \

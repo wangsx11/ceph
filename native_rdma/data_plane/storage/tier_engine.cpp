@@ -1,10 +1,12 @@
 #include "tier_engine.h"
 #include "io_scheduler.h"
+#include "compress.h"
 #include "../common/logger.h"
 #include "../common/time_util.h"
 
 #include <algorithm>
 #include <cstring>
+#include <string>
 
 namespace nr {
 
@@ -63,6 +65,7 @@ void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) 
     auto& m = index_[std::string(key)];
     // A key is new only when we've never seen it before (access_cnt==0).
     bool was_new = (m.access_cnt == 0);
+    Tier prev_tier = m.tier;
     m.offset      = offset;
     m.size        = size;
     m.tier        = Tier::DRAM;
@@ -70,7 +73,16 @@ void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) 
     m.access_cnt  = m.access_cnt + 1;
     m.dram_slot_free = false;
     m.dram_offset = offset;
-    if (was_new) ndram_.fetch_add(1);
+    if (was_new) {
+        ndram_.fetch_add(1);
+    } else if (prev_tier != Tier::DRAM) {
+        // Existing key, but it lived in a lower tier (e.g. was demoted to
+        // NVMe/HDD and now overwritten with a fresh PUT that re-lands in
+        // DRAM). Fix tier counters so later demote() does not underflow.
+        if      (prev_tier == Tier::NVME) nnvme_.fetch_sub(1);
+        else if (prev_tier == Tier::HDD)  nhdd_.fetch_sub(1);
+        ndram_.fetch_add(1);
+    }
 }
 
 bool TierEngine::get_meta(std::string_view key, uint64_t* offset, uint32_t* size) {
@@ -128,7 +140,8 @@ bool TierEngine::demote(std::string_view key, Tier to,
 
     // Read source bytes:
     // - DRAM source: memcpy from slab_base + snap.offset
-    // - NVMe source: sync_read from FG file
+    // - NVMe source: sync_read from FG file (plaintext)
+    // - HDD source : sync_read compressed_size bytes then decompress
     std::vector<char> tmp(snap.size);
     if (snap.tier == Tier::DRAM) {
         std::memcpy(tmp.data(), (const char*)slab_base + snap.offset, snap.size);
@@ -137,25 +150,60 @@ bool TierEngine::demote(std::string_view key, Tier to,
                                snap.size, snap.offset);
         if (r < 0 || (size_t)r != snap.size) return false;
     } else {
-        // HDD -> anything: read from BG first.
-        int r = io_->sync_read(IoScheduler::Prio::BG, tmp.data(),
-                               snap.size, snap.offset);
-        if (r < 0 || (size_t)r != snap.size) return false;
+        // HDD source: read compressed_size bytes then decompress.
+        uint32_t on_disk = snap.compressed_size ? snap.compressed_size : snap.size;
+        std::string enc(on_disk, '\0');
+        int r = io_->sync_read(IoScheduler::Prio::BG, enc.data(),
+                               on_disk, snap.offset);
+        if (r < 0 || (size_t)r != on_disk) return false;
+        if (snap.algo != 0) {
+            std::string dec;
+            if (!CompressEngine::decompress(
+                    snap.algo == 1 ? CompressAlgo::ZSTD : CompressAlgo::LZ4,
+                    enc, &dec) || dec.size() != snap.size) {
+                NR_WARN("HDD decompress failed key=%s", skey.c_str());
+                return false;
+            }
+            std::memcpy(tmp.data(), dec.data(), snap.size);
+        } else {
+            std::memcpy(tmp.data(), enc.data(), snap.size);
+        }
     }
 
     // Target tier: bump-pointer allocate offset, then write.
+    // HDD writes go through CompressEngine to save space (cold path ok to pay CPU).
     uint64_t target_off = 0;
     IoScheduler::Prio prio =
         (to == Tier::NVME) ? IoScheduler::Prio::FG : IoScheduler::Prio::BG;
-    if (to == Tier::NVME) {
+    uint32_t on_disk_size = snap.size;
+    uint8_t  chosen_algo  = 0;
+    std::string enc_buf;
+    const char* write_ptr = tmp.data();
+    if (to == Tier::HDD) {
+        CompressAlgo algo = CompressEngine::pick(snap.size);
+        if (algo != CompressAlgo::NONE) {
+            std::string raw(tmp.data(), snap.size);
+            if (CompressEngine::compress(algo, raw, &enc_buf)
+                && enc_buf.size() < snap.size /* only commit if it helped */) {
+                on_disk_size = (uint32_t)enc_buf.size();
+                chosen_algo  = (algo == CompressAlgo::ZSTD) ? 1 : 2;
+                write_ptr    = enc_buf.data();
+                cmp_raw_bytes_.fetch_add(snap.size);
+                cmp_cmp_bytes_.fetch_add(on_disk_size);
+                cmp_n_.fetch_add(1);
+            }
+        }
+        // HDD slot stride large enough to fit on-disk size rounded up.
+        size_t stride = cfg_.tier_slot_size;
+        while (stride < on_disk_size) stride *= 2;
+        target_off = hdd_next_off_.fetch_add(stride);
+    } else if (to == Tier::NVME) {
         target_off = nvme_next_off_.fetch_add(cfg_.tier_slot_size);
-    } else if (to == Tier::HDD) {
-        target_off = hdd_next_off_.fetch_add(cfg_.tier_slot_size);
     } else {
         return false;
     }
-    int w = io_->sync_write(prio, tmp.data(), snap.size, target_off);
-    if (w < 0 || (size_t)w != snap.size) return false;
+    int w = io_->sync_write(prio, write_ptr, on_disk_size, target_off);
+    if (w < 0 || (size_t)w != on_disk_size) return false;
 
     // Commit index.
     {
@@ -168,16 +216,27 @@ bool TierEngine::demote(std::string_view key, Tier to,
             it->second.dram_offset    = it->second.offset;
             it->second.dram_slot_free = true;
         }
-        it->second.tier   = to;
-        it->second.offset = target_off;
+        it->second.tier    = to;
+        it->second.offset  = target_off;
+        it->second.compressed_size = (to == Tier::HDD) ? on_disk_size : 0;
+        it->second.algo    = (to == Tier::HDD) ? chosen_algo : 0;
 
-        // Stats update.
-        if (from == Tier::DRAM) ndram_.fetch_sub(1);
-        else if (from == Tier::NVME) nnvme_.fetch_sub(1);
-        else if (from == Tier::HDD)  nhdd_.fetch_sub(1);
-        if (to == Tier::NVME)      nnvme_.fetch_add(1);
-        else if (to == Tier::HDD)  nhdd_.fetch_add(1);
-        else if (to == Tier::DRAM) ndram_.fetch_add(1);
+        // Stats update (saturating sub: never underflow uint64 to 2^64-1).
+        auto safe_sub = [](std::atomic<uint64_t>& ctr) {
+            uint64_t cur = ctr.load(std::memory_order_relaxed);
+            while (cur > 0) {
+                if (ctr.compare_exchange_weak(cur, cur - 1,
+                        std::memory_order_relaxed)) return;
+            }
+            // cur == 0: accounting mismatch, keep at 0 and log once.
+            NR_WARN("tier counter underflow avoided (key=%s)", skey.c_str());
+        };
+        if      (from == Tier::DRAM) safe_sub(ndram_);
+        else if (from == Tier::NVME) safe_sub(nnvme_);
+        else if (from == Tier::HDD)  safe_sub(nhdd_);
+        if      (to == Tier::NVME)   nnvme_.fetch_add(1);
+        else if (to == Tier::HDD)    nhdd_.fetch_add(1);
+        else if (to == Tier::DRAM)   ndram_.fetch_add(1);
 
         push_event(events_mu_, events_,
                    MigrationEvent{now_ns(), skey, from, to, snap.size});
@@ -199,8 +258,24 @@ bool TierEngine::promote(std::string_view key, void* dram_slot,
     }
     IoScheduler::Prio prio =
         (snap.tier == Tier::NVME) ? IoScheduler::Prio::FG : IoScheduler::Prio::BG;
-    int r = io_->sync_read(prio, dram_slot, snap.size, snap.offset);
-    if (r < 0 || (size_t)r != snap.size) return false;
+    if (snap.tier == Tier::HDD && snap.algo != 0) {
+        // Read compressed bytes then decompress into the dram slot.
+        uint32_t on_disk = snap.compressed_size ? snap.compressed_size : snap.size;
+        std::string enc(on_disk, '\0');
+        int r = io_->sync_read(prio, enc.data(), on_disk, snap.offset);
+        if (r < 0 || (size_t)r != on_disk) return false;
+        std::string dec;
+        if (!CompressEngine::decompress(
+                snap.algo == 1 ? CompressAlgo::ZSTD : CompressAlgo::LZ4,
+                enc, &dec) || dec.size() != snap.size) {
+            NR_WARN("promote HDD decompress failed key=%s", skey.c_str());
+            return false;
+        }
+        std::memcpy(dram_slot, dec.data(), snap.size);
+    } else {
+        int r = io_->sync_read(prio, dram_slot, snap.size, snap.offset);
+        if (r < 0 || (size_t)r != snap.size) return false;
+    }
 
     {
         std::lock_guard<std::mutex> lk(mu_);
@@ -213,8 +288,15 @@ bool TierEngine::promote(std::string_view key, void* dram_slot,
         it->second.dram_slot_free = false;
         it->second.last_access = now_ns();
 
-        if (from == Tier::NVME) nnvme_.fetch_sub(1);
-        else if (from == Tier::HDD) nhdd_.fetch_sub(1);
+        if (from == Tier::NVME) {
+            uint64_t cur = nnvme_.load(std::memory_order_relaxed);
+            while (cur > 0 && !nnvme_.compare_exchange_weak(cur, cur - 1,
+                        std::memory_order_relaxed)) {}
+        } else if (from == Tier::HDD) {
+            uint64_t cur = nhdd_.load(std::memory_order_relaxed);
+            while (cur > 0 && !nhdd_.compare_exchange_weak(cur, cur - 1,
+                        std::memory_order_relaxed)) {}
+        }
         ndram_.fetch_add(1);
 
         push_event(events_mu_, events_,
@@ -232,6 +314,14 @@ void TierEngine::tick_migration() {
 std::vector<MigrationEvent> TierEngine::recent_events() const {
     std::lock_guard<std::mutex> lk(events_mu_);
     return events_;
+}
+
+TierEngine::CompressStats TierEngine::compress_stats() const {
+    CompressStats s;
+    s.raw_bytes    = cmp_raw_bytes_.load();
+    s.cmp_bytes    = cmp_cmp_bytes_.load();
+    s.n_compressed = cmp_n_.load();
+    return s;
 }
 
 uint64_t TierEngine::count(Tier t) const {

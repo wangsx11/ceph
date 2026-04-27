@@ -15,7 +15,7 @@ enum class Tier : uint8_t { DRAM = 0, NVME = 1, HDD = 2 };
 
 struct ObjectMeta {
     uint64_t offset       = 0;   // offset into the local slab (bytes) OR tier file offset
-    uint32_t size         = 0;   // user bytes (<= slot_size)
+    uint32_t size         = 0;   // user bytes (<= slot_size) - original (uncompressed)
     Tier     tier         = Tier::DRAM;
     uint64_t last_access  = 0;
     uint32_t access_cnt   = 0;
@@ -25,6 +25,9 @@ struct ObjectMeta {
     // and `dram_slot_free` signals the DRAM slot has been returned to Slab.
     bool     dram_slot_free = false;
     uint64_t dram_offset  = 0;   // original DRAM slab offset (for rollback/promote)
+    // W4 M1-4: compression info (only meaningful on HDD tier for now).
+    uint32_t compressed_size = 0;  // bytes actually written on disk (<=size)
+    uint8_t  algo         = 0;     // 0=none, 1=zstd, 2=lz4
 };
 
 struct MigrationEvent {
@@ -94,6 +97,14 @@ public:
     // Recent migration events (bounded ring, latest 64).
     std::vector<MigrationEvent> recent_events() const;
 
+    // W4 M1-4: compression stats (HDD-layer only in current impl).
+    struct CompressStats {
+        uint64_t raw_bytes   = 0;   // total original bytes sent to compression
+        uint64_t cmp_bytes   = 0;   // total compressed bytes stored
+        uint64_t n_compressed = 0;  // count of objects compressed
+    };
+    CompressStats compress_stats() const;
+
     // Stats
     uint64_t count(Tier t) const;
 
@@ -111,6 +122,11 @@ private:
 
     mutable std::mutex events_mu_;
     std::vector<MigrationEvent> events_;   // bounded, oldest-first
+
+    // Compression accounting (W4 M1-4). Only bumped by HDD demotes.
+    std::atomic<uint64_t> cmp_raw_bytes_{0};
+    std::atomic<uint64_t> cmp_cmp_bytes_{0};
+    std::atomic<uint64_t> cmp_n_{0};
 };
 
 } // namespace nr

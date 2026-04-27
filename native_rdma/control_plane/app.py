@@ -141,6 +141,17 @@ def tier_demote():
     resp = uds_call("RPC_TIER_DEMOTE", payload)
     return resp, 200, {"Content-Type": "application/json"}
 
+@app.route("/api/prefetch/stats")
+def prefetch_stats():
+    key = request.args.get("key", "")
+    resp = uds_call("RPC_PREFETCH_STATS", key.encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/compress/stats")
+def compress_stats():
+    resp = uds_call("RPC_COMPRESS_STATS")
+    return resp, 200, {"Content-Type": "application/json"}
+
 # ---------- Dashboard static serving ----------
 @app.route("/")
 def index():
