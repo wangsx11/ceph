@@ -54,6 +54,27 @@ public:
     MrHandle reg_mr(void* addr, size_t len);
     void     dereg_mr(MrHandle& h);
 
+    // ---- W2: connection management ----
+    // Local info needed by OOB handshake.
+    uint32_t       local_qpn(int qp_idx) const;
+    uint16_t       local_lid() const;
+    union ibv_gid  local_gid() const;
+    uint8_t        local_gid_index() const;
+
+    // Transition one QP: INIT -> RTR -> RTS using the exchanged peer info.
+    // `peer_qpn/peer_lid/peer_gid` come from OOB exchange.
+    bool connect_qp(int qp_idx,
+                    uint32_t peer_qpn, uint16_t peer_lid,
+                    const union ibv_gid& peer_gid,
+                    uint8_t peer_gid_index);
+
+    // Post a plain RECV on the given QP for subsequent SEND receive.
+    int post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
+                  uint64_t wr_id);
+    // Post a plain (non-inline) SEND.
+    int post_send(int qp_idx, const void* buf, size_t len, uint32_t lkey,
+                  uint64_t wr_id, bool signaled);
+
     // Post operations on a specific QP index [0, num_qp).
     int post_write(int qp_idx, const void* buf, size_t len, uint32_t lkey,
                    uint64_t remote_addr, uint32_t rkey,
@@ -62,8 +83,6 @@ public:
                    uint64_t remote_addr, uint32_t rkey, uint64_t wr_id);
     int post_send_inline(int qp_idx, const void* buf, size_t len,
                          uint64_t wr_id, bool signaled);
-    int post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
-                  uint64_t wr_id);
 
     // Chain post: caller prepares the wr_list; returns bad_wr on failure.
     int post_send_batch(int qp_idx, ibv_send_wr* wr_list, ibv_send_wr** bad);

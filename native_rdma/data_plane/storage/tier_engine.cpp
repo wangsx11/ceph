@@ -50,6 +50,29 @@ bool TierEngine::erase(std::string_view key) {
     return true;
 }
 
+void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) {
+    std::lock_guard<std::mutex> lk(mu_);
+    auto& m = index_[std::string(key)];
+    bool was_new = (m.size == 0 && m.offset == 0);
+    m.offset      = offset;
+    m.size        = size;
+    m.tier        = Tier::DRAM;
+    m.last_access = now_ns();
+    m.access_cnt  = m.access_cnt + 1;
+    if (was_new) ndram_.fetch_add(1);
+}
+
+bool TierEngine::get_meta(std::string_view key, uint64_t* offset, uint32_t* size) {
+    std::lock_guard<std::mutex> lk(mu_);
+    auto it = index_.find(std::string(key));
+    if (it == index_.end()) return false;
+    if (offset) *offset = it->second.offset;
+    if (size)   *size   = it->second.size;
+    it->second.last_access = now_ns();
+    it->second.access_cnt++;
+    return true;
+}
+
 void TierEngine::on_access(std::string_view key) {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = index_.find(std::string(key));

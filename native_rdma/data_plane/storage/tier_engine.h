@@ -11,8 +11,8 @@ namespace nr {
 enum class Tier : uint8_t { DRAM = 0, NVME = 1, HDD = 2 };
 
 struct ObjectMeta {
-    uint64_t offset       = 0;
-    uint32_t size         = 0;
+    uint64_t offset       = 0;   // offset into the local slab (bytes)
+    uint32_t size         = 0;   // user bytes (<= slot_size)
     Tier     tier         = Tier::DRAM;
     uint64_t last_access  = 0;
     uint32_t access_cnt   = 0;
@@ -34,9 +34,24 @@ public:
     bool init(const Config& cfg);
     void shutdown();
 
+    // Legacy stub (kept for callers that don't use slab-backed storage).
     bool put(std::string_view key, std::string_view val, uint8_t prio);
     bool get(std::string_view key, std::string* out);
     bool erase(std::string_view key);
+
+    // ---- W2: slab-backed API ----
+    // Record that `key` now lives at slab `offset` with `size` bytes.
+    void put_meta(std::string_view key, uint64_t offset, uint32_t size);
+    bool get_meta(std::string_view key, uint64_t* offset, uint32_t* size);
+
+    // Iterate for snapshot. Callback(key, meta) returns false to stop.
+    template <class Fn>
+    void for_each(Fn&& fn) const {
+        std::lock_guard<std::mutex> lk(mu_);
+        for (auto& kv : index_) {
+            if (!fn(kv.first, kv.second)) break;
+        }
+    }
 
     void on_access(std::string_view key);
     void tick_migration();   // called by tier_migrator thread

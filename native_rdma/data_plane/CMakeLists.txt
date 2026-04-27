@@ -17,6 +17,7 @@ add_library(nr_rdma STATIC
     rdma/cm_handler.cpp
     rdma/poller.cpp
     rdma/tcp_fallback.cpp
+    rdma/oob.cpp
 )
 target_link_libraries(nr_rdma PUBLIC
     nr_common

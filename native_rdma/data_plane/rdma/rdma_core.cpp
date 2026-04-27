@@ -208,12 +208,90 @@ int RdmaCore::post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
     return ibv_post_recv(impl_->qps[qp_idx], &wr, &bad);
 }
 
-int RdmaCore::post_send_batch(int qp_idx, ibv_send_wr* wr_list, ibv_send_wr** bad) {
-    return ibv_post_send(impl_->qps[qp_idx], wr_list, bad);
+int RdmaCore::post_send(int qp_idx, const void* buf, size_t len, uint32_t lkey,
+                        uint64_t wr_id, bool signaled)
+{
+    ibv_sge sge{(uint64_t)buf, (uint32_t)len, lkey};
+    ibv_send_wr wr{};
+    wr.wr_id      = wr_id;
+    wr.sg_list    = &sge;
+    wr.num_sge    = 1;
+    wr.opcode     = IBV_WR_SEND;
+    wr.send_flags = signaled ? IBV_SEND_SIGNALED : 0;
+    ibv_send_wr* bad = nullptr;
+    return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
-int RdmaCore::poll_cq(int cq_idx, ibv_wc* out, int max) {
-    return ibv_poll_cq(impl_->cqs[cq_idx], max, out);
+uint32_t RdmaCore::local_qpn(int qp_idx) const {
+    return impl_->qps[qp_idx]->qp_num;
+}
+
+uint16_t RdmaCore::local_lid() const {
+    ibv_port_attr pa{};
+    if (ibv_query_port(impl_->ctx, 1, &pa) != 0) return 0;
+    return pa.lid;
+}
+
+union ibv_gid RdmaCore::local_gid() const {
+    return impl_->local_gid;
+}
+
+uint8_t RdmaCore::local_gid_index() const {
+    return impl_->cfg.gid_index;
+}
+
+bool RdmaCore::connect_qp(int qp_idx,
+                          uint32_t peer_qpn, uint16_t peer_lid,
+                          const union ibv_gid& peer_gid,
+                          uint8_t peer_gid_index)
+{
+    auto* qp = impl_->qps[qp_idx];
+
+    // ---------- INIT -> RTR ----------
+    ibv_qp_attr attr{};
+    attr.qp_state           = IBV_QPS_RTR;
+    attr.path_mtu           = IBV_MTU_1024;
+    attr.dest_qp_num        = peer_qpn;
+    attr.rq_psn             = 0;
+    attr.max_dest_rd_atomic = 16;
+    attr.min_rnr_timer      = 12;
+
+    attr.ah_attr.is_global     = 1;              // RoCE v2 needs GRH
+    attr.ah_attr.dlid          = peer_lid;
+    attr.ah_attr.sl            = 0;
+    attr.ah_attr.src_path_bits = 0;
+    attr.ah_attr.port_num      = 1;
+    attr.ah_attr.grh.dgid            = peer_gid;
+    attr.ah_attr.grh.sgid_index      = impl_->cfg.gid_index;
+    attr.ah_attr.grh.hop_limit       = 64;
+    attr.ah_attr.grh.traffic_class   = 0;
+    attr.ah_attr.grh.flow_label      = 0;
+    (void)peer_gid_index;  // caller provides; we use our own sgid_index.
+
+    int flags = IBV_QP_STATE | IBV_QP_AV | IBV_QP_PATH_MTU |
+                IBV_QP_DEST_QPN | IBV_QP_RQ_PSN |
+                IBV_QP_MAX_DEST_RD_ATOMIC | IBV_QP_MIN_RNR_TIMER;
+    if (ibv_modify_qp(qp, &attr, flags)) {
+        NR_ERROR("modify_qp(RTR) qp=%d failed", qp_idx);
+        return false;
+    }
+
+    // ---------- RTR -> RTS ----------
+    ibv_qp_attr rts{};
+    rts.qp_state      = IBV_QPS_RTS;
+    rts.timeout       = 14;
+    rts.retry_cnt     = 7;
+    rts.rnr_retry     = 7;
+    rts.sq_psn        = 0;
+    rts.max_rd_atomic = 16;
+    int rflags = IBV_QP_STATE | IBV_QP_TIMEOUT | IBV_QP_RETRY_CNT |
+                 IBV_QP_RNR_RETRY | IBV_QP_SQ_PSN | IBV_QP_MAX_QP_RD_ATOMIC;
+    if (ibv_modify_qp(qp, &rts, rflags)) {
+        NR_ERROR("modify_qp(RTS) qp=%d failed", qp_idx);
+        return false;
+    }
+    NR_INFO("qp[%d] connected: peer_qpn=0x%x lid=%u", qp_idx, peer_qpn, peer_lid);
+    return true;
 }
 
 } // namespace nr
