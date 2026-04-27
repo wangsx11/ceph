@@ -162,6 +162,7 @@
   <button onclick="doDemote('nvme')">下沉 demo_key 到 NVMe</button>
   <button onclick="doDemote('hdd')">下沉 demo_key 到 HDD</button>
   <button onclick="doTierStats()">刷新分层/迁移</button>
+  <button onclick="doFlush()" style="background:#fde2e2;border-color:#e48080">一键清空 (管理)</button>
   <pre id="log"></pre>
 </div>
 
@@ -387,6 +388,13 @@
   async function doTierStats() {
     const r = await fetch("/api/tier/stats");
     log("TIER -> " + await r.text());
+    await refreshTier();
+  }
+  async function doFlush() {
+    if (!confirm("清空所有 KV 索引、释放 DRAM slab、重置计数器？\n只应在演示前用于清理压测残留。")) return;
+    const r = await fetch("/api/admin/flush", {method:"POST"});
+    log("FLUSH -> " + await r.text());
+    await refresh();
     await refreshTier();
   }
 

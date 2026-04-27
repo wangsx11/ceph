@@ -703,6 +703,30 @@ int main(int argc, char** argv) {
         resp->assign(buf, n);
     };
 
+    // Admin: wipe the in-memory KV index, free all DRAM slab slots, reset
+    // counters (ops/tier/migration/compression). Lets the operator recover
+    // from bench-test residue (e.g. 300k bk_* keys occupying the slab) without
+    // having to restart the data plane.
+    auto do_admin_flush = [&](std::string* resp) {
+        auto dram_offs = tier.reset_all();
+        for (uint64_t off : dram_offs) {
+            slab.free((char*)slab.base_addr() + off);
+        }
+        // Reset process-level counters so the UI starts fresh.
+        ops_put.store(0);
+        ops_get.store(0);
+        bytes_tx_1s.store(0);
+        bytes_rx_1s.store(0);
+        busy_ns_1s.store(0);
+        last_repl_ns.store(0);
+        mig_d_n_.store(0);
+        mig_n_h_.store(0);
+        char buf[128];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"freed_slabs\":%zu}", dram_offs.size());
+        resp->assign(buf, n);
+    };
+
     nr::UdsServer uds;
     uds.set_handler([&](const std::string& kind, const std::string& body,
                         std::string* resp) {
@@ -725,6 +749,7 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_TIER_DEMOTE") do_tier_demote(body, resp);
         else if (kind == "RPC_PREFETCH_STATS") do_prefetch_stats(body, resp);
         else if (kind == "RPC_COMPRESS_STATS") do_compress_stats(resp);
+        else if (kind == "RPC_ADMIN_FLUSH")    do_admin_flush(resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }

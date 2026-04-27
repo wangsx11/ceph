@@ -189,6 +189,13 @@ def compress_stats():
     resp = uds_call("RPC_COMPRESS_STATS")
     return resp, 200, {"Content-Type": "application/json"}
 
+@app.route("/api/admin/flush", methods=["POST"])
+def admin_flush():
+    # Wipe the KV index, free DRAM slab slots and reset all counters.
+    # Use ONLY for recovering from bench residue during demos.
+    resp = uds_call("RPC_ADMIN_FLUSH")
+    return resp, 200, {"Content-Type": "application/json"}
+
 # ---------- Dashboard static serving ----------
 @app.route("/")
 def index():

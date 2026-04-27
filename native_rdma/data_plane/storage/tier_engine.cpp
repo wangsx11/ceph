@@ -324,6 +324,40 @@ TierEngine::CompressStats TierEngine::compress_stats() const {
     return s;
 }
 
+std::vector<uint64_t> TierEngine::reset_all() {
+    std::vector<uint64_t> dram_offs;
+    {
+        std::lock_guard<std::mutex> lk(mu_);
+        dram_offs.reserve(index_.size());
+        for (auto& kv : index_) {
+            const ObjectMeta& m = kv.second;
+            // We only need to free slots whose DRAM slot is still attributed
+            // to this key. When `dram_slot_free == true` the slot has already
+            // been returned to the slab by an earlier demote()/main.cpp path,
+            // so caller must NOT free it again.
+            if (m.tier == Tier::DRAM || !m.dram_slot_free) {
+                // Use offset when still in DRAM, dram_offset as fallback.
+                uint64_t off = (m.tier == Tier::DRAM) ? m.offset : m.dram_offset;
+                dram_offs.push_back(off);
+            }
+        }
+        index_.clear();
+    }
+    ndram_.store(0);
+    nnvme_.store(0);
+    nhdd_.store(0);
+    nvme_next_off_.store(0);
+    hdd_next_off_.store(0);
+    cmp_raw_bytes_.store(0);
+    cmp_cmp_bytes_.store(0);
+    cmp_n_.store(0);
+    {
+        std::lock_guard<std::mutex> lk(events_mu_);
+        events_.clear();
+    }
+    return dram_offs;
+}
+
 uint64_t TierEngine::count(Tier t) const {
     switch (t) {
         case Tier::DRAM: return ndram_.load();

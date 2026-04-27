@@ -105,6 +105,12 @@ public:
     };
     CompressStats compress_stats() const;
 
+    // Drop the in-memory index and return the list of DRAM slab offsets that
+    // were in use, so the caller can free them back to the SlabPool.
+    // Also resets all tier counters, migration events, compression stats and
+    // NVMe/HDD bump-pointer offsets. Intended for admin/demo flush only.
+    std::vector<uint64_t> reset_all();
+
     // Stats
     uint64_t count(Tier t) const;
 
