@@ -30,7 +30,11 @@ public:
         uint64_t total_access = 0;
     };
 
-    void init(const Config& cfg = Config()) {
+    void init() {
+        std::lock_guard<std::mutex> lk(mu_);
+        cfg_ = Config();
+    }
+    void init(const Config& cfg) {
         std::lock_guard<std::mutex> lk(mu_);
         cfg_ = cfg;
     }

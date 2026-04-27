@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
 
     // Prefetcher (W4 M1-3): stride + Markov-1 prediction over GET accesses.
     nr::Prefetcher prefetcher;
-    prefetcher.init({});
+    prefetcher.init();
 
     // IoScheduler: FG (NVMe warm) + BG (HDD cold), both via io_uring.
     // Backing directories must exist; create if missing.
