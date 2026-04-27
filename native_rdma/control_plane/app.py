@@ -54,6 +54,9 @@ _METRICS_KEYS = [
 ]
 _METRICS_SIZE = struct.calcsize(_METRICS_FMT)
 
+_rate_state = {"last_ts_ns": 0, "last_ops": 0, "ops_per_sec": 0.0}
+_rate_lock  = threading.Lock()
+
 def read_metrics():
     if not os.path.exists(METRICS_SHM):
         return {k: 0 for k in _METRICS_KEYS}
@@ -64,7 +67,22 @@ def read_metrics():
     if len(raw) != _METRICS_SIZE:
         return {k: 0 for k in _METRICS_KEYS}
     vals = struct.unpack(_METRICS_FMT, raw)
-    return dict(zip(_METRICS_KEYS, vals))
+    m = dict(zip(_METRICS_KEYS, vals))
+    # Derive instant ops/s from delta of cumulative counter.
+    with _rate_lock:
+        ts_ns = int(m.get("ts_ns", 0))
+        ops   = int(m.get("ops_total", 0))
+        last_ts = _rate_state["last_ts_ns"]
+        last_op = _rate_state["last_ops"]
+        if last_ts > 0 and ts_ns > last_ts:
+            dt = (ts_ns - last_ts) / 1e9
+            d_ops = max(0, ops - last_op)
+            if dt > 0:
+                _rate_state["ops_per_sec"] = d_ops / dt
+        _rate_state["last_ts_ns"] = ts_ns
+        _rate_state["last_ops"]   = ops
+        m["ops_per_sec"] = _rate_state["ops_per_sec"]
+    return m
 
 # ---------- REST API ----------
 @app.route("/api/cluster/status")
@@ -73,7 +91,13 @@ def cluster_status():
     try: body = json.loads(resp)
     except Exception: body = {"raw": resp}
     body["self"] = ROLE
-    body["metrics"] = read_metrics()
+    metrics = read_metrics()
+    body["metrics"] = metrics
+    # ---- Top-level aliases so the dashboard can read them directly ----
+    # The C++ UDS returns `peer_alive`; UI expects `rdma_connected`.
+    body["rdma_connected"] = bool(body.get("peer_alive", False))
+    # replica_lag_us comes from the metrics shm, surface it at the top too.
+    body["replica_lag_us"] = metrics.get("replica_lag_us", 0.0)
     return jsonify(body)
 
 @app.route("/api/kv/put", methods=["POST"])
@@ -101,6 +125,20 @@ def snapshot():
     j = request.get_json(force=True)
     tag = j.get("tag", time.strftime("%Y%m%d_%H%M%S"))
     resp = uds_call("RPC_SNAPSHOT", tag.encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/tier/stats")
+def tier_stats():
+    resp = uds_call("RPC_TIER_STATS")
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/tier/demote", methods=["POST"])
+def tier_demote():
+    j = request.get_json(force=True)
+    key  = j.get("key", "")
+    tier = j.get("tier", "nvme")   # "nvme" | "hdd"
+    payload = f"{key}\x00{tier}".encode()
+    resp = uds_call("RPC_TIER_DEMOTE", payload)
     return resp, 200, {"Content-Type": "application/json"}
 
 # ---------- Dashboard static serving ----------

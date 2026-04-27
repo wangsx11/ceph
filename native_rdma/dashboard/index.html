@@ -30,8 +30,9 @@
 </div>
 
 <div class="card">
-  <h2>实时指标（100ms 刷新）</h2>
-  <span class="metric"><span class="k">总 ops/s</span><br/><span class="v" id="ops">-</span></span>
+  <h2>实时指标（500ms 刷新）</h2>
+  <span class="metric"><span class="k">瞬时 ops/s</span><br/><span class="v" id="ops">-</span></span>
+  <span class="metric"><span class="k">累计操作数</span><br/><span class="v" id="ops_total">-</span></span>
   <span class="metric"><span class="k">带宽 TX (Gbps)</span><br/><span class="v" id="bw_tx">-</span></span>
   <span class="metric"><span class="k">RDMA 利用率 (%)</span><br/><span class="v" id="util">-</span></span>
   <span class="metric"><span class="k">延迟 avg (μs)</span><br/><span class="v" id="lat_avg">-</span></span>
@@ -50,6 +51,9 @@
   <button onclick="doPut()">跨节点写入 demo_key</button>
   <button onclick="doGet()">读取 demo_key</button>
   <button onclick="doSnapshot()">触发快照</button>
+  <button onclick="doDemote('nvme')">下沉 demo_key 到 NVMe</button>
+  <button onclick="doDemote('hdd')">下沉 demo_key 到 HDD</button>
+  <button onclick="doTierStats()">查看分层/迁移</button>
   <pre id="log"></pre>
 </div>
 
@@ -63,10 +67,12 @@
       const r = await fetch("/api/cluster/status");
       const j = await r.json();
       document.getElementById("self").textContent  = j.self || "-";
-      document.getElementById("rdma").textContent  = j.rdma_connected ? "✓" : "-";
-      document.getElementById("lag").textContent   = (j.replica_lag_us ?? "-");
+      document.getElementById("rdma").textContent  = j.rdma_connected ? "✓" : "✗";
+      const lag = j.replica_lag_us;
+      document.getElementById("lag").textContent   = (lag === undefined || lag === null) ? "-" : Number(lag).toFixed(2);
       const m = j.metrics || {};
-      document.getElementById("ops").textContent      = m.ops_total ?? "-";
+      document.getElementById("ops").textContent      = (m.ops_per_sec ?? 0).toFixed(0);
+      document.getElementById("ops_total").textContent = (m.ops_total ?? 0).toLocaleString();
       document.getElementById("bw_tx").textContent    = (m.bw_tx_gbps ?? 0).toFixed(2);
       document.getElementById("util").textContent     = (m.rdma_util_pct ?? 0).toFixed(1);
       document.getElementById("lat_avg").textContent  = (m.lat_avg_us ?? 0).toFixed(2);
@@ -89,6 +95,15 @@
     const r = await fetch("/api/snapshot", {method: "POST", headers: {"Content-Type": "application/json"},
       body: JSON.stringify({tag: "manual_" + Date.now()})});
     log("SNAPSHOT -> " + await r.text());
+  }
+  async function doDemote(tier) {
+    const r = await fetch("/api/tier/demote", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({key: "demo_key", tier: tier})});
+    log("DEMOTE(" + tier + ") -> " + await r.text());
+  }
+  async function doTierStats() {
+    const r = await fetch("/api/tier/stats");
+    log("TIER -> " + await r.text());
   }
   setInterval(refresh, 500);
   refresh();

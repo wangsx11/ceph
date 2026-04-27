@@ -34,4 +34,9 @@ exec "$BIN" \
     --data-port="$DATA_PORT" \
     --uds="$UDS_PATH" \
     --metrics-shm="$METRICS_SHM" \
+    --nvme-path="${NVME_PATH:-/dev/shm/native_rdma_warm}" \
+    --hdd-path="${HDD_PATH:-/dev/shm/native_rdma_cold}" \
+    --dram-demote-idle-ms="${DRAM_DEMOTE_IDLE_MS:-10000}" \
+    --nvme-demote-idle-ms="${NVME_DEMOTE_IDLE_MS:-30000}" \
+    --migrate-interval-ms="${MIGRATE_INTERVAL_MS:-1000}" \
     2>&1 | tee -a "$LOG_DIR/dp_${ROLE}.log"

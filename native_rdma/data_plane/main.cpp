@@ -8,6 +8,7 @@
 #include "mempool/slab.h"
 #include "mempool/pool_registry.h"
 #include "storage/tier_engine.h"
+#include "storage/io_scheduler.h"
 #include "qos/qos_sched.h"
 #include "batch/batch_aggregator.h"
 #include "replication/heartbeat.h"
@@ -44,6 +45,12 @@ struct Args {
     std::string metrics_shm= "/tmp/native_rdma-metrics.shm";
     size_t      slab_bytes_1k = 1ULL * 1024 * 1024 * 1024;  // 1GB slab
     std::string snap_dir   = "/dev/shm/native_rdma_snap";
+    // W4: multi-tier storage backing paths.
+    std::string nvme_path  = "/dev/shm/native_rdma_warm";
+    std::string hdd_path   = "/dev/shm/native_rdma_cold";
+    uint64_t    dram_demote_idle_ms = 10000;  // -> NVMe after 10s idle
+    uint64_t    nvme_demote_idle_ms = 30000;  // -> HDD  after 30s idle
+    int         migrate_interval_ms = 1000;
 };
 
 static void parse_args(int argc, char** argv, Args& a) {
@@ -61,6 +68,11 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--uds")         a.uds_path = v;
         else if (k == "--metrics-shm")a.metrics_shm = v;
         else if (k == "--snap-dir")    a.snap_dir = v;
+        else if (k == "--nvme-path")  a.nvme_path = v;
+        else if (k == "--hdd-path")   a.hdd_path = v;
+        else if (k == "--dram-demote-idle-ms") a.dram_demote_idle_ms = std::stoull(v);
+        else if (k == "--nvme-demote-idle-ms") a.nvme_demote_idle_ms = std::stoull(v);
+        else if (k == "--migrate-interval-ms") a.migrate_interval_ms = std::stoi(v);
     }
 }
 
@@ -134,7 +146,30 @@ int main(int argc, char** argv) {
 
     nr::TierEngine tier;
     nr::TierEngine::Config tcfg;
+    tcfg.nvme_path = args.nvme_path;
+    tcfg.hdd_path  = args.hdd_path;
+    tcfg.migrate_interval_ms  = args.migrate_interval_ms;
+    tcfg.dram_demote_idle_ns  = args.dram_demote_idle_ms * 1000000ULL;
+    tcfg.nvme_demote_idle_ns  = args.nvme_demote_idle_ms * 1000000ULL;
     tier.init(tcfg);
+
+    // IoScheduler: FG (NVMe warm) + BG (HDD cold), both via io_uring.
+    // Backing directories must exist; create if missing.
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(
+            std::filesystem::path(args.nvme_path).parent_path(), ec);
+        std::filesystem::create_directories(
+            std::filesystem::path(args.hdd_path ).parent_path(), ec);
+    }
+    nr::IoScheduler io;
+    nr::IoScheduler::Config iocfg;
+    iocfg.fg_path = args.nvme_path;
+    iocfg.bg_path = args.hdd_path;
+    iocfg.sq_depth = 1024;
+    iocfg.sq_poll_fg = false;
+    io.init(iocfg);
+    tier.set_io_scheduler(&io);
 
     // 5) OOB handshake: role=B listens, role=A connects.
     const bool is_listener = (args.role == "B");
@@ -329,6 +364,55 @@ int main(int argc, char** argv) {
         }
     });
 
+    // 8b) Tier migrator thread (W4): demote cold DRAM/NVMe objects.
+    //
+    // Every `migrate_interval_ms` we scan the index and move objects whose
+    // `last_access` exceeded the configured idle window. DRAM slots are
+    // returned to the slab allocator after successful demotion.
+    std::atomic<bool> mig_stop{false};
+    std::atomic<uint64_t> mig_d_n_{0}, mig_n_h_{0};  // counters for stats RPC
+    std::thread mig_thr([&]() {
+        while (!mig_stop.load(std::memory_order_relaxed) &&
+               !g_stop.load(std::memory_order_relaxed)) {
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(args.migrate_interval_ms));
+            uint64_t now_n = nr::now_ns();
+            const uint64_t dram_idle = args.dram_demote_idle_ms * 1000000ULL;
+            const uint64_t nvme_idle = args.nvme_demote_idle_ms * 1000000ULL;
+
+            // Collect demotion candidates (copy key+tier) under lock, then
+            // call demote() without holding the index lock.
+            struct Cand { std::string key; nr::Tier from; nr::Tier to;
+                          uint64_t dram_off; };
+            std::vector<Cand> cands;
+            cands.reserve(128);
+            tier.for_each([&](const std::string& k, const nr::ObjectMeta& m) {
+                if (cands.size() >= 128) return false;
+                if (m.tier == nr::Tier::DRAM && dram_idle > 0 &&
+                    m.last_access > 0 && now_n - m.last_access > dram_idle) {
+                    cands.push_back({k, nr::Tier::DRAM, nr::Tier::NVME, m.offset});
+                } else if (m.tier == nr::Tier::NVME && nvme_idle > 0 &&
+                           m.last_access > 0 && now_n - m.last_access > nvme_idle) {
+                    cands.push_back({k, nr::Tier::NVME, nr::Tier::HDD, 0});
+                }
+                return true;
+            });
+            for (auto& c : cands) {
+                bool ok = tier.demote(c.key, c.to, slab.base_addr(),
+                                      slab.capacity() * slab.slot_size());
+                if (!ok) continue;
+                if (c.from == nr::Tier::DRAM) {
+                    // Return the DRAM slot to the slab allocator.
+                    void* p = (char*)slab.base_addr() + c.dram_off;
+                    slab.free(p);
+                    mig_d_n_.fetch_add(1);
+                } else {
+                    mig_n_h_.fetch_add(1);
+                }
+            }
+        }
+    });
+
     // 9) UDS RPC handlers
     auto do_put = [&](const std::string& body, std::string* resp) {
         std::string k, v;
@@ -395,31 +479,47 @@ int main(int argc, char** argv) {
 
     auto do_get = [&](const std::string& body, std::string* resp) {
         std::string k = body;
-        uint64_t off = 0; uint32_t sz = 0;
-        if (tier.get_meta(k, &off, &sz)) {
-            // Local hit
-            std::string val(sz, '\0');
-            std::memcpy(&val[0], (char*)slab.base_addr() + off, sz);
-            ops_get.fetch_add(1);
-            bytes_rx_1s.fetch_add(sz);
-            // Only print the first 64 bytes to keep the JSON small.
-            std::string preview = val.substr(0, std::min<size_t>(64, val.size()));
-            char hdr[96];
-            int n = std::snprintf(hdr, sizeof(hdr),
-                "{\"ok\":true,\"hit\":\"local\",\"size\":%u,\"val\":\"",
-                sz);
-            resp->assign(hdr, n);
-            for (char c : preview) {
-                if (c == '"' || c == '\\') { resp->push_back('\\'); resp->push_back(c); }
-                else if ((unsigned char)c < 0x20) { resp->push_back('?'); }
-                else resp->push_back(c);
-            }
-            resp->append("\"}");
+        nr::ObjectMeta meta{};
+        if (!tier.get_meta_full(k, &meta)) {
+            *resp = "{\"ok\":false,\"err\":\"not found\"}";
             return;
         }
-        // Miss on both sides (index is propagated via KV_INDEX control msg,
-        // so backup would already have metadata on successful replication).
-        *resp = "{\"ok\":false,\"err\":\"not found\"}";
+        uint32_t sz = meta.size;
+        const char* hit_kind = "local";
+        // Cold hit: object lives on NVMe/HDD, promote it back to DRAM first.
+        if (meta.tier != nr::Tier::DRAM) {
+            void* slot = slab.alloc();
+            if (!slot) {
+                *resp = "{\"ok\":false,\"err\":\"slab oom on promote\"}";
+                return;
+            }
+            uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());
+            if (!tier.promote(k, slot, dram_off)) {
+                slab.free(slot);
+                *resp = "{\"ok\":false,\"err\":\"promote failed\"}";
+                return;
+            }
+            hit_kind = (meta.tier == nr::Tier::NVME) ? "nvme_promote" : "hdd_promote";
+            // Read back from slab at the new offset (sz/val populated below).
+            meta.offset = dram_off;
+        }
+        // Read from DRAM slab.
+        std::string val(sz, '\0');
+        std::memcpy(&val[0], (char*)slab.base_addr() + meta.offset, sz);
+        ops_get.fetch_add(1);
+        bytes_rx_1s.fetch_add(sz);
+        std::string preview = val.substr(0, std::min<size_t>(64, val.size()));
+        char hdr[128];
+        int n = std::snprintf(hdr, sizeof(hdr),
+            "{\"ok\":true,\"hit\":\"%s\",\"size\":%u,\"val\":\"",
+            hit_kind, sz);
+        resp->assign(hdr, n);
+        for (char c : preview) {
+            if (c == '"' || c == '\\') { resp->push_back('\\'); resp->push_back(c); }
+            else if ((unsigned char)c < 0x20) { resp->push_back('?'); }
+            else resp->push_back(c);
+        }
+        resp->append("\"}");
     };
 
     auto do_snapshot = [&](const std::string& body, std::string* resp) {
@@ -434,13 +534,28 @@ int main(int argc, char** argv) {
             *resp = "{\"ok\":false,\"err\":\"open snap files failed\"}"; return;
         }
         uint64_t nobj = 0, nbytes = 0;
+        std::vector<char> scratch;
         tier.for_each([&](const std::string& key, const nr::ObjectMeta& m) -> bool {
             uint32_t kl = (uint32_t)key.size();
             idx.write((const char*)&kl, 4);
             idx.write(key.data(), kl);
             idx.write((const char*)&m.offset, 8);
             idx.write((const char*)&m.size, 4);
-            dat.write((const char*)slab.base_addr() + m.offset, m.size);
+            // Read object bytes from whichever tier owns it.
+            if (m.tier == nr::Tier::DRAM) {
+                dat.write((const char*)slab.base_addr() + m.offset, m.size);
+            } else {
+                scratch.assign(m.size, 0);
+                auto prio = (m.tier == nr::Tier::NVME)
+                    ? nr::IoScheduler::Prio::FG : nr::IoScheduler::Prio::BG;
+                int r = io.sync_read(prio, scratch.data(), m.size, m.offset);
+                if (r == (int)m.size) {
+                    dat.write(scratch.data(), m.size);
+                } else {
+                    // Best-effort: write zeros so offsets in idx stay consistent.
+                    dat.write(std::string(m.size, '\0').data(), m.size);
+                }
+            }
             nobj++; nbytes += m.size;
             return true;
         });
@@ -451,6 +566,69 @@ int main(int argc, char** argv) {
             "\"idx\":\"%s\",\"dat\":\"%s\"}",
             tag.c_str(), (unsigned long)nobj, (unsigned long)nbytes,
             idx_path.c_str(), dat_path.c_str());
+        resp->assign(buf, n);
+    };
+
+    auto do_tier_stats = [&](std::string* resp) {
+        auto evs = tier.recent_events();
+        std::string out = "{\"ok\":true,";
+        char hdr[256];
+        int n = std::snprintf(hdr, sizeof(hdr),
+            "\"dram\":%lu,\"nvme\":%lu,\"hdd\":%lu,"
+            "\"demoted_d_n\":%lu,\"demoted_n_h\":%lu,\"events\":[",
+            (unsigned long)tier.count(nr::Tier::DRAM),
+            (unsigned long)tier.count(nr::Tier::NVME),
+            (unsigned long)tier.count(nr::Tier::HDD),
+            (unsigned long)mig_d_n_.load(),
+            (unsigned long)mig_n_h_.load());
+        out.append(hdr, n);
+        bool first = true;
+        // Show latest first, cap to 16 entries to keep payload small.
+        size_t show = std::min<size_t>(16, evs.size());
+        for (size_t i = evs.size(); i > 0 && (evs.size() - i) < show; --i) {
+            const auto& e = evs[i - 1];
+            auto tier_str = [](nr::Tier t){
+                return t==nr::Tier::DRAM?"dram":t==nr::Tier::NVME?"nvme":"hdd";
+            };
+            if (!first) out.push_back(',');
+            first = false;
+            char b[256];
+            int k = std::snprintf(b, sizeof(b),
+                "{\"ts_ns\":%lu,\"key\":\"%s\",\"from\":\"%s\",\"to\":\"%s\","
+                "\"bytes\":%lu}",
+                (unsigned long)e.ts_ns,
+                e.key.c_str(), tier_str(e.from), tier_str(e.to),
+                (unsigned long)e.bytes);
+            out.append(b, k);
+        }
+        out.append("]}");
+        *resp = std::move(out);
+    };
+
+    auto do_tier_demote = [&](const std::string& body, std::string* resp) {
+        // body layout: "<key>\0<tier>" where tier is "nvme" or "hdd".
+        auto p = body.find('\0');
+        std::string k, tier_str;
+        if (p == std::string::npos) { k = body; tier_str = "nvme"; }
+        else { k = body.substr(0, p); tier_str = body.substr(p + 1); }
+        nr::Tier to = (tier_str == "hdd") ? nr::Tier::HDD : nr::Tier::NVME;
+
+        nr::ObjectMeta before{};
+        if (!tier.get_meta_full(k, &before)) {
+            *resp = "{\"ok\":false,\"err\":\"key not found\"}"; return;
+        }
+        bool ok = tier.demote(k, to, slab.base_addr(),
+                              slab.capacity() * slab.slot_size());
+        if (ok && before.tier == nr::Tier::DRAM) {
+            slab.free((char*)slab.base_addr() + before.offset);
+            mig_d_n_.fetch_add(1);
+        } else if (ok && before.tier == nr::Tier::NVME) {
+            mig_n_h_.fetch_add(1);
+        }
+        char buf[128];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":%s,\"key\":\"%s\",\"to\":\"%s\"}",
+            ok ? "true" : "false", k.c_str(), tier_str.c_str());
         resp->assign(buf, n);
     };
 
@@ -472,6 +650,8 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_KV_PUT")   do_put(body, resp);
         else if (kind == "RPC_KV_GET")   do_get(body, resp);
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);
+        else if (kind == "RPC_TIER_STATS")  do_tier_stats(resp);
+        else if (kind == "RPC_TIER_DEMOTE") do_tier_demote(body, resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }
@@ -487,9 +667,12 @@ int main(int argc, char** argv) {
     uds.stop();
     hb.stop();
     hb_stop.store(true);
+    mig_stop.store(true);
     if (hb_thr.joinable()) hb_thr.join();
     if (metrics_thr.joinable()) metrics_thr.join();
+    if (mig_thr.joinable())     mig_thr.join();
     batch.shutdown();
+    io.shutdown();
     slab.shutdown();
     return 0;
 }
