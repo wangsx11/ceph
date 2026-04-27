@@ -21,11 +21,11 @@ bool TcpFallback::listen(const std::string& ip, uint16_t port) {
     setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
     sockaddr_in a{}; a.sin_family = AF_INET; a.sin_port = htons(port);
     inet_pton(AF_INET, ip.c_str(), &a.sin_addr);
-    if (bind(lfd, (sockaddr*)&a, sizeof(a)) < 0) { close(lfd); return false; }
-    if (::listen(lfd, 1) < 0) { close(lfd); return false; }
+    if (bind(lfd, (sockaddr*)&a, sizeof(a)) < 0) { ::close(lfd); return false; }
+    if (::listen(lfd, 1) < 0) { ::close(lfd); return false; }
     NR_INFO("TcpFallback listen on %s:%u", ip.c_str(), port);
     fd_ = accept(lfd, nullptr, nullptr);
-    close(lfd);
+    ::close(lfd);
     if (fd_ < 0) return false;
     set_tcp_no_delay(fd_);
     return true;
@@ -37,7 +37,7 @@ bool TcpFallback::connect(const std::string& peer_ip, uint16_t port) {
     sockaddr_in a{}; a.sin_family = AF_INET; a.sin_port = htons(port);
     inet_pton(AF_INET, peer_ip.c_str(), &a.sin_addr);
     if (::connect(fd_, (sockaddr*)&a, sizeof(a)) < 0) {
-        close(fd_); fd_ = -1; return false;
+        ::close(fd_); fd_ = -1; return false;
     }
     set_tcp_no_delay(fd_);
     NR_INFO("TcpFallback connected to %s:%u", peer_ip.c_str(), port);
