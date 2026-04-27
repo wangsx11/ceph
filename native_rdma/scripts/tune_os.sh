@@ -9,7 +9,9 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # --- 1. HugePages (override via env: HUGEPAGES_2MB) -------------------
-HUGEPAGES_2MB="${HUGEPAGES_2MB:-16384}"    # default 32GB
+# Demo default: 1024 * 2MB = 2 GB (enough for MR pool + queues).
+# For full performance benchmarking, export HUGEPAGES_2MB=16384 (32GB) or more.
+HUGEPAGES_2MB="${HUGEPAGES_2MB:-1024}"
 echo "[tune_os] setting HugePages to ${HUGEPAGES_2MB} x 2MB"
 echo "$HUGEPAGES_2MB" > /proc/sys/vm/nr_hugepages
 
