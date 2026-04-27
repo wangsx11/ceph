@@ -338,12 +338,20 @@ int main(int argc, char** argv) {
         if (v.size() > slab.slot_size()) {
             *resp = "{\"ok\":false,\"err\":\"value too large\"}"; return;
         }
-        void* slot = slab.alloc();
-        if (!slot) {
-            *resp = "{\"ok\":false,\"err\":\"slab oom\"}"; return;
+        // Reuse existing slot if key already exists (avoid slot leak on updates).
+        uint64_t off = 0; uint32_t old_sz = 0;
+        void* slot = nullptr;
+        if (tier.get_meta(k, &off, &old_sz)) {
+            // In-place overwrite; slot_size is fixed, any new size <= slot_size fits.
+            slot = (char*)slab.base_addr() + off;
+        } else {
+            slot = slab.alloc();
+            if (!slot) {
+                *resp = "{\"ok\":false,\"err\":\"slab oom\"}"; return;
+            }
+            off = (uint64_t)((char*)slot - (char*)slab.base_addr());
         }
         std::memcpy(slot, v.data(), v.size());
-        uint64_t off = (uint64_t)((char*)slot - (char*)slab.base_addr());
 
         tier.put_meta(k, off, (uint32_t)v.size());
 

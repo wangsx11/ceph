@@ -2,8 +2,7 @@
 // to measure end-to-end hot-path throughput & latency without going through HTTP.
 //
 // Usage:
-//   ./bin/nr_bench --uds=/tmp/native_rdma-dp.sock \
-//                  --op=put --threads=8 --duration=10 --val-size=64
+//   ./bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=8 --duration=10 --val-size=64
 //
 // Reports:  ops/s, avg(us), p50(us), p99(us), p999(us), max(us)
 
