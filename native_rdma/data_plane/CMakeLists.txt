@@ -133,4 +133,11 @@ if(NR_BUILD_TESTS)
     set_target_properties(nr_ping_demo PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
+
+    # nr_bench: UDS-direct load generator for PUT/GET/MIX.
+    add_executable(nr_bench tests_unit/nr_bench.cpp)
+    target_link_libraries(nr_bench PRIVATE Threads::Threads)
+    set_target_properties(nr_bench PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
 endif()

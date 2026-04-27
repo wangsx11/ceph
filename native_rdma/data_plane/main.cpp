@@ -23,6 +23,8 @@
 #include <fstream>
 #include <filesystem>
 #include <mutex>
+#include <vector>
+#include <algorithm>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -206,6 +208,21 @@ int main(int argc, char** argv) {
     std::atomic<uint64_t> bytes_tx_1s{0}, bytes_rx_1s{0};
     std::atomic<uint64_t> last_repl_ns{0};
 
+    // Latency ring: lock-free atomic counter + modulo indexing.
+    // Keeps the most recent kLatRing samples; metrics thread snapshots to compute
+    // avg/p99 every 200 ms.
+    constexpr size_t kLatRing = 4096;
+    std::vector<uint32_t> lat_ring(kLatRing, 0);  // nanoseconds
+    std::atomic<uint64_t> lat_seq{0};
+    auto lat_push = [&](uint64_t ns) {
+        uint64_t idx = lat_seq.fetch_add(1, std::memory_order_relaxed);
+        // Clamp to uint32_t range (sufficient: ~4.29s).
+        lat_ring[idx % kLatRing] = (ns > 0xFFFFFFFFu) ? 0xFFFFFFFFu : (uint32_t)ns;
+    };
+
+    // RDMA busy window tracking: accumulate poll_cq busy nanoseconds in 1s window.
+    std::atomic<uint64_t> busy_ns_1s{0};
+
     // 7) A dedicated thread drains QP_HB CQ: counts HB recv + repost.
     std::atomic<bool> hb_stop{false};
     std::thread hb_thr([&]() {
@@ -250,6 +267,9 @@ int main(int argc, char** argv) {
 
     std::thread metrics_thr([&]() {
         uint64_t last = nr::now_ms();
+        // Scratch buffer for snapshot + partial sort (nth_element for p99).
+        std::vector<uint32_t> snap;
+        snap.reserve(kLatRing);
         while (!g_stop.load(std::memory_order_relaxed)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
             if (!ma.data()) continue;
@@ -267,8 +287,42 @@ int main(int argc, char** argv) {
             uint64_t rx = bytes_rx_1s.exchange(0);
             m->bw_tx_gbps.store(tx * 8.0 / 1e9 / secs);
             m->bw_rx_gbps.store(rx * 8.0 / 1e9 / secs);
+
+            // Snapshot the ring (copy current valid samples).
+            uint64_t seq = lat_seq.load(std::memory_order_relaxed);
+            size_t valid = (seq >= kLatRing) ? kLatRing : (size_t)seq;
+            snap.assign(lat_ring.begin(), lat_ring.begin() + valid);
+            if (!snap.empty()) {
+                // Strip zeros (uninitialized slots if any) to avoid pulling avg down.
+                uint64_t sum = 0; size_t cnt = 0;
+                for (auto v : snap) { if (v) { sum += v; ++cnt; } }
+                double avg_us = cnt ? (double)sum / cnt / 1000.0 : 0.0;
+                m->lat_avg_us.store(avg_us);
+                if (cnt >= 20) {
+                    // Non-zero subset for p99
+                    std::vector<uint32_t> nz; nz.reserve(cnt);
+                    for (auto v : snap) if (v) nz.push_back(v);
+                    size_t p99_idx = (size_t)(nz.size() * 0.99);
+                    if (p99_idx >= nz.size()) p99_idx = nz.size() - 1;
+                    std::nth_element(nz.begin(), nz.begin() + p99_idx, nz.end());
+                    m->lat_p99_us.store((double)nz[p99_idx] / 1000.0);
+                }
+            } else {
+                m->lat_avg_us.store(0.0);
+                m->lat_p99_us.store(0.0);
+            }
+
             double lag_us = last_repl_ns.load() / 1000.0;
             m->replica_lag_us.store(lag_us);
+
+            // RDMA utilization: fraction of wall time spent in completed replication.
+            // last_repl_ns is the most recent single-op time; for throughput we derive
+            // from ops_put delta in this window.
+            uint64_t busy = busy_ns_1s.exchange(0);
+            double util = (secs > 0) ? (double)busy / (secs * 1e9) * 100.0 : 0.0;
+            if (util > 100.0) util = 100.0;
+            m->rdma_util_pct.store(util);
+
             m->ts_ns.store(nr::now_ns());
             last = now;
             tier.tick_migration();
@@ -313,6 +367,8 @@ int main(int argc, char** argv) {
         }
         uint64_t dt = nr::now_ns() - t0;
         last_repl_ns.store(dt);
+        lat_push(dt);
+        busy_ns_1s.fetch_add(dt);
         if (repl_ok) {
             // Push index to peer so backup can serve local GET.
             send_kv_index(k, off, (uint32_t)v.size());
