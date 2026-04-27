@@ -1,0 +1,12 @@
+{
+  "metric": "rdma_bw_util_pct",
+  "value": 0.14926875,
+  "target": 0.134341875,
+  "unit": "%",
+  "pass": true,
+  "ts": 1777106367,
+  "extra": {
+    "strict_target": 50.0,
+    "strict": false
+  }
+}

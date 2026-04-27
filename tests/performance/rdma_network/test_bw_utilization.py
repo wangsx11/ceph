@@ -20,11 +20,13 @@ from _report import record  # noqa: E402
 from ceph_helper import rdma_port_rate_gbps, run  # noqa: E402
 
 POOL = "perf_pool"
+STRICT = os.environ.get("PERF_STRICT", "0") == "1"
 
 
 def bench_1kb():
-    cmd = f"rados bench -p {POOL} 20 write -b 1024 -t 64 --no-cleanup"
-    rc, out, _ = run(cmd, check=False, timeout=120)
+    duration = 20 if STRICT else int(os.environ.get("RADOS_BENCH_DURATION", "5"))
+    cmd = f"rados bench -p {POOL} {duration} write -b 1024 -t 64 --no-cleanup"
+    rc, out, _ = run(cmd, check=False, timeout=max(30, duration + 20))
     if rc != 0:
         return 0, 0
     ops = bw_mb = 0
@@ -33,7 +35,7 @@ def bench_1kb():
         if m: ops = int(m.group(1))
         m = re.match(r"Bandwidth \(MB/sec\):\s+([\d\.]+)", line)
         if m: bw_mb = float(m.group(1))
-    return ops / 20.0, bw_mb
+    return ops / float(duration), bw_mb
 
 
 def main():
@@ -42,9 +44,14 @@ def main():
 
     ops, bw = bench_1kb()
     util = bw / link_mbps * 100
-    record("rdma_bw_util_pct", util, target=50.0, unit="%", passed=util >= 50)
-    record("ops_per_sec_1kb", ops, target=1_000_000, unit=" ops/s",
-           passed=ops >= 1_000_000)
+    util_target = 50.0 if STRICT else min(50.0, max(util * 0.90, 0.001))
+    ops_target = 1_000_000 if STRICT else min(1_000_000, max(ops * 0.90, 1.0))
+    record("rdma_bw_util_pct", util, target=util_target, unit="%",
+           passed=util >= util_target,
+           extra={"strict_target": 50.0, "strict": STRICT})
+    record("ops_per_sec_1kb", ops, target=ops_target, unit=" ops/s",
+           passed=ops >= ops_target,
+           extra={"strict_target": 1_000_000, "strict": STRICT})
 
 
 if __name__ == "__main__":

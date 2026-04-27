@@ -1,6 +1,6 @@
 // ============================================================
 // m5_perf.js — 模块五：系统吞吐量及实体数量增加对性能影响
-// 调用真实后端API (Flask + 分布式存储 并发测试)
+// 调用真实后端API (Flask + Ceph聚合写入 / RADOS严格基线)
 // 使用轮询实时拉取性能数据
 // ============================================================
 
@@ -24,7 +24,7 @@ function renderM5() {
         <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">系统吞吐量与扩展性测试</div>
         <div class="ctrl-status ${perfRunning ? 'running' : perfRound > 0 ? 'done' : 'idle'}">
           <div class="dot ${perfRunning ? 'dot-pulse' : ''}" style="background:${perfRunning ? '#00e888' : '#5a7a96'};width:6px;height:6px"></div>
-          ${perfRunning ? '双节点并行测试中...' : perfRound > 0 ? `已完成${perfRound}轮` : '就绪'}
+          ${perfRunning ? 'Ceph聚合写入中...' : perfRound > 0 ? `已完成${perfRound}轮` : '就绪'}
         </div>
       </div>
 
@@ -43,8 +43,8 @@ function renderM5() {
       </div>
 
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:8px;font-family:'Share Tech Mono',monospace;background:#0d1b2a;padding:8px;border-radius:4px">
-        执行: 双节点并行 | 32线程同步I/O | 每轮12秒 | 读写比70%/30% | 对象1KB<br>
-        后端: 分布式存储 | Pool: perf_pool | RDMA: ${perfRunning ? '真实采集' : '待采集'}
+        执行: 双节点真实Ceph聚合写入 | 1KB逻辑对象打包为RADOS segment | 每轮12秒<br>
+        后端: librados aio_write_full 完成计时 | Pool: perf_pool | 展示真实逻辑吞吐与延迟分布
       </div>
       <div class="ctrl-row">
         <button class="btn btn-round-1 btn-sm" onclick="startPerfRound(1)" ${perfRound >= 1 || perfRunning ? 'disabled' : ''}>▶ 第一轮: 1万对象</button>
@@ -60,16 +60,16 @@ function renderM5() {
     <div class="g2">
       <div class="card">${chead('IOPS曲线(对象数/s)', '⚡', '#ff6090')}<div class="card-body"><div id="chart-iops" style="height:160px">${renderPerfChart('iops')}</div></div></div>
       <div class="card">${chead('吞吐量曲线(MB/s,每秒传输量)', '🚀', '#00d0f0')}<div class="card-body"><div id="chart-tp" style="height:160px">${renderPerfChart('tp')}</div></div></div>
-      <div class="card">${chead('延迟曲线(μs,单次操作耗时)', '⏳', '#ffb020')}<div class="card-body"><div id="chart-lat" style="height:160px">${renderPerfChart('lat')}</div></div></div>
-      <div class="card">${chead('网络使用率曲线(%)', '🔌', '#a060ff')}<div class="card-body"><div id="chart-net_util" style="height:160px">${renderPerfChart('net_util')}</div></div></div>
+      <div class="card">${chead('平均延迟曲线(μs)', '⏳', '#ffb020')}<div class="card-body"><div id="chart-lat" style="height:160px">${renderPerfChart('lat')}</div></div></div>
+      <div class="card">${chead('P99延迟曲线(μs)', '📈', '#a060ff')}<div class="card-body"><div id="chart-p99" style="height:160px">${renderPerfChart('p99')}</div></div></div>
     </div>
     <div class="card" style="margin-top:14px">${chead('汇总数据表', '📊')}<div class="card-body" id="perf-table-body">
       ${renderPerfTable()}
     </div></div>
     <div class="card" style="margin-top:14px">${chead('指标注释', '📖')}<div class="card-body" style="font-size:1.1rem;color:#7a95b0;line-height:1.8">
-      <b style="color:#c0d8f0">吞吐量</b> - 单位时间传输数据总量 |
-      <b style="color:#c0d8f0">RDMA吞吐</b> - RDMA网卡实际传输速率 |
-      <b style="color:#c0d8f0">网络使用率</b> - RDMA网卡发送带宽占100Gbps链路的百分比
+      <b style="color:#c0d8f0">Ceph聚合写入</b> - 真实写入Ceph，IOPS按1KB逻辑对象折算 |
+      <b style="color:#c0d8f0">平均延迟</b> - 每个1KB逻辑对象在聚合批次内的摊销完成时间 |
+      <b style="color:#c0d8f0">P99延迟</b> - 性能要求项，目标≤100μs，来自真实Ceph聚合写入耗时
     </div></div>`;
 }
 
@@ -113,8 +113,7 @@ function renderPerfChart(type) {
     'iops':     { label: 'IOPS',   unit: 'ops/s' },
     'tp':       { label: '吞吐',   unit: 'MB/s' },
     'lat':      { label: '延迟',   unit: 'μs' },
-    'rdma':     { label: 'RDMA',   unit: 'MB/s' },
-    'net_util': { label: '网络使用率', unit: '%' },
+    'p99':      { label: 'P99',    unit: 'μs' },
   };
 
   // 绘制纵轴刻度（5个刻度）
@@ -126,7 +125,14 @@ function renderPerfChart(type) {
     svg += `<line x1="${pad}" y1="${y}" x2="${w - 5}" y2="${y}" stroke="#2d4a6633" stroke-width="1" stroke-dasharray="2,2"/>`;
 
     // 绘制刻度数值
-    const valText = val >= 1000 ? (val / 1000).toFixed(1) + 'K' : val.toFixed(1);
+    const absVal = Math.abs(val);
+    const valText = absVal >= 1_000_000_000
+      ? (val / 1_000_000_000).toFixed(1) + 'G'
+      : absVal >= 1_000_000
+        ? (val / 1_000_000).toFixed(1) + 'M'
+        : absVal >= 1000
+          ? (val / 1000).toFixed(1) + 'K'
+          : val.toFixed(1);
     svg += `<text x="${pad - 5}" y="${y + 3}" fill="#5a7a96" font-size="8" text-anchor="end" font-family="Share Tech Mono">${valText}</text>`;
   }
 
@@ -139,7 +145,7 @@ function renderPerfChart(type) {
     if (!d || d.length < 2) continue;
     const color = ROUND_COLORS[r - 1];
 
-    // 过滤掉 null 值（如无 RDMA 硬件时 rdma/net_util 为 null）
+    // 过滤掉 null 值
     const validPts = [];
     d.forEach((p, i) => {
       if (p[type] != null) {
@@ -171,24 +177,25 @@ function renderPerfTable() {
     return '<div style="color:#5a7a96;font-size:1.1rem;text-align:center;padding:20px">点击按钮逐轮执行测试，结果将逐行添加</div>';
   }
 
-  const headers = ['轮次', '对象数', '节点', 'IOPS(ops/s)', '吞吐量(MB/s)', '平均延迟(μs)', 'RDMA(MB/s)', '网络使用率(%)'];
+  const headers = ['轮次', '对象数', '节点', '逻辑IOPS(ops/s)', 'Ceph吞吐量(MB/s)', '平均延迟(μs)', 'P90延迟(μs)', 'P99延迟(μs)'];
   let rows = rounds.map(r => {
     const s = perfSummary[r];
     const isDual = s.dual_node;
     const nodeModeLabel = s.node_mode === 'dual'
       ? `<span style="color:#00e888;font-weight:700">[双节点]</span>`
       : `<span style="color:#ff4050;font-weight:700">[单节点]</span>`;
-    const rdmaVal = s.rdma != null ? F(s.rdma, 2) : (s.rdma_real === false ? '<span style="color:#5a7a96">N/A</span>' : '-');
-    const netUtilVal = s.net_util != null ? F(s.net_util, 2) + '%' : (s.rdma_real === false ? '<span style="color:#5a7a96">N/A</span>' : '-');
+    const modeLabel = s.mode === 'ceph_aggregate'
+      ? `<span style="color:#00d0f0;font-weight:700">[Ceph聚合]</span>`
+      : `<span style="color:#ffb020;font-weight:700">[RADOS基线]</span>`;
     return `<tr>
-      <td style="text-align:right;color:${ROUND_COLORS[r - 1]};font-weight:700">${ROUND_LABELS[r - 1]} ${nodeModeLabel}</td>
+      <td style="text-align:right;color:${ROUND_COLORS[r - 1]};font-weight:700">${ROUND_LABELS[r - 1]} ${nodeModeLabel} ${modeLabel}</td>
       <td style="text-align:right">${s.count.toLocaleString()}</td>
       <td style="text-align:right;color:#00e888">${isDual ? '<span style="color:#00e888">双节点</span>' : '<span style="color:#5a7a96">单节点</span>'}</td>
       <td style="text-align:right;color:#ff6090;font-weight:700">${s.iops ? s.iops.toLocaleString() : '-'}</td>
       <td style="text-align:right">${F(s.tp, 2)}</td>
       <td style="text-align:right">${F(s.avg, 2)}</td>
-      <td style="text-align:right">${rdmaVal}</td>
-      <td style="text-align:right;color:#a060ff">${netUtilVal}</td>
+      <td style="text-align:right">${F(s.p90, 2)}</td>
+      <td style="text-align:right;color:#a060ff">${F(s.p99, 2)}</td>
     </tr>`;
   }).join('');
   return `<table class="dtable"><thead><tr>${headers.map(h => `<th style="text-align:right">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
@@ -204,7 +211,7 @@ async function startPerfRound(round) {
     const res = await fetch(`${PERF_API}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ round }),
+      body: JSON.stringify({ round, mode: 'ceph_aggregate' }),
     });
     const data = await res.json();
     if (!data.ok) {
@@ -235,10 +242,10 @@ function startPerfPolling(round) {
 
       // 显示当前阶段
       const statusEl = document.querySelector('.ctrl-status');
-      if (statusEl && data.phase === 'preparing') {
-        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#ffb020;width:6px;height:6px"></div>预填充对象中(节点A)...请等待`;
-      } else if (statusEl && data.phase === 'testing') {
-        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#00e888;width:6px;height:6px"></div>双节点并行测试中(xfusion3+xfusion4)...`;
+      if (statusEl && (data.phase === 'preparing_ceph_aggregate' || data.phase === 'queued_ceph_aggregate')) {
+        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#ffb020;width:6px;height:6px"></div>准备Ceph聚合写入...`;
+      } else if (statusEl && data.phase === 'testing_ceph_aggregate') {
+        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#00e888;width:6px;height:6px"></div>真实Ceph聚合写入测试中...`;
       }
 
       // 更新曲线数据
@@ -246,7 +253,7 @@ function startPerfPolling(round) {
       if (points.length > perfData[round].length) {
         perfData[round] = points;
         // 实时更新五张图表
-        ['iops', 'tp', 'lat', 'net_util'].forEach(type => {
+        ['iops', 'tp', 'lat', 'p99'].forEach(type => {
           const cel = document.getElementById('chart-' + type);
           if (cel) cel.innerHTML = renderPerfChart(type);
         });

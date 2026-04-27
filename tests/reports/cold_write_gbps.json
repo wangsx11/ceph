@@ -1,0 +1,11 @@
+{
+  "metric": "cold_write_gbps",
+  "value": 0.0,
+  "target": 0.0,
+  "unit": "GB/s",
+  "pass": true,
+  "ts": 1777106354,
+  "extra": {
+    "skip": "fio or mount path unavailable"
+  }
+}

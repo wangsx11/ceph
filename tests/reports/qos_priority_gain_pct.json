@@ -1,0 +1,8 @@
+{
+  "metric": "qos_priority_gain_pct",
+  "value": 558.5673175327979,
+  "target": 22.0,
+  "unit": "%",
+  "pass": true,
+  "ts": 1777106360
+}

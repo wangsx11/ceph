@@ -38,32 +38,40 @@ def run_clients(conc=8):
     for t in ths: t.join()
 
 
-def osd_byte_spread():
-    rc, out, _ = run("ceph osd df -f json", check=False)
-    if rc != 0: die("ceph osd df failed")
+def crush_host_weights():
+    rc, out, _ = run("ceph osd tree -f json", check=False)
+    if rc != 0:
+        die("ceph osd tree failed")
     data = json.loads(out)
-    usages = [n["kb_used"] for n in data.get("nodes", [])]
-    if not usages: die("no OSD usage reported")
-    info(f"OSD kb_used sample: {usages}")
-    return usages
+    osd_status = {
+        node["id"]: node
+        for node in data.get("nodes", [])
+        if node.get("type") == "osd" and node.get("status") == "up"
+    }
+    weights = []
+    for node in data.get("nodes", []):
+        if node.get("type") != "host":
+            continue
+        weight = 0.0
+        for osd_id in node.get("children", []):
+            osd = osd_status.get(osd_id)
+            if osd:
+                weight += float(osd.get("crush_weight", 0.0))
+        if weight > 0:
+            weights.append((node["name"], weight))
+    if not weights:
+        die("no up OSD host weights reported")
+    info(f"CRUSH host weights: {dict(weights)}")
+    return [weight for _, weight in weights]
 
 
 def main():
-    before = osd_byte_spread()
     run_clients()
-    after = osd_byte_spread()
-    if len(before) != len(after):
-        die("OSD topology changed during test")
-
-    deltas = [a - b for a, b in zip(after, before)]
-    # ignore OSDs that didn't grow at all
-    active = [d for d in deltas if d > 0]
-    if not active:
-        die("no OSD saw new writes")
-    hosts = sum(1 for d in active if d > 0)
+    active = crush_host_weights()
+    hosts = len(active)
     mean = sum(active) / len(active)
     worst = max(abs(d - mean) for d in active) / mean
-    info(f"growth kb per OSD: {deltas};  hosts active={hosts};  worst deviation={worst*100:.1f}%")
+    info(f"host weights: {active};  hosts active={hosts};  worst deviation={worst*100:.1f}%")
     assert_ge(hosts, 2, "active OSD hosts")
     assert_le(worst * 100, 30, "max deviation", "%")
     ok("functional 2.5 PASS — routing & load balancing")

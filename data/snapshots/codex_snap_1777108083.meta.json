@@ -1,0 +1,15 @@
+{
+  "name": "codex_snap_1777108083",
+  "source_pool": "snapshot_pool",
+  "prefix": "codex_snap_obj",
+  "path": "/home/wangshouxin/ceph-web/data/snapshots/codex_snap_1777108083.jsonl",
+  "created_at": "2026-04-25 17:08:04",
+  "object_count": 10,
+  "data_bytes": 10240,
+  "file_size_bytes": 14952,
+  "create_duration_s": 0.0041,
+  "file_write_rate_mb_s": 3.51,
+  "data_write_rate_mb_s": 2.4,
+  "snapshot_hash": "67c4e7b90facbe428f8aa34039d1166bc78a1d5c6c21130ceacdb6743a4103ab",
+  "format": "jsonl.base64.v1"
+}

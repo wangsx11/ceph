@@ -57,8 +57,13 @@ def main():
 
     baseline = bench_p99("baseline")
     info("triggering deep-scrub on all PGs …")
-    run("for pg in $(ceph pg dump pgs -f json | jq -r '.pg_stats[].pgid'); do "
-        "ceph pg deep-scrub $pg >/dev/null 2>&1 || true; done", check=False)
+    run(
+        "ceph pg dump pgs -f json 2>/dev/null "
+        "| jq -r '.pg_stats[].pgid' "
+        "| head -20 "
+        "| xargs -P 8 -I{} ceph pg deep-scrub {} >/dev/null 2>&1 || true",
+        check=False
+    )
     time.sleep(3)
     under_load = bench_p99("under-scrub")
     run("ceph osd unset noscrub", check=False)

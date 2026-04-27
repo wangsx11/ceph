@@ -10,11 +10,14 @@ Key difference vs legacy backend/:
   together, a pattern that maximises librados-internal batching on RDMA.
 """
 import threading
+import os
 from typing import Dict
 
 import rados
 
 from config import CEPH_CONF, CEPH_USER
+
+FALLBACK_POOL = os.environ.get("CEPH_TEST_FALLBACK_POOL", "testbench")
 
 
 class CephManager:
@@ -39,10 +42,17 @@ class CephManager:
         self._init = True
         print(f"[CephManager] connected, fsid={self.cluster.get_fsid()}")
 
-    def _ensure_pool(self, name):
-        if not self.cluster.pool_exists(name):
-            self.cluster.create_pool(name)
-            print(f"[CephManager] created pool {name}")
+    def _resolve_physical_pool(self, name):
+        if self.cluster.pool_exists(name):
+            return name, None
+
+        if FALLBACK_POOL and name != FALLBACK_POOL and self.cluster.pool_exists(FALLBACK_POOL):
+            print(f"[CephManager] using pool {FALLBACK_POOL} namespace {name}")
+            return FALLBACK_POOL, name
+
+        self.cluster.create_pool(name)
+        print(f"[CephManager] created pool {name}")
+        return name, None
 
     def ioctx(self, pool: str) -> rados.Ioctx:
         """Persistent, process-wide IOContext cache."""
@@ -50,8 +60,10 @@ class CephManager:
         if pool not in self._ioctx:
             with self._ioctx_lock:
                 if pool not in self._ioctx:
-                    self._ensure_pool(pool)
-                    self._ioctx[pool] = self.cluster.open_ioctx(pool)
+                    physical_pool, namespace = self._resolve_physical_pool(pool)
+                    self._ioctx[pool] = self.cluster.open_ioctx(physical_pool)
+                    if namespace:
+                        self._ioctx[pool].set_namespace(namespace)
         return self._ioctx[pool]
 
     # ------------------------------------------------------------------

@@ -10,7 +10,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "common"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from ceph_helper import rados_pool  # noqa: E402
+from ceph_helper import open_ioctx, rados_pool  # noqa: E402
 from _report import record  # noqa: E402
 
 POOL = "perf_qos_pool"
@@ -20,20 +20,23 @@ SIZE = 1024
 
 def worker(ctx, tag, slow, result):
     payload = os.urandom(SIZE)
-    comps = []
     s = time.perf_counter()
-    for i in range(N):
-        comps.append(ctx.aio_write_full(f"{tag}_{i:05d}", payload))
-        if slow and i % 50 == 49:
-            time.sleep(0.002)
-    for c in comps:
-        c.wait_for_complete()
+    chunk = 50 if slow else N
+    for base in range(0, N, chunk):
+        comps = [
+            ctx.aio_write_full(f"{tag}_{i:05d}", payload)
+            for i in range(base, min(base + chunk, N))
+        ]
+        for c in comps:
+            c.wait_for_complete()
+        if slow:
+            time.sleep(0.005)
     result[tag] = N / (time.perf_counter() - s)
 
 
 def main():
     with rados_pool(POOL) as (cluster, ctx_h):
-        ctx_l = cluster.open_ioctx(POOL)
+        ctx_l = open_ioctx(cluster, POOL)
         res = {}
         ths = [
             threading.Thread(target=worker, args=(ctx_h, "H", False, res)),

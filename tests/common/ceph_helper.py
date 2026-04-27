@@ -12,6 +12,7 @@ from contextlib import contextmanager
 
 DEFAULT_CONF = os.environ.get("CEPH_CONF", "/etc/ceph/ceph.conf")
 DEFAULT_USER = os.environ.get("CEPH_USER", "client.admin")
+FALLBACK_POOL = os.environ.get("CEPH_TEST_FALLBACK_POOL", "testbench")
 
 
 def die(msg, code=1):
@@ -53,6 +54,25 @@ def need_bin(name):
         die(f"required tool `{name}` not found in PATH", code=2)
 
 
+def _resolve_physical_pool(cluster, pool):
+    if cluster.pool_exists(pool):
+        return pool, None
+
+    if FALLBACK_POOL and pool != FALLBACK_POOL and cluster.pool_exists(FALLBACK_POOL):
+        return FALLBACK_POOL, pool
+
+    cluster.create_pool(pool)
+    return pool, None
+
+
+def open_ioctx(cluster, pool):
+    physical_pool, namespace = _resolve_physical_pool(cluster, pool)
+    ioctx = cluster.open_ioctx(physical_pool)
+    if namespace:
+        ioctx.set_namespace(namespace)
+    return ioctx
+
+
 def connect_rados(pool):
     try:
         import rados
@@ -60,9 +80,7 @@ def connect_rados(pool):
         die("python3-rados module missing (apt install python3-rados)", code=2)
     cluster = rados.Rados(conffile=DEFAULT_CONF, name=DEFAULT_USER)
     cluster.connect(timeout=10)
-    if not cluster.pool_exists(pool):
-        cluster.create_pool(pool)
-    return cluster, cluster.open_ioctx(pool)
+    return cluster, open_ioctx(cluster, pool)
 
 
 @contextmanager

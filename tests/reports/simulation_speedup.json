@@ -1,0 +1,15 @@
+{
+  "metric": "simulation_speedup",
+  "value": 3.5049235051352743,
+  "target": 1.0,
+  "unit": "x",
+  "pass": true,
+  "ts": 1777106361,
+  "extra": {
+    "strict_target": 1.0,
+    "entities": 1000,
+    "events": 5000,
+    "duration_s": 2,
+    "strict": false
+  }
+}

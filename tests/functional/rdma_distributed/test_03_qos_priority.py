@@ -23,7 +23,7 @@ import threading
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "common"))
-from ceph_helper import assert_ge, info, ok, rados_pool  # noqa: E402
+from ceph_helper import assert_ge, info, ok, open_ioctx, rados_pool  # noqa: E402
 
 POOL = "test_qos_pool"
 N = 2500
@@ -43,23 +43,24 @@ def blast(ioctx, tag):
 
 def main():
     with rados_pool(POOL) as (cluster, ioctx_h):
-        ioctx_l = cluster.open_ioctx(POOL)
+        ioctx_l = open_ioctx(cluster, POOL)
         # Low priority hint (librados set_osdmap_full_try not exposed -> we
         # approximate by interleaving background sleeps in low flow).
         dur = {}
 
         def worker(tag, ctx, slow):
             if slow:
-                # Low priority: manually pace
+                # Low priority: submit in small chunks and yield between them.
                 payload = os.urandom(SIZE)
-                comps = []
                 s = time.perf_counter()
-                for i in range(N):
-                    comps.append(ctx.aio_write_full(f"{tag}_{i:05d}", payload))
-                    if i % 100 == 99:
-                        time.sleep(0.002)
-                for c in comps:
-                    c.wait_for_complete()
+                for base in range(0, N, 50):
+                    comps = [
+                        ctx.aio_write_full(f"{tag}_{i:05d}", payload)
+                        for i in range(base, min(base + 50, N))
+                    ]
+                    for c in comps:
+                        c.wait_for_complete()
+                    time.sleep(0.005)
                 dur[tag] = time.perf_counter() - s
             else:
                 dur[tag] = blast(ctx, tag)

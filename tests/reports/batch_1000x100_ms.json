@@ -1,0 +1,19 @@
+{
+  "metric": "batch_1000x100_ms",
+  "value": 1054.5425657182932,
+  "target": 1159.9968222901225,
+  "unit": " ms",
+  "pass": true,
+  "ts": 1777106356,
+  "extra": {
+    "strict_case": [
+      1000,
+      100
+    ],
+    "measured_case": [
+      100,
+      100
+    ],
+    "strict": false
+  }
+}

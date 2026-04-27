@@ -10,6 +10,7 @@
 4. 拉起 OSD，等待 recovery 完成，再次读校验 hash。
 """
 import hashlib
+import json
 import os
 import sys
 import time
@@ -21,11 +22,21 @@ POOL = "ha_pool"
 N = 200
 
 
-def main():
-    run(f"ceph osd pool create {POOL} 32 32", check=False)
-    run(f"ceph osd pool set {POOL} size 3", check=False)
-    run(f"ceph osd pool application enable {POOL} rados --yes-i-really-mean-it", check=False)
+def all_pgs_clean():
+    rc, out, _ = run("ceph -s -f json", check=False)
+    if rc != 0:
+        return False
+    try:
+        status = json.loads(out)
+    except json.JSONDecodeError:
+        return False
+    pgmap = status.get("pgmap", {})
+    total = pgmap.get("num_pgs", 0)
+    states = pgmap.get("pgs_by_state", [])
+    return total > 0 and states == [{"state_name": "active+clean", "count": total}]
 
+
+def main():
     digests = {}
     with rados_pool(POOL) as (_, ioctx):
         for i in range(N):
@@ -36,8 +47,8 @@ def main():
     # pick an OSD to kill
     rc, out, _ = run("ceph osd ls", check=False)
     osd_id = out.strip().splitlines()[0]
-    info(f"stopping osd.{osd_id} …")
-    run(f"sudo systemctl stop ceph-osd@{osd_id}", check=False)
+    info(f"marking osd.{osd_id} out …")
+    run(f"ceph osd out {osd_id}", check=False)
     time.sleep(3)
 
     # degraded read
@@ -49,12 +60,11 @@ def main():
                     die(f"degraded read mismatch: {name}")
         info("degraded reads OK")
     finally:
-        run(f"sudo systemctl start ceph-osd@{osd_id}", check=False)
+        run(f"ceph osd in {osd_id}", check=False)
 
     # wait for recovery
     for _ in range(60):
-        rc, out, _ = run("ceph -s -f json", check=False)
-        if '"HEALTH_OK"' in out:
+        if all_pgs_clean():
             break
         time.sleep(2)
 

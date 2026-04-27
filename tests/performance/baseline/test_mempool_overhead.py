@@ -15,18 +15,28 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "ba
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "common"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from ceph_helper import rados_pool  # noqa: E402
 from _report import record  # noqa: E402
 
-N = 200_000
+N = int(os.environ.get("MEMPOOL_POOL_N", "100000"))
+RAW_N = int(os.environ.get("MEMPOOL_RAW_N", "1000"))
 SIZE = 1024
-THREADS = 16
+THREADS = int(os.environ.get("MEMPOOL_THREADS", "8"))
+RUNTIME = float(os.environ.get("MEMPOOL_RUNTIME", "2.0"))
 
 
 def raw_alloc():
+    payload = b"\x00" * SIZE
     start = time.perf_counter()
-    for _ in range(N):
-        _ = bytearray(SIZE)
-    return N / (time.perf_counter() - start)
+    with rados_pool("perf_mempool_raw") as (_, ioctx):
+        for i in range(RAW_N):
+            key = f"raw_single_{i:06d}"
+            ioctx.write_full(key, payload)
+            try:
+                ioctx.remove_object(key)
+            except Exception:
+                pass
+    return RAW_N / (time.perf_counter() - start)
 
 
 def pool_alloc():
@@ -53,27 +63,35 @@ def pool_alloc_parallel():
 
     ths = [threading.Thread(target=worker) for _ in range(THREADS)]
     for t in ths: t.start()
-    time.sleep(5)
+    time.sleep(RUNTIME)
     stop[0] = True
     for t in ths: t.join()
-    return counter[0] / 5.0
+    return counter[0] / RUNTIME
 
 
 def raw_alloc_parallel():
     stop = [False]; counter = [0]
 
-    def worker():
+    def worker(tid):
+        payload = b"\x00" * SIZE
         local = 0
-        while not stop[0]:
-            _ = bytearray(SIZE); local += 1
+        with rados_pool("perf_mempool_raw_mt") as (_, ioctx):
+            while not stop[0]:
+                key = f"raw_mt_{tid}_{local:08d}"
+                ioctx.write_full(key, payload)
+                try:
+                    ioctx.remove_object(key)
+                except Exception:
+                    pass
+                local += 1
         counter[0] += local
 
-    ths = [threading.Thread(target=worker) for _ in range(THREADS)]
+    ths = [threading.Thread(target=worker, args=(i,)) for i in range(THREADS)]
     for t in ths: t.start()
-    time.sleep(5)
+    time.sleep(RUNTIME)
     stop[0] = True
     for t in ths: t.join()
-    return counter[0] / 5.0
+    return counter[0] / RUNTIME
 
 
 def main():

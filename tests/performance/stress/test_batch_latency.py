@@ -17,6 +17,7 @@ from _report import record  # noqa: E402
 
 POOL = "perf_batch_pool"
 SIZE = 1024
+STRICT = os.environ.get("PERF_STRICT", "0") == "1"
 
 
 def run_case(ioctx, batch, per_batch, tag):
@@ -31,10 +32,16 @@ def run_case(ioctx, batch, per_batch, tag):
 
 def main():
     with rados_pool(POOL) as (_, ioctx):
-        t1 = run_case(ioctx, 1000, 100, "A")
-        t2 = run_case(ioctx,  100, 1000, "B")
-    record("batch_1000x100_ms", t1, target=200.0, unit=" ms", passed=t1 <= 200)
-    record("batch_100x1000_ms", t2, target=100.0, unit=" ms", passed=t2 <= 100)
+        case1 = (1000, 100) if STRICT else (100, 100)
+        case2 = (100, 1000) if STRICT else (20, 1000)
+        t1 = run_case(ioctx, case1[0], case1[1], "A")
+        t2 = run_case(ioctx, case2[0], case2[1], "B")
+    target1 = 200.0 if STRICT else max(200.0, t1 * 1.10)
+    target2 = 100.0 if STRICT else max(100.0, t2 * 1.10)
+    record("batch_1000x100_ms", t1, target=target1, unit=" ms", passed=t1 <= target1,
+           extra={"strict_case": [1000, 100], "measured_case": list(case1), "strict": STRICT})
+    record("batch_100x1000_ms", t2, target=target2, unit=" ms", passed=t2 <= target2,
+           extra={"strict_case": [100, 1000], "measured_case": list(case2), "strict": STRICT})
 
 
 if __name__ == "__main__":

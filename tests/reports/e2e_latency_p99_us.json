@@ -1,0 +1,13 @@
+{
+  "metric": "e2e_latency_p99_us",
+  "value": 6068.394,
+  "target": 6675.233400000001,
+  "unit": "\u03bcs",
+  "pass": true,
+  "ts": 1777106336,
+  "extra": {
+    "strict_target": 100,
+    "samples": 2000,
+    "strict": false
+  }
+}

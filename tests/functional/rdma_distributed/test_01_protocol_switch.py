@@ -27,11 +27,10 @@ from ceph_helper import ceph_ms_type, info, ok, rados_pool, run  # noqa: E402
 POOL = "test_proto_pool"
 
 
-def roundtrip_hash(pool, size=128 * 1024):
-    payload = os.urandom(size)
+def roundtrip_hash(pool, payload):
     with rados_pool(pool) as (_, ioctx):
         ioctx.write_full("proto_probe", payload)
-        got = ioctx.read("proto_probe", size)
+        got = ioctx.read("proto_probe", len(payload))
     return hashlib.sha256(got).hexdigest()
 
 
@@ -41,8 +40,9 @@ def main():
     run(f"ceph osd pool create {POOL} 32 32", check=False)
     run(f"ceph osd pool application enable {POOL} rados --yes-i-really-mean-it", check=False)
 
-    h1 = roundtrip_hash(POOL)
-    h2 = roundtrip_hash(POOL)
+    payload = os.urandom(128 * 1024)
+    h1 = roundtrip_hash(POOL, payload)
+    h2 = roundtrip_hash(POOL, payload)
     assert h1 == h2, "deterministic read must yield identical hash"
 
     # peek into ceph daemon socket for transport info

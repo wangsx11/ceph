@@ -37,7 +37,7 @@ def seed(ioctx):
 
 def run_pattern(pattern, history=None):
     # Very small in-memory cache; just simulates prefetch hit accounting.
-    cache, hits, fetched = set(), 0, 0
+    cache, hits = set(), 0
     order = list(range(N))
     if pattern == "random":
         random.shuffle(order)
@@ -59,11 +59,12 @@ def run_pattern(pattern, history=None):
             cand = [f"p_{random.randint(max(0, oid - 4), min(N - 1, oid + 4)):04d}"
                     for _ in range(PREFETCH_WIN)]
         for c in cand:
-            cache.add(c); fetched += 1
-    return hits, fetched
+            cache.add(c)
+    return hits, len(order)
 
 
 def main():
+    random.seed(20260425)
     with rados_pool(POOL) as (_, ioctx):
         seed(ioctx)
 

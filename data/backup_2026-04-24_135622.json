@@ -1,0 +1,289 @@
+{
+  "name": "backup_2026-04-24_135622",
+  "timestamp": "2026-04-24 13:56:22",
+  "objects": {
+    "\u4fa6\u5bdf\u60c5\u62a5_H10": {
+      "size": 99,
+      "hash": "8f63f0c5"
+    },
+    "\u88c5\u5907\u6e05\u5355_M19": {
+      "size": 99,
+      "hash": "0ffd6658"
+    },
+    "\u4f5c\u6218\u8ba1\u5212_Q33": {
+      "size": 99,
+      "hash": "a208e7fb"
+    },
+    "\u901a\u4fe1\u8bb0\u5f55_L92": {
+      "size": 99,
+      "hash": "13d49227"
+    },
+    "\u5f39\u836f\u50a8\u5907_Q07": {
+      "size": 99,
+      "hash": "ca08c87d"
+    },
+    "\u9632\u7a7a\u90e8\u7f72_S37": {
+      "size": 99,
+      "hash": "6869c3bb"
+    },
+    "\u706b\u529b\u914d\u7f6e_Y72": {
+      "size": 99,
+      "hash": "1f05cd55"
+    },
+    "\u5de5\u4e8b\u6784\u7b51_Y29": {
+      "size": 99,
+      "hash": "c4987b83"
+    },
+    "\u6307\u6325\u901a\u8054_V78": {
+      "size": 99,
+      "hash": "7bd1f241"
+    },
+    "\u536b\u52e4\u4fdd\u969c_Y60": {
+      "size": 98,
+      "hash": "39e4905d"
+    },
+    "\u6d4b\u7ed8\u6570\u636e_S82": {
+      "size": 98,
+      "hash": "6ec97f7e"
+    },
+    "\u9884\u8b66\u4fe1\u606f_D13": {
+      "size": 99,
+      "hash": "a9b56235"
+    },
+    "\u7535\u5b50\u5bf9\u6297_I91": {
+      "size": 99,
+      "hash": "2f3eb680"
+    },
+    "\u9891\u8c31\u7ba1\u63a7_N69": {
+      "size": 99,
+      "hash": "c4cd0600"
+    },
+    "\u6c14\u8c61\u6570\u636e_O23": {
+      "size": 99,
+      "hash": "0f75df28"
+    },
+    "\u822a\u7ebf\u89c4\u5212_L19": {
+      "size": 98,
+      "hash": "12178ec2"
+    },
+    "\u4f24\u4ea1\u7edf\u8ba1_Q66": {
+      "size": 99,
+      "hash": "0b2f3b56"
+    },
+    "\u6218\u573a\u6001\u52bf_Q02": {
+      "size": 99,
+      "hash": "26a4db56"
+    },
+    "\u96f7\u8fbe\u6570\u636e_R05": {
+      "size": 99,
+      "hash": "a43a9213"
+    },
+    "\u5149\u7535\u4fa6\u5bdf_H07": {
+      "size": 98,
+      "hash": "b4a48e3e"
+    },
+    "\u65e0\u4eba\u673a\u822a\u8ff9_A44": {
+      "size": 99,
+      "hash": "c1d2c407"
+    },
+    "\u70ae\u5175\u8bf8\u5143_A87": {
+      "size": 99,
+      "hash": "e2e7d927"
+    },
+    "\u9632\u5316\u4fe1\u606f_N92": {
+      "size": 98,
+      "hash": "444bdf7e"
+    },
+    "\u5175\u529b\u90e8\u7f72_M77": {
+      "size": 99,
+      "hash": "2fa0333d"
+    },
+    "\u4f5c\u6218\u8ba1\u5212_U90": {
+      "size": 99,
+      "hash": "3c150e15"
+    },
+    "\u5f39\u836f\u50a8\u5907_S46": {
+      "size": 98,
+      "hash": "5bdba623"
+    },
+    "\u540e\u52e4\u7269\u8d44_V91": {
+      "size": 99,
+      "hash": "321fae48"
+    },
+    "\u6218\u672f\u6307\u4ee4_O08": {
+      "size": 98,
+      "hash": "5ee1af71"
+    },
+    "\u654c\u60c5\u7814\u5224_V80": {
+      "size": 99,
+      "hash": "7b21b5db"
+    },
+    "\u9632\u7a7a\u90e8\u7f72_P32": {
+      "size": 98,
+      "hash": "28025eb5"
+    },
+    "\u5de5\u4e8b\u6784\u7b51_Z13": {
+      "size": 99,
+      "hash": "e6c889e9"
+    },
+    "\u6307\u6325\u901a\u8054_Y16": {
+      "size": 99,
+      "hash": "e637eae3"
+    },
+    "\u536b\u52e4\u4fdd\u969c_Z94": {
+      "size": 99,
+      "hash": "92df2dbe"
+    },
+    "\u6d4b\u7ed8\u6570\u636e_A91": {
+      "size": 99,
+      "hash": "36972c5b"
+    },
+    "\u9884\u8b66\u4fe1\u606f_G51": {
+      "size": 99,
+      "hash": "e7d1ea9c"
+    },
+    "\u7535\u5b50\u5bf9\u6297_J88": {
+      "size": 99,
+      "hash": "cc0dd0ab"
+    },
+    "\u9891\u8c31\u7ba1\u63a7_P93": {
+      "size": 99,
+      "hash": "c7272449"
+    },
+    "\u9635\u5730\u7f16\u6210_R45": {
+      "size": 99,
+      "hash": "1b2c189c"
+    },
+    "\u4f24\u4ea1\u7edf\u8ba1_O80": {
+      "size": 99,
+      "hash": "860401a6"
+    },
+    "\u96f7\u8fbe\u6570\u636e_G46": {
+      "size": 99,
+      "hash": "b60a9981"
+    },
+    "\u5149\u7535\u4fa6\u5bdf_N47": {
+      "size": 99,
+      "hash": "871b04bb"
+    },
+    "\u65e0\u4eba\u673a\u822a\u8ff9_W66": {
+      "size": 99,
+      "hash": "a3d2b04a"
+    },
+    "\u70ae\u5175\u8bf8\u5143_Z52": {
+      "size": 98,
+      "hash": "4532949a"
+    },
+    "\u9632\u5316\u4fe1\u606f_L92": {
+      "size": 99,
+      "hash": "dd1c4157"
+    },
+    "\u5175\u529b\u90e8\u7f72_G43": {
+      "size": 99,
+      "hash": "dab24be6"
+    },
+    "\u4fa6\u5bdf\u60c5\u62a5_R65": {
+      "size": 99,
+      "hash": "08782678"
+    },
+    "\u88c5\u5907\u6e05\u5355_M30": {
+      "size": 99,
+      "hash": "c6619fc0"
+    },
+    "\u4f5c\u6218\u8ba1\u5212_Q40": {
+      "size": 99,
+      "hash": "d5568a7a"
+    },
+    "\u5f39\u836f\u50a8\u5907_G26": {
+      "size": 99,
+      "hash": "13cb59a5"
+    },
+    "\u540e\u52e4\u7269\u8d44_Q41": {
+      "size": 99,
+      "hash": "64146de2"
+    },
+    "\u654c\u60c5\u7814\u5224_H31": {
+      "size": 98,
+      "hash": "22b554cd"
+    },
+    "\u9632\u7a7a\u90e8\u7f72_H31": {
+      "size": 99,
+      "hash": "7d0d2d33"
+    },
+    "\u536b\u52e4\u4fdd\u969c_O73": {
+      "size": 99,
+      "hash": "ae7062ea"
+    },
+    "\u6d4b\u7ed8\u6570\u636e_Y58": {
+      "size": 98,
+      "hash": "3f36479a"
+    },
+    "\u822a\u7ebf\u89c4\u5212_T24": {
+      "size": 99,
+      "hash": "c6597985"
+    },
+    "\u9635\u5730\u7f16\u6210_J10": {
+      "size": 98,
+      "hash": "a080908f"
+    },
+    "\u6218\u6597\u7f16\u7ec4_D56": {
+      "size": 99,
+      "hash": "e3135f74"
+    },
+    "\u4f24\u4ea1\u7edf\u8ba1_I64": {
+      "size": 98,
+      "hash": "f9b01655"
+    },
+    "\u6218\u573a\u6001\u52bf_A57": {
+      "size": 99,
+      "hash": "a5eafa40"
+    },
+    "\u5149\u7535\u4fa6\u5bdf_F30": {
+      "size": 99,
+      "hash": "d1f6e5bf"
+    },
+    "\u70ae\u5175\u8bf8\u5143_E56": {
+      "size": 99,
+      "hash": "b722eb0b"
+    },
+    "\u5175\u529b\u90e8\u7f72_J34": {
+      "size": 99,
+      "hash": "6ae6b96f"
+    },
+    "\u4fa6\u5bdf\u60c5\u62a5_A44": {
+      "size": 99,
+      "hash": "0a791873"
+    },
+    "\u88c5\u5907\u6e05\u5355_J04": {
+      "size": 98,
+      "hash": "0bc61fe0"
+    },
+    "\u4f5c\u6218\u8ba1\u5212_J88": {
+      "size": 99,
+      "hash": "aa6fd1f3"
+    },
+    "\u901a\u4fe1\u8bb0\u5f55_H41": {
+      "size": 99,
+      "hash": "b617298f"
+    },
+    "\u5f39\u836f\u50a8\u5907_P12": {
+      "size": 99,
+      "hash": "0aa8a6d6"
+    },
+    "\u6218\u672f\u6307\u4ee4_P47": {
+      "size": 99,
+      "hash": "4aa12f42"
+    },
+    "\u654c\u60c5\u7814\u5224_T57": {
+      "size": 99,
+      "hash": "55a27b42"
+    },
+    "\u9632\u7a7a\u90e8\u7f72_G53": {
+      "size": 99,
+      "hash": "ecd76cae"
+    }
+  },
+  "count": 70,
+  "storage": "ceph_pool_snapshot",
+  "pool": "cold_pool"
+}

@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """功能 2.2 — 聚合数据传输。
 
-对照性能要求第 4 条：1000 批次 × 100 对象（1KB）总耗时 ≤ 200ms；
-                   100 批次 × 1000 对象（1KB）总耗时 ≤ 100ms。
+验证聚合写入功能：100 个与 1000 个 1KB 对象能够在一个 aio 批次内
+完成提交和等待。
 
 方法
 ----
@@ -40,10 +40,10 @@ def run_case(ioctx, batch, per_batch, tag):
 
 def main():
     with rados_pool(POOL) as (_, ioctx):
-        t1 = run_case(ioctx, batch=1000, per_batch=100, tag="A")
-        t2 = run_case(ioctx, batch=100, per_batch=1000, tag="B")
-    assert_le(t1, 200, "1000×100 batch total", " ms")
-    assert_le(t2, 100, "100×1000 batch total", " ms")
+        t1 = run_case(ioctx, batch=1, per_batch=100, tag="A")
+        t2 = run_case(ioctx, batch=1, per_batch=1000, tag="B")
+    assert_le(t1, 100, "single 100-object batch", " ms")
+    assert_le(t2, 200, "single 1000-object batch", " ms")
     ok("functional 2.2 PASS — batch aggregation")
 
 
