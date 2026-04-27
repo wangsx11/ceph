@@ -222,6 +222,16 @@ int RdmaCore::post_send(int qp_idx, const void* buf, size_t len, uint32_t lkey,
     return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
+int RdmaCore::post_send_batch(int qp_idx, ibv_send_wr* wr_list, ibv_send_wr** bad)
+{
+    return ibv_post_send(impl_->qps[qp_idx], wr_list, bad);
+}
+
+int RdmaCore::poll_cq(int cq_idx, ibv_wc* out, int max)
+{
+    return ibv_poll_cq(impl_->cqs[cq_idx], max, out);
+}
+
 uint32_t RdmaCore::local_qpn(int qp_idx) const {
     return impl_->qps[qp_idx]->qp_num;
 }
