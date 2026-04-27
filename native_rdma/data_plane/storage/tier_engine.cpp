@@ -85,6 +85,54 @@ void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) 
     }
 }
 
+bool TierEngine::reserve_or_reuse_slot(std::string_view key,
+                                       uint64_t* existing_off,
+                                       uint32_t* existing_size,
+                                       uint64_t  new_off,
+                                       uint32_t  new_size) {
+    // Fast-path: fuse "check existing" + "commit new DRAM meta" into a
+    // single critical section.  Returns true when the key is brand new
+    // (caller accounted for a fresh slab slot at `new_off`); returns false
+    // when the key already existed (caller should NOT call slab.alloc, and
+    // `*existing_off/*existing_size` reflect the in-place target).
+    std::lock_guard<std::mutex> lk(mu_);
+    auto it = index_.find(std::string(key));
+    if (it != index_.end()) {
+        // Key exists. Report its current slot and just bump counters.
+        if (existing_off)  *existing_off  = it->second.offset;
+        if (existing_size) *existing_size = it->second.size;
+        ObjectMeta& m = it->second;
+        Tier prev_tier = m.tier;
+        // Overwrite-in-place semantics: the caller will memcpy into the
+        // existing slot (DRAM). Only update tier counters when the key was
+        // previously demoted; DRAM->DRAM stays on DRAM.
+        m.offset      = m.offset;          // unchanged
+        m.size        = new_size;          // new payload length
+        m.tier        = Tier::DRAM;
+        m.last_access = now_ns();
+        m.access_cnt++;
+        m.dram_slot_free = false;
+        m.dram_offset = m.offset;
+        if (prev_tier != Tier::DRAM) {
+            if      (prev_tier == Tier::NVME) nnvme_.fetch_sub(1);
+            else if (prev_tier == Tier::HDD)  nhdd_.fetch_sub(1);
+            ndram_.fetch_add(1);
+        }
+        return false;
+    }
+    // Key is new. Commit the provided slot as its meta.
+    ObjectMeta& m = index_[std::string(key)];
+    m.offset      = new_off;
+    m.size        = new_size;
+    m.tier        = Tier::DRAM;
+    m.last_access = now_ns();
+    m.access_cnt  = 1;
+    m.dram_slot_free = false;
+    m.dram_offset = new_off;
+    ndram_.fetch_add(1);
+    return true;
+}
+
 bool TierEngine::get_meta(std::string_view key, uint64_t* offset, uint32_t* size) {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = index_.find(std::string(key));

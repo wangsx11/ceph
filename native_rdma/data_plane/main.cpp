@@ -431,22 +431,29 @@ int main(int argc, char** argv) {
         if (v.size() > slab.slot_size()) {
             *resp = "{\"ok\":false,\"err\":\"value too large\"}"; return;
         }
-        // Reuse existing slot if key already exists (avoid slot leak on updates).
+        // Fast path: try to speculatively allocate a slab slot for a new
+        // key, then commit under a single TierEngine critical section. If
+        // the key already existed, we just free back the speculation and
+        // reuse the slot reported by reserve_or_reuse_slot.
         uint64_t off = 0; uint32_t old_sz = 0;
+        void* spec_slot = slab.alloc();
+        if (!spec_slot) {
+            *resp = "{\"ok\":false,\"err\":\"slab oom\"}"; return;
+        }
+        uint64_t spec_off = (uint64_t)((char*)spec_slot - (char*)slab.base_addr());
+        bool is_new = tier.reserve_or_reuse_slot(
+            k, &off, &old_sz, spec_off, (uint32_t)v.size());
         void* slot = nullptr;
-        if (tier.get_meta(k, &off, &old_sz)) {
-            // In-place overwrite; slot_size is fixed, any new size <= slot_size fits.
-            slot = (char*)slab.base_addr() + off;
+        if (is_new) {
+            // Took ownership of the speculated slot.
+            slot = spec_slot;
+            off  = spec_off;
         } else {
-            slot = slab.alloc();
-            if (!slot) {
-                *resp = "{\"ok\":false,\"err\":\"slab oom\"}"; return;
-            }
-            off = (uint64_t)((char*)slot - (char*)slab.base_addr());
+            // Key already had a slot -> return speculation, use old offset.
+            slab.free(spec_slot);
+            slot = (char*)slab.base_addr() + off;
         }
         std::memcpy(slot, v.data(), v.size());
-
-        tier.put_meta(k, off, (uint32_t)v.size());
 
         // Replicate to peer at the SAME offset so primary & backup indices align.
         uint64_t remote_addr = peer.slab_base + off;

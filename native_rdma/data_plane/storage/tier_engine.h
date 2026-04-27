@@ -74,6 +74,18 @@ public:
     // Full meta copy (for callers that need tier info too).
     bool get_meta_full(std::string_view key, ObjectMeta* out);
 
+    // W5 fast-path: fuse get_meta + put_meta into a single critical section.
+    // If `key` already exists, `*existing_off` is set to the slot's offset so
+    // the caller can overwrite in place and we return false (no new slot).
+    // If `key` is new, the caller's `new_off`/`new_size` are committed as the
+    // new DRAM meta and we return true (so caller knows to account for a
+    // fresh slab allocation). This halves lock acquisitions on the PUT
+    // hot path compared to the old get_meta -> slab.alloc -> put_meta
+    // sequence, which was the bottleneck that kept 16-thread PUT ~600k ops/s.
+    bool reserve_or_reuse_slot(std::string_view key,
+                               uint64_t* existing_off, uint32_t* existing_size,
+                               uint64_t  new_off,      uint32_t  new_size);
+
     // Iterate for snapshot. Callback(key, meta) returns false to stop.
     template <class Fn>
     void for_each(Fn&& fn) const {
