@@ -721,6 +721,8 @@ int main(int argc, char** argv) {
         last_repl_ns.store(0);
         mig_d_n_.store(0);
         mig_n_h_.store(0);
+        // Reset prefetcher history/stats too.
+        prefetcher.reset();
         char buf[128];
         int n = std::snprintf(buf, sizeof(buf),
             "{\"ok\":true,\"freed_slabs\":%zu}", dram_offs.size());

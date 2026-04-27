@@ -140,4 +140,13 @@ if(NR_BUILD_TESTS)
     set_target_properties(nr_bench PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
+
+    # nr_mempool_bench: standalone malloc-vs-slab micro-benchmark for
+    # docs/自研实施清单.md §7 row #9. Does NOT link the RDMA stack, so it can
+    # run anywhere (even without a working RDMA device).
+    add_executable(nr_mempool_bench tests_unit/nr_mempool_bench.cpp)
+    target_link_libraries(nr_mempool_bench PRIVATE Threads::Threads)
+    set_target_properties(nr_mempool_bench PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
 endif()

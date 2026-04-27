@@ -55,6 +55,16 @@ public:
         return s_;
     }
 
+    // Clear all history and stats. Called by RPC_ADMIN_FLUSH so the dashboard
+    // numbers match a freshly-started data plane.
+    void reset() {
+        std::lock_guard<std::mutex> lk(mu_);
+        history_.clear();
+        transitions_.clear();
+        last_key_.clear();
+        s_ = Stats{};
+    }
+
 private:
     // Try to parse an integer suffix from a key like "obj_42" -> {"obj_", 42}.
     // Returns false if no trailing digits.

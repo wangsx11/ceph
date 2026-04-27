@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Performance test suite driver (placeholder).
-# Full scripts will land in W3-W5 following docs/自研方案.md §9.2.
-echo "[tests/performance] placeholder: no tests yet; see docs/自研方案.md §9.2"
+# Top-level performance test entry point. Delegates to the W5 matrix driver.
+# See docs/自研实施清单.md §7 for the threshold table.
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec bash "$ROOT/tests/performance/run_all.sh" "$@"
