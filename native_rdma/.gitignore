@@ -1,0 +1,65 @@
+# ---------- build outputs ----------
+build/
+build-*/
+out/
+cmake-build-*/
+
+# ---------- C/C++ ----------
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.gch
+*.idb
+*.ilk
+*.exp
+*.lib
+
+# ---------- CMake generated ----------
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+Makefile
+*.cmake
+!CMakeLists.txt
+!cmake/*.cmake
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.pyc
+
+# ---------- Proto generated ----------
+proto/*.pb.cc
+proto/*.pb.h
+proto/*_pb2.py
+proto/*_pb2_grpc.py
+
+# ---------- Runtime ----------
+logs/
+*.log
+*.pid
+/tmp/native_rdma-*.sock
+data_runtime/
+snapshots_runtime/
+reports_runtime/
+
+# ---------- Editor ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ---------- Local env ----------
+deploy/node_*.local.env
+.env.local

@@ -1,0 +1,29 @@
+# Cluster topology declaration for native_rdma
+# Replace placeholders with real values.
+cluster_name: native_rdma_demo
+replica_count: 2
+
+nodes:
+  - id: A
+    ip: <NODE_A_IP>
+    rdma_dev: <RDMA_DEV>
+    gid_index: <GID_IDX>
+    data_port: <DATA_PORT>
+    ctrl_port: <CTRL_PORT>
+    role: primary_for_first_half
+
+  - id: B
+    ip: <NODE_B_IP>
+    rdma_dev: <RDMA_DEV>
+    gid_index: <GID_IDX>
+    data_port: <DATA_PORT>
+    ctrl_port: <CTRL_PORT>
+    role: primary_for_second_half
+
+pools:
+  - name: default/slab1k
+    slot_size: 1024
+    total_bytes: 1073741824   # 1GB
+  - name: default/slab4k
+    slot_size: 4096
+    total_bytes: 2147483648   # 2GB

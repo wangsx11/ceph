@@ -1,0 +1,219 @@
+#include "rdma_core.h"
+#include "../common/logger.h"
+
+#include <cstring>
+#include <cstdlib>
+
+namespace nr {
+
+struct RdmaCore::Impl {
+    RdmaConfig              cfg;
+    struct ibv_context*     ctx  = nullptr;
+    struct ibv_pd*          pd   = nullptr;
+    struct ibv_srq*         srq  = nullptr;
+    std::vector<ibv_cq*>    cqs;   // one per QP group
+    std::vector<ibv_qp*>    qps;
+    union ibv_gid           local_gid{};
+
+    bool open_device();
+    bool create_pd_cqs_qps();
+    bool modify_qp_init(ibv_qp* qp);
+    void cleanup();
+};
+
+RdmaCore::RdmaCore() : impl_(std::make_unique<Impl>()) {}
+RdmaCore::~RdmaCore() { if (impl_) impl_->cleanup(); }
+
+int RdmaCore::num_qp() const { return (int)impl_->qps.size(); }
+int RdmaCore::num_cq() const { return (int)impl_->cqs.size(); }
+struct ibv_pd* RdmaCore::pd() const { return impl_->pd; }
+
+// ------------------------------------------------------------------
+bool RdmaCore::Impl::open_device() {
+    int n = 0;
+    ibv_device** list = ibv_get_device_list(&n);
+    if (!list || n == 0) {
+        NR_ERROR("no RDMA devices found");
+        return false;
+    }
+    ibv_device* dev = nullptr;
+    for (int i = 0; i < n; ++i) {
+        if (cfg.dev_name == ibv_get_device_name(list[i])) {
+            dev = list[i]; break;
+        }
+    }
+    if (!dev) {
+        NR_ERROR("RDMA device '%s' not found", cfg.dev_name.c_str());
+        ibv_free_device_list(list);
+        return false;
+    }
+    ctx = ibv_open_device(dev);
+    ibv_free_device_list(list);
+    if (!ctx) { NR_ERROR("ibv_open_device failed"); return false; }
+
+    if (ibv_query_gid(ctx, 1, cfg.gid_index, &local_gid)) {
+        NR_ERROR("ibv_query_gid(port=1, idx=%d) failed", cfg.gid_index);
+        return false;
+    }
+    NR_INFO("RDMA device '%s' opened, gid_idx=%u", cfg.dev_name.c_str(),
+            cfg.gid_index);
+    return true;
+}
+
+bool RdmaCore::Impl::create_pd_cqs_qps() {
+    pd = ibv_alloc_pd(ctx);
+    if (!pd) { NR_ERROR("ibv_alloc_pd failed"); return false; }
+
+    // One CQ per QP for simplicity; can share later for efficiency.
+    cqs.resize(cfg.num_qp, nullptr);
+    qps.resize(cfg.num_qp, nullptr);
+    for (int i = 0; i < cfg.num_qp; ++i) {
+        cqs[i] = ibv_create_cq(ctx, cfg.cq_depth, nullptr, nullptr, 0);
+        if (!cqs[i]) { NR_ERROR("ibv_create_cq failed"); return false; }
+
+        ibv_qp_init_attr attr{};
+        attr.send_cq = cqs[i];
+        attr.recv_cq = cqs[i];
+        attr.qp_type = IBV_QPT_RC;
+        attr.cap.max_send_wr  = cfg.sq_depth;
+        attr.cap.max_recv_wr  = cfg.rq_depth;
+        attr.cap.max_send_sge = cfg.max_sge;
+        attr.cap.max_recv_sge = cfg.max_sge;
+        attr.cap.max_inline_data = cfg.max_inline;
+        attr.sq_sig_all = 0; // we will set signaled flag per WR
+        qps[i] = ibv_create_qp(pd, &attr);
+        if (!qps[i]) {
+            NR_ERROR("ibv_create_qp[%d] failed", i);
+            return false;
+        }
+        if (!modify_qp_init(qps[i])) return false;
+    }
+    NR_INFO("created %d QPs, sq_depth=%d, cq_depth=%d, inline=%d",
+            cfg.num_qp, cfg.sq_depth, cfg.cq_depth, cfg.max_inline);
+    return true;
+}
+
+bool RdmaCore::Impl::modify_qp_init(ibv_qp* qp) {
+    ibv_qp_attr attr{};
+    attr.qp_state        = IBV_QPS_INIT;
+    attr.pkey_index      = 0;
+    attr.port_num        = 1;
+    attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE |
+                           IBV_ACCESS_REMOTE_READ |
+                           IBV_ACCESS_REMOTE_WRITE |
+                           IBV_ACCESS_REMOTE_ATOMIC;
+    int flags = IBV_QP_STATE | IBV_QP_PKEY_INDEX |
+                IBV_QP_PORT  | IBV_QP_ACCESS_FLAGS;
+    if (ibv_modify_qp(qp, &attr, flags)) {
+        NR_ERROR("modify_qp(INIT) failed");
+        return false;
+    }
+    return true;
+}
+
+void RdmaCore::Impl::cleanup() {
+    for (auto* qp : qps) if (qp) ibv_destroy_qp(qp);
+    qps.clear();
+    for (auto* cq : cqs) if (cq) ibv_destroy_cq(cq);
+    cqs.clear();
+    if (pd)  { ibv_dealloc_pd(pd); pd = nullptr; }
+    if (ctx) { ibv_close_device(ctx); ctx = nullptr; }
+}
+
+// ------------------------------------------------------------------
+bool RdmaCore::init(const RdmaConfig& cfg) {
+    impl_->cfg = cfg;
+    if (!impl_->open_device()) return false;
+    if (!impl_->create_pd_cqs_qps()) return false;
+    return true;
+}
+
+MrHandle RdmaCore::reg_mr(void* addr, size_t len) {
+    MrHandle h{};
+    int access = IBV_ACCESS_LOCAL_WRITE |
+                 IBV_ACCESS_REMOTE_READ |
+                 IBV_ACCESS_REMOTE_WRITE;
+    h.mr = ibv_reg_mr(impl_->pd, addr, len, access);
+    if (!h.mr) {
+        NR_ERROR("ibv_reg_mr(%p, %zu) failed", addr, len);
+        return h;
+    }
+    h.addr = addr; h.length = len;
+    h.lkey = h.mr->lkey; h.rkey = h.mr->rkey;
+    return h;
+}
+
+void RdmaCore::dereg_mr(MrHandle& h) {
+    if (h.mr) { ibv_dereg_mr(h.mr); h.mr = nullptr; }
+}
+
+int RdmaCore::post_write(int qp_idx, const void* buf, size_t len, uint32_t lkey,
+                         uint64_t remote_addr, uint32_t rkey,
+                         uint32_t imm, uint64_t wr_id, bool signaled)
+{
+    ibv_sge sge{(uint64_t)buf, (uint32_t)len, lkey};
+    ibv_send_wr wr{};
+    wr.wr_id      = wr_id;
+    wr.sg_list    = &sge;
+    wr.num_sge    = 1;
+    wr.opcode     = imm ? IBV_WR_RDMA_WRITE_WITH_IMM : IBV_WR_RDMA_WRITE;
+    wr.send_flags = (signaled ? IBV_SEND_SIGNALED : 0) |
+                    ((len <= (size_t)impl_->cfg.max_inline) ? IBV_SEND_INLINE : 0);
+    wr.imm_data   = imm;
+    wr.wr.rdma.remote_addr = remote_addr;
+    wr.wr.rdma.rkey        = rkey;
+    ibv_send_wr* bad = nullptr;
+    return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
+}
+
+int RdmaCore::post_read(int qp_idx, void* buf, size_t len, uint32_t lkey,
+                        uint64_t remote_addr, uint32_t rkey, uint64_t wr_id)
+{
+    ibv_sge sge{(uint64_t)buf, (uint32_t)len, lkey};
+    ibv_send_wr wr{};
+    wr.wr_id      = wr_id;
+    wr.sg_list    = &sge;
+    wr.num_sge    = 1;
+    wr.opcode     = IBV_WR_RDMA_READ;
+    wr.send_flags = IBV_SEND_SIGNALED;
+    wr.wr.rdma.remote_addr = remote_addr;
+    wr.wr.rdma.rkey        = rkey;
+    ibv_send_wr* bad = nullptr;
+    return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
+}
+
+int RdmaCore::post_send_inline(int qp_idx, const void* buf, size_t len,
+                               uint64_t wr_id, bool signaled)
+{
+    ibv_sge sge{(uint64_t)buf, (uint32_t)len, 0};
+    ibv_send_wr wr{};
+    wr.wr_id      = wr_id;
+    wr.sg_list    = &sge;
+    wr.num_sge    = 1;
+    wr.opcode     = IBV_WR_SEND;
+    wr.send_flags = IBV_SEND_INLINE | (signaled ? IBV_SEND_SIGNALED : 0);
+    ibv_send_wr* bad = nullptr;
+    return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
+}
+
+int RdmaCore::post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
+                        uint64_t wr_id)
+{
+    ibv_sge sge{(uint64_t)buf, (uint32_t)len, lkey};
+    ibv_recv_wr wr{};
+    wr.wr_id   = wr_id;
+    wr.sg_list = &sge;
+    wr.num_sge = 1;
+    ibv_recv_wr* bad = nullptr;
+    return ibv_post_recv(impl_->qps[qp_idx], &wr, &bad);
+}
+
+int RdmaCore::post_send_batch(int qp_idx, ibv_send_wr* wr_list, ibv_send_wr** bad) {
+    return ibv_post_send(impl_->qps[qp_idx], wr_list, bad);
+}
+
+int RdmaCore::poll_cq(int cq_idx, ibv_wc* out, int max) {
+    return ibv_poll_cq(impl_->cqs[cq_idx], max, out);
+}
+
+} // namespace nr

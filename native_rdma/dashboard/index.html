@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8"/>
+<title>native_rdma · 演示面板</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Helvetica, Arial; margin: 24px; }
+  h1 { margin: 0 0 16px; }
+  .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px;
+          margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 18px; color: #333; }
+  .metric { display: inline-block; min-width: 180px; margin: 6px 12px 6px 0;
+            padding: 8px 12px; background: #f7f9fc; border-radius: 6px; }
+  .metric .k { color: #666; font-size: 12px; }
+  .metric .v { font-weight: 600; font-size: 18px; color: #205; }
+  button { padding: 6px 14px; border-radius: 6px; border: 1px solid #888;
+           background: #eee; cursor: pointer; margin-right: 8px; }
+  pre { background: #111; color: #0f0; padding: 12px; border-radius: 6px;
+        max-height: 260px; overflow: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>native_rdma · 演示面板</h1>
+
+<div class="card">
+  <h2>集群状态</h2>
+  <span class="metric"><span class="k">自身角色</span><br/><span class="v" id="self">-</span></span>
+  <span class="metric"><span class="k">RDMA 连通</span><br/><span class="v" id="rdma">-</span></span>
+  <span class="metric"><span class="k">副本滞后 (μs)</span><br/><span class="v" id="lag">-</span></span>
+</div>
+
+<div class="card">
+  <h2>实时指标（100ms 刷新）</h2>
+  <span class="metric"><span class="k">总 ops/s</span><br/><span class="v" id="ops">-</span></span>
+  <span class="metric"><span class="k">带宽 TX (Gbps)</span><br/><span class="v" id="bw_tx">-</span></span>
+  <span class="metric"><span class="k">RDMA 利用率 (%)</span><br/><span class="v" id="util">-</span></span>
+  <span class="metric"><span class="k">延迟 avg (μs)</span><br/><span class="v" id="lat_avg">-</span></span>
+  <span class="metric"><span class="k">延迟 P99 (μs)</span><br/><span class="v" id="lat_p99">-</span></span>
+</div>
+
+<div class="card">
+  <h2>分级存储对象分布</h2>
+  <span class="metric"><span class="k">DRAM</span><br/><span class="v" id="n_dram">-</span></span>
+  <span class="metric"><span class="k">NVMe</span><br/><span class="v" id="n_nvme">-</span></span>
+  <span class="metric"><span class="k">HDD</span><br/><span class="v" id="n_hdd">-</span></span>
+</div>
+
+<div class="card">
+  <h2>演示操作</h2>
+  <button onclick="doPut()">跨节点写入 demo_key</button>
+  <button onclick="doGet()">读取 demo_key</button>
+  <button onclick="doSnapshot()">触发快照</button>
+  <pre id="log"></pre>
+</div>
+
+<script>
+  const log = (m) => {
+    const el = document.getElementById("log");
+    el.textContent = "[" + new Date().toLocaleTimeString() + "] " + m + "\n" + el.textContent;
+  };
+  async function refresh() {
+    try {
+      const r = await fetch("/api/cluster/status");
+      const j = await r.json();
+      document.getElementById("self").textContent  = j.self || "-";
+      document.getElementById("rdma").textContent  = j.rdma_connected ? "✓" : "-";
+      document.getElementById("lag").textContent   = (j.replica_lag_us ?? "-");
+      const m = j.metrics || {};
+      document.getElementById("ops").textContent      = m.ops_total ?? "-";
+      document.getElementById("bw_tx").textContent    = (m.bw_tx_gbps ?? 0).toFixed(2);
+      document.getElementById("util").textContent     = (m.rdma_util_pct ?? 0).toFixed(1);
+      document.getElementById("lat_avg").textContent  = (m.lat_avg_us ?? 0).toFixed(2);
+      document.getElementById("lat_p99").textContent  = (m.lat_p99_us ?? 0).toFixed(2);
+      document.getElementById("n_dram").textContent   = m.obj_dram ?? 0;
+      document.getElementById("n_nvme").textContent   = m.obj_nvme ?? 0;
+      document.getElementById("n_hdd").textContent    = m.obj_hdd ?? 0;
+    } catch (e) { log("refresh failed: " + e); }
+  }
+  async function doPut() {
+    const r = await fetch("/api/kv/put", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({key: "demo_key", val: "hello@" + Date.now()})});
+    log("PUT -> " + await r.text());
+  }
+  async function doGet() {
+    const r = await fetch("/api/kv/get?key=demo_key");
+    log("GET -> " + await r.text());
+  }
+  async function doSnapshot() {
+    const r = await fetch("/api/snapshot", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({tag: "manual_" + Date.now()})});
+    log("SNAPSHOT -> " + await r.text());
+  }
+  setInterval(refresh, 500);
+  refresh();
+</script>
+</body>
+</html>

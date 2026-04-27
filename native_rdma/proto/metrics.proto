@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package native_rdma;
+
+// 1 条指标快照 (100ms 一次)
+message MetricSnapshot {
+    uint64 ts_ns          = 1;   // 采样时间
+
+    // 吞吐 / ops
+    uint64 ops_total      = 10;
+    uint64 ops_hi         = 11;
+    uint64 ops_lo         = 12;
+    double bw_tx_gbps     = 13;
+    double bw_rx_gbps     = 14;
+    double rdma_util_pct  = 15;
+
+    // 延迟分布 (单位 μs)
+    double lat_avg_us     = 20;
+    double lat_p50_us     = 21;
+    double lat_p99_us     = 22;
+    double lat_p999_us    = 23;
+
+    // 分层
+    uint64 obj_dram       = 30;
+    uint64 obj_nvme       = 31;
+    uint64 obj_hdd        = 32;
+    double mem_pool_pct   = 33;
+
+    // 复制
+    double replica_lag_us = 40;
+
+    // QP / CQ 深度
+    uint32 sq_depth_avg   = 50;
+    uint32 cq_depth_avg   = 51;
+}
+
+// 事件推送 (迁移 / 故障 / 副本切换)
+message EventRecord {
+    enum Kind {
+        E_UNKNOWN      = 0;
+        E_MIGRATION    = 1;   // 冷热迁移
+        E_SNAPSHOT     = 2;   // 快照完成
+        E_REPLICA_SYNC = 3;   // 副本同步完成
+        E_PEER_DOWN    = 4;   // 对端失联
+        E_PEER_UP      = 5;   // 对端恢复
+        E_ALERT        = 6;   // 其它告警
+    }
+    Kind   kind      = 1;
+    uint64 ts_ns     = 2;
+    string msg       = 3;
+    map<string, string> fields = 4;
+}

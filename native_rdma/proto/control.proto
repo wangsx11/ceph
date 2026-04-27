@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package native_rdma;
+
+// ====== 通用 ======
+message Ack {
+    bool    ok      = 1;
+    string  msg     = 2;
+    int32   code    = 3;
+}
+
+// ====== Pool 管理 ======
+message CreatePoolReq {
+    string name      = 1;   // "<namespace>/<tag>"
+    uint64 bytes     = 2;
+    int32  numa      = 3;
+    uint32 tenant_id = 4;
+}
+message CreatePoolResp {
+    Ack    ack       = 1;
+    uint32 pool_id   = 2;
+    uint64 base_addr = 3;   // 本端地址 (仅调试用)
+    uint32 rkey      = 4;   // 本端 rkey (给对端用)
+}
+
+// ====== KV 操作 (控制面调试通道，非热路径) ======
+message KvPutReq {
+    string key    = 1;
+    bytes  value  = 2;
+    uint32 prio   = 3;      // 0=low 1=high
+    uint32 pool_id= 4;
+}
+message KvGetReq { string key = 1; uint32 pool_id = 2; }
+message KvResp {
+    Ack    ack   = 1;
+    bytes  value = 2;
+    uint32 tier  = 3;       // 0=DRAM 1=NVMe 2=HDD
+    uint64 latency_ns = 4;
+}
+
+// ====== 集群状态 ======
+message PeerInfo {
+    string peer_id          = 1;
+    string peer_ip          = 2;
+    bool   rdma_connected   = 3;
+    uint64 replica_lag_us   = 4;
+    uint64 last_heartbeat_ms= 5;
+}
+message ClusterStatusResp {
+    Ack ack = 1;
+    string self_id = 2;
+    repeated PeerInfo peers = 3;
+}
+
+// ====== 快照 / 迁移触发 ======
+message SnapshotReq  { string tag = 1; uint32 pool_id = 2; }
+message SnapshotResp { Ack ack=1; string path=2; uint64 bytes=3; uint64 elapsed_ms=4; uint64 objects=5; }
+
+message MigrateReq   { uint32 pool_id=1; uint32 src_tier=2; uint32 dst_tier=3; }
+
+// ====== RPC 包装 ======
+enum RpcKind {
+    RPC_UNKNOWN        = 0;
+    RPC_CREATE_POOL    = 1;
+    RPC_KV_PUT         = 2;
+    RPC_KV_GET         = 3;
+    RPC_CLUSTER_STATUS = 4;
+    RPC_SNAPSHOT       = 5;
+    RPC_MIGRATE        = 6;
+}
+
+message RpcEnvelope {
+    RpcKind kind = 1;
+    bytes   body = 2;   // 对应具体 message 的 SerializeAsString
+    uint64  req_id = 3;
+}
