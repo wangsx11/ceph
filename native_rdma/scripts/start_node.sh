@@ -23,6 +23,16 @@ BIN="$ROOT/build/bin/native_rdma_dp"
 LOG_DIR="$ROOT/logs"
 mkdir -p "$LOG_DIR"
 
+# Best-effort cleanup of stale IPC artifacts left behind by a previous run
+# that was killed hard. Without this, UdsServer may fail to bind and Flask
+# will keep reading the last snapshot from the metrics shm file.
+if [ -e "${UDS_PATH:-/tmp/native_rdma-dp.sock}" ] && \
+   ! pgrep -f 'native_rdma_dp' >/dev/null 2>&1; then
+    echo "[start_node] cleaning stale ${UDS_PATH} and ${METRICS_SHM}"
+    rm -f "${UDS_PATH:-/tmp/native_rdma-dp.sock}" \
+          "${METRICS_SHM:-/tmp/native_rdma-metrics.shm}" || true
+fi
+
 echo "[start_node] role=$ROLE self=$SELF_IP peer=$PEER_IP dev=$RDMA_DEV gid=$GID_IDX"
 
 exec "$BIN" \

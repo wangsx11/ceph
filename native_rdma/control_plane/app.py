@@ -24,9 +24,24 @@ app = Flask(__name__, static_folder=None)
 CORS(app)
 
 # ---------- UDS client (length-prefixed frames) ----------
+# Tracks whether the C++ data plane is currently reachable on UDS.
+# Flipped to False on connect/recv error, back to True on successful call.
+_dp_online = {"ok": False, "last_err": ""}
+_dp_lock = threading.Lock()
+
+def _set_dp_status(ok: bool, err: str = ""):
+    with _dp_lock:
+        _dp_online["ok"] = ok
+        _dp_online["last_err"] = err
+
+def is_dp_online() -> bool:
+    with _dp_lock:
+        return _dp_online["ok"]
+
 def uds_call(kind: str, body: bytes = b"") -> bytes:
     try:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(2.0)
         s.connect(UDS_PATH)
         k = kind.encode()
         s.sendall(struct.pack("<I", len(k)) + k +
@@ -38,9 +53,20 @@ def uds_call(kind: str, body: bytes = b"") -> bytes:
             if not chunk: break
             data += chunk
         s.close()
+        _set_dp_status(True)
         return data
+    except FileNotFoundError as e:
+        _set_dp_status(False, str(e))
+        return (b'{"ok":false,"err":"data plane offline (uds socket not found)",'
+                b'"dp_offline":true}')
+    except (ConnectionRefusedError, ConnectionResetError, BrokenPipeError,
+            socket.timeout) as e:
+        _set_dp_status(False, str(e))
+        return (b'{"ok":false,"err":"data plane offline (' +
+                str(e).encode() + b')","dp_offline":true}')
     except Exception as e:
-        return ("{\"ok\":false,\"err\":\"%s\"}" % str(e)).encode()
+        # Keep DP status unchanged for unknown errors, just surface them.
+        return ("{\"ok\":false,\"err\":\"%s\"}" % str(e).replace('"','\\"')).encode()
 
 # ---------- Metrics reader (mmap shared memory) ----------
 # Layout matches data_plane/api/metrics_agent.h (must keep in sync).
@@ -91,11 +117,22 @@ def cluster_status():
     try: body = json.loads(resp)
     except Exception: body = {"raw": resp}
     body["self"] = ROLE
+    dp_up = is_dp_online()
+    body["dp_online"] = dp_up
     metrics = read_metrics()
+    if not dp_up:
+        # DP offline -> shm snapshot is stale; freeze derived rate and
+        # surface a stale flag so the UI can render "offline" state
+        # instead of displaying a frozen cumulative counter as if it were live.
+        metrics = dict(metrics)
+        metrics["ops_per_sec"] = 0.0
+        metrics["stale"] = True
     body["metrics"] = metrics
     # ---- Top-level aliases so the dashboard can read them directly ----
     # The C++ UDS returns `peer_alive`; UI expects `rdma_connected`.
-    body["rdma_connected"] = bool(body.get("peer_alive", False))
+    # When DP is offline, force rdma_connected=False regardless of what
+    # the (now unreachable) UDS body would have said.
+    body["rdma_connected"] = bool(dp_up and body.get("peer_alive", False))
     # replica_lag_us comes from the metrics shm, surface it at the top too.
     body["replica_lag_us"] = metrics.get("replica_lag_us", 0.0)
     return jsonify(body)

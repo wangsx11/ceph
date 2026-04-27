@@ -275,11 +275,27 @@
     try {
       const r = await fetch("/api/cluster/status");
       const j = await r.json();
+      const dpOff = (j.dp_online === false) || (j.metrics && j.metrics.stale);
       $("self").textContent  = j.self || "-";
-      $("rdma").textContent  = j.rdma_connected ? "✓" : "✗";
+      $("rdma").textContent  = dpOff ? "离线" : (j.rdma_connected ? "✓" : "✗");
+      $("rdma").style.color  = dpOff ? "#c0392b" : "";
       const lag = j.replica_lag_us;
-      $("lag").textContent   = (lag === undefined || lag === null) ? "-" : Number(lag).toFixed(2);
+      $("lag").textContent   = dpOff ? "-"
+                             : ((lag === undefined || lag === null) ? "-" : Number(lag).toFixed(2));
       const m = j.metrics || {};
+      if (dpOff) {
+        // Freeze all live metrics to "-" rather than showing stale snapshot.
+        ["ops","ops_total","bw_tx","util","lat_avg","lat_p99"].forEach(id => $(id).textContent = "-");
+        // Also zero the pie so we do not falsely display 320k "DRAM" ghosts.
+        $("n_dram").textContent = "-";
+        $("n_nvme").textContent = "-";
+        $("n_hdd").textContent  = "-";
+        $("bar_dram").style.width = "0%";
+        $("bar_nvme").style.width = "0%";
+        $("bar_hdd").style.width  = "0%";
+        drawPie(0, 0, 0);
+        return;
+      }
       $("ops").textContent        = (m.ops_per_sec ?? 0).toFixed(0);
       $("ops_total").textContent  = Number(m.ops_total ?? 0).toLocaleString();
       $("bw_tx").textContent      = (m.bw_tx_gbps ?? 0).toFixed(2);
