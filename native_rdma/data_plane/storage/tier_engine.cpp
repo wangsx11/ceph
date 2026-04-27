@@ -222,7 +222,7 @@ bool TierEngine::demote(std::string_view key, Tier to,
         it->second.algo    = (to == Tier::HDD) ? chosen_algo : 0;
 
         // Stats update (saturating sub: never underflow uint64 to 2^64-1).
-        auto safe_sub = [](std::atomic<uint64_t>& ctr) {
+        auto safe_sub = [&](std::atomic<uint64_t>& ctr) {
             uint64_t cur = ctr.load(std::memory_order_relaxed);
             while (cur > 0) {
                 if (ctr.compare_exchange_weak(cur, cur - 1,
