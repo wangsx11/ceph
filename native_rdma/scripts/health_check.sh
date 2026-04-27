@@ -71,6 +71,47 @@ echo "cluster_status: dp_online=$dp_on peer_alive=$peer"
 [ "$peer"  = "True" ] || { warn "peer_alive=$peer (B node may be down)"; }
 echo
 
+# 4b. Peer binary freshness check (optional, set PEER_IP to enable).
+# This is the most common cause of silent performance regressions: the peer
+# is still running an old data plane compiled before the latest changes.
+if [ -n "${PEER_IP:-}" ]; then
+    echo "-- peer binary check (PEER_IP=$PEER_IP) --"
+    if [ -x "$BIN" ]; then
+        local_ts=$(stat -c %Y "$BIN")
+    else
+        local_ts=0
+    fi
+    remote_info=$(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=3 "$PEER_IP" \
+        "stat -c '%Y %y' '$ROOT/build/bin/native_rdma_dp' 2>/dev/null && \
+         pgrep -af native_rdma_dp | head -1" 2>/dev/null || echo "")
+    if [ -z "$remote_info" ]; then
+        warn "  unable to reach peer $PEER_IP (ssh failure or peer_binary missing)"
+    else
+        # First line: "<mtime_epoch> <mtime_iso> ..."
+        remote_ts=$(echo "$remote_info" | head -1 | awk '{print $1}')
+        remote_human=$(echo "$remote_info" | head -1 | cut -d' ' -f2-)
+        remote_proc=$(echo "$remote_info" | sed -n '2p')
+        echo "  local_binary_mtime  : $(date -d @$local_ts 2>/dev/null)"
+        echo "  peer_binary_mtime   : $remote_human"
+        echo "  peer_process        : $remote_proc"
+        if [ -z "${remote_ts:-}" ] || [ "${remote_ts:-0}" -eq 0 ]; then
+            warn "  peer has no build/bin/native_rdma_dp -- run cmake --build on peer"
+            errors=$((errors+1))
+        elif [ "$local_ts" -gt 0 ] && [ "$remote_ts" -lt "$local_ts" ]; then
+            diff_sec=$((local_ts - remote_ts))
+            fail "  peer binary is $diff_sec s older than local -- re-sync + rebuild on peer!"
+            echo "        fix: bash scripts/sync_to_peer.sh $PEER_IP"
+            echo "             ssh $PEER_IP 'cd $ROOT && cmake --build build -j'"
+            echo "             ssh $PEER_IP 'cd $ROOT && bash scripts/stop_node.sh'"
+            echo "             then restart peer DP"
+            errors=$((errors+1))
+        else
+            ok "  peer binary is up to date"
+        fi
+    fi
+    echo
+fi
+
 # 5. Exercise every new W4 RPC with a controlled payload and report back.
 #    Big value (8 KB of 'A') -> strong compressibility, should trigger
 #    CompressEngine::pick() and move stats off zero.
