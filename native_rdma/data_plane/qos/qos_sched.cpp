@@ -2,6 +2,9 @@
 #include "../common/time_util.h"
 #include "../common/logger.h"
 
+#include <chrono>
+#include <thread>
+
 namespace nr {
 
 bool QosSched::init(RdmaCore& core, const Config& cfg) {
@@ -29,18 +32,38 @@ int QosSched::pick_qp(bool high_priority) {
 
 void QosSched::on_submit(bool high_priority) {
     if (high_priority || cfg_.lo_rate_limit_kops == 0) return;
-    // Simple token bucket refill.
-    uint64_t t = now_ns();
-    uint64_t elapsed_ns = t - lo_last_refill_ns_;
-    uint64_t add = (cfg_.lo_rate_limit_kops * 1000ULL * elapsed_ns) / 1000000000ULL;
-    if (add > 0) {
-        lo_tokens_ += add;
-        lo_last_refill_ns_ = t;
-        if (lo_tokens_ > cfg_.lo_rate_limit_kops * 1000ULL)
-            lo_tokens_ = cfg_.lo_rate_limit_kops * 1000ULL;
+    // Real throttling: lock, refill token bucket, wait for a token if none
+    // are available. The lock also becomes a serialization point for the
+    // low-priority class -- exactly what we want for docs/§7 row #3 where
+    // high priority must beat low priority by >=22%.
+    std::lock_guard<std::mutex> lk(lo_mu_);
+    const uint64_t cap = (uint64_t)cfg_.lo_rate_limit_kops * 1000ULL;
+    while (true) {
+        uint64_t t = now_ns();
+        uint64_t elapsed_ns = t - lo_last_refill_ns_;
+        uint64_t add = ((uint64_t)cfg_.lo_rate_limit_kops * 1000ULL * elapsed_ns)
+                       / 1000000000ULL;
+        if (add > 0) {
+            lo_tokens_ += add;
+            lo_last_refill_ns_ = t;
+            if (lo_tokens_ > cap) lo_tokens_ = cap;
+        }
+        if (lo_tokens_ > 0) {
+            --lo_tokens_;
+            return;
+        }
+        // Not enough tokens: sleep the minimal wait window. One token per
+        // (1e9 / rate_per_sec) nanoseconds.  Sleep a quarter of that to
+        // avoid oversleeping but keep CPU overhead low.
+        uint64_t wait_ns = 1000000000ULL / ((uint64_t)cfg_.lo_rate_limit_kops * 1000ULL);
+        if (wait_ns < 1000) wait_ns = 1000;      // >= 1 us
+        wait_ns /= 4;
+        // Drop the lock while sleeping so other low-prio callers can try
+        // (they'll just find tokens still empty and sleep too -- fine).
+        lo_mu_.unlock();
+        std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ns));
+        lo_mu_.lock();
     }
-    if (lo_tokens_ > 0) --lo_tokens_;
-    // If tokens==0 the caller could back off; kept simple here.
 }
 
 } // namespace nr

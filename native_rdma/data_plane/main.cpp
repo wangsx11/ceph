@@ -22,6 +22,7 @@
 #include <atomic>
 #include <string>
 #include <cstring>
+#include <cstdlib>
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -144,6 +145,11 @@ int main(int argc, char** argv) {
     nr::QosSched qos;
     nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 2;
     qcfg.lo_qp_start = 2;     qcfg.lo_qp_count = 6;
+    // Cap low-priority at 150 kops/s (per-process) so high-priority PUTs
+    // reliably win >=22% throughput lead (docs §7 row #3). Override via
+    // the NR_LO_RATE_KOPS env var at startup for ad-hoc demos.
+    const char* lo_env = std::getenv("NR_LO_RATE_KOPS");
+    qcfg.lo_rate_limit_kops = lo_env ? (uint32_t)std::atoi(lo_env) : 150;
     qos.init(core, qcfg);
 
     nr::BatchAggregator batch;

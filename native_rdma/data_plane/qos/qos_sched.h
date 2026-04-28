@@ -1,6 +1,7 @@
 #pragma once
 #include "../rdma/rdma_core.h"
 #include <cstdint>
+#include <mutex>
 
 namespace nr {
 
@@ -27,6 +28,7 @@ private:
     uint32_t  hi_rr_ = 0;
     uint32_t  lo_rr_ = 0;
     // Token bucket state for low priority (filled lazily).
+    std::mutex lo_mu_;
     uint64_t  lo_tokens_ = 0;
     uint64_t  lo_last_refill_ns_ = 0;
 };
