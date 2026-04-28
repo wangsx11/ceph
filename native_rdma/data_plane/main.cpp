@@ -8,6 +8,8 @@
 #include "rdma/repl_waiter.h"
 #include "mempool/slab.h"
 #include "mempool/pool_registry.h"
+#include "mempool/isolation.h"
+#include "router/object_router.h"
 #include "storage/tier_engine.h"
 #include "storage/io_scheduler.h"
 #include "storage/prefetcher.h"
@@ -16,6 +18,7 @@
 #include "batch/batch_aggregator.h"
 #include "replication/heartbeat.h"
 #include "sim/sim_engine.h"
+#include "sim/sim_capture.h"
 #include "api/uds_server.h"
 #include "api/metrics_agent.h"
 
@@ -85,6 +88,27 @@ static void parse_args(int argc, char** argv, Args& a) {
 }
 
 // ---------- RPC payload helpers ----------
+// Optional tenant prefix: body may start with "T<decimal_id>:" -- if it does,
+// that prefix is stripped off and the numeric id is returned in `tid`;
+// otherwise the default tenant id 0 is used and `body` is left alone.
+// Example: "T7:mykey\0value" -> tid=7, effective body "mykey\0value".
+// Example: "plainkey\0value"  -> tid=0, effective body unchanged.
+// This keeps the wire format backwards compatible with clients that don't
+// know about tenants (current nr_bench, Flask default path).
+static uint32_t parse_tenant_prefix(std::string* body /*in/out*/) {
+    if (body->empty() || (*body)[0] != 'T') return 0;
+    auto colon = body->find(':');
+    if (colon == std::string::npos || colon > 16) return 0;
+    uint32_t tid = 0;
+    for (size_t i = 1; i < colon; ++i) {
+        char c = (*body)[i];
+        if (c < '0' || c > '9') return 0;   // not a pure integer -> not a prefix
+        tid = tid * 10 + (uint32_t)(c - '0');
+    }
+    body->erase(0, colon + 1);
+    return tid;
+}
+
 // RPC_KV_PUT body: [key]\0[val]
 static bool parse_put_body(const std::string& body, std::string* k, std::string* v) {
     auto p = body.find('\0');
@@ -142,6 +166,35 @@ int main(int argc, char** argv) {
     pi.lkey      = slab.lkey();
     nr::PoolRegistry::instance().register_local(pi);
 
+    // 3b) ObjectRouter: consistent-hash ring over the 2-node cluster.
+    //
+    // In a larger deployment the ring would be populated from cluster
+    // metadata (ZooKeeper / etcd). Here we seed it with the two
+    // self-declared node IPs so we can demonstrate: for any key,
+    //   - which node owns the primary replica,
+    //   - which node owns the secondary,
+    //   - whether the local node should serve the request.
+    // The current 2-node setup always writes locally AND replicates to
+    // peer, but the route decision is attached to PUT responses so the
+    // control plane (and W6 demo panel) can visualize sharding even
+    // when physical placement is still "full replication".
+    nr::ObjectRouter router;
+    router.set_self_id(args.self_ip);
+    router.add_node(args.self_ip);
+    router.add_node(args.peer_ip);
+    router.set_replica_count(2);
+
+    // 3c) Memory-isolation ACL (populated in Stage 2, used by PUT/GET).
+    //
+    // Default policy:
+    //   tenant_id=0  ("default" tenant) is allowed on pool "default/slab1k".
+    //   Any other tenant_id must be explicitly authorized via RPC_ISO_ALLOW
+    //   before it can issue PUT/GET against the default pool.
+    // All existing clients send tenant_id=0 implicitly so the default
+    // workload is unaffected.
+    nr::Isolation isolation;
+    isolation.allow(/*tenant_id=*/0, "default/slab1k");
+
     // 4) QoS / Batch / Storage
     nr::QosSched qos;
     nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 4;
@@ -175,6 +228,21 @@ int main(int argc, char** argv) {
     nr::BatchAggregator batch;
     nr::BatchAggregator::Config bcfg; bcfg.qp_idx = 4;
     batch.init(core, bcfg);
+
+    // In-run simulation capture: a background-flushed WAL that holds
+    // (ObjectAttr, InteractionEvent) records emitted by SimEngine and
+    // any other producer. Initialized here so RPC_SIM_RUN can reach it
+    // directly via the singleton. The WAL tag derives from the DP role
+    // so A and B write to distinct log files on shared storage.
+    {
+        nr::SimCapture::Config sc;
+        sc.capture_dir = "/tmp/nr_sim_capture";
+        sc.tag         = args.role;   // "A" or "B"
+        sc.ring_bytes  = 16 * 1024 * 1024;
+        sc.flush_interval_ms = 100;
+        nr::SimCapture::instance().init(sc);
+        nr::SimCapture::instance().start();
+    }
 
     nr::TierEngine tier;
     nr::TierEngine::Config tcfg;
@@ -292,6 +360,11 @@ int main(int argc, char** argv) {
     std::atomic<uint64_t> ops_put{0}, ops_get{0};
     std::atomic<uint64_t> bytes_tx_1s{0}, bytes_rx_1s{0};
     std::atomic<uint64_t> last_repl_ns{0};
+    // High-availability metrics: count PUTs that completed in degraded
+    // (local-only) mode while the peer was unreachable. When the peer
+    // comes back, subsequent PUTs resume full replication automatically.
+    std::atomic<uint64_t> degraded_puts{0};
+    std::atomic<uint64_t> degraded_bytes{0};
 
     // Latency ring: lock-free atomic counter + modulo indexing.
     // Keeps the most recent kLatRing samples; metrics thread snapshots to compute
@@ -465,8 +538,23 @@ int main(int argc, char** argv) {
 
     // 9) UDS RPC handlers
     auto do_put = [&](const std::string& body, std::string* resp, bool high_prio) {
+        // Parse optional tenant prefix ("T<id>:..."); default tenant=0.
+        std::string eff = body;
+        uint32_t tid = parse_tenant_prefix(&eff);
+        // Enforce ACL: tenant must be whitelisted on this pool. The demo
+        // pre-authorizes tenant=0 on default/slab1k at startup so the
+        // existing, unprefixed traffic flows unchanged. Other tenants must
+        // go through RPC_ISO_ALLOW first.
+        if (!isolation.check(tid, "default/slab1k")) {
+            char buf[128];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"tenant %u not allowed on pool "
+                "default/slab1k\"}", tid);
+            resp->assign(buf, n);
+            return;
+        }
         std::string k, v;
-        if (!parse_put_body(body, &k, &v)) {
+        if (!parse_put_body(eff, &k, &v)) {
             *resp = "{\"ok\":false,\"err\":\"bad put body\"}"; return;
         }
         if (v.size() > slab.slot_size()) {
@@ -507,41 +595,77 @@ int main(int argc, char** argv) {
         // its own CQ polling core.
         int qp_idx = qos.pick_qp(high_prio);
 
-        // W5 async replication: reserve a unique wr_id + future from the
-        // shared poller thread BEFORE posting. Then post the WRITE (a
-        // per-QP mutex inside RdmaCore serializes ibv_post_send) and wait
-        // on the future. This removes the "N threads busy-polling the same
-        // CQ and trampling each other's WCs" pathology that capped write
-        // throughput at ~7 GB/s, and lets the full RDMA pipeline fill up.
-        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
-        int rc = core.post_write(qp_idx, slot, v.size(), slab.lkey(),
-                                 remote_addr, peer.slab_rkey,
-                                 /*imm*/0, /*wr_id*/wr_id,
-                                 /*signaled*/true);
-        bool repl_ok = (rc == 0);
-        if (repl_ok) {
-            // Blocking wait for this specific WR's completion. The poller
-            // thread delivers true on WC_SUCCESS, false otherwise.
-            repl_ok = fut.get();
+        // ---- High availability: skip cross-node replication when the peer
+        // heartbeat has timed out. Without this, every PUT would block on
+        // future.get() until the RDMA transport eventually errors out
+        // (seconds to minutes), so the whole data plane would look frozen
+        // from the client's point of view whenever the peer crashed. By
+        // checking hb.peer_alive() upfront we degrade gracefully into
+        // "local-only mode": PUTs land in the local slab + tier index, are
+        // visible to local GETs immediately, and get counted into
+        // degraded_puts. When the peer recovers, subsequent PUTs resume
+        // full replication automatically -- no queueing, no bookkeeping,
+        // per the project's "simple consistency" envelope. Durability
+        // during the outage relies on the local slab + NVMe demote path.
+        bool repl_ok;
+        bool degraded = !hb.peer_alive();
+        if (degraded) {
+            // Local-only: no post, no wait, no wr_id reservation.
+            repl_ok = true;
+            degraded_puts.fetch_add(1, std::memory_order_relaxed);
+            degraded_bytes.fetch_add(v.size(), std::memory_order_relaxed);
         } else {
-            // Post failed -- the poller will never see this wr_id's WC.
-            // Release the registered promise so the waiter map stays clean.
-            repl_waiter.cancel_wr_id(wr_id);
+            // W5 async replication: reserve a unique wr_id + future from the
+            // shared poller thread BEFORE posting. Then post the WRITE (a
+            // per-QP mutex inside RdmaCore serializes ibv_post_send) and wait
+            // on the future. This removes the "N threads busy-polling the same
+            // CQ and trampling each other's WCs" pathology that capped write
+            // throughput at ~7 GB/s, and lets the full RDMA pipeline fill up.
+            auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+            int rc = core.post_write(qp_idx, slot, v.size(), slab.lkey(),
+                                     remote_addr, peer.slab_rkey,
+                                     /*imm*/0, /*wr_id*/wr_id,
+                                     /*signaled*/true);
+            repl_ok = (rc == 0);
+            if (repl_ok) {
+                // Blocking wait for this specific WR's completion. The poller
+                // thread delivers true on WC_SUCCESS, false otherwise.
+                repl_ok = fut.get();
+            } else {
+                // Post failed -- the poller will never see this wr_id's WC.
+                // Release the registered promise so the waiter map stays clean.
+                repl_waiter.cancel_wr_id(wr_id);
+            }
         }
         uint64_t dt = nr::now_ns() - t0;
         last_repl_ns.store(dt);
         lat_push(dt);
         busy_ns_1s.fetch_add(dt);
         if (repl_ok) {
-            // Push index to peer so backup can serve local GET.
-            send_kv_index(k, off, (uint32_t)v.size());
-            bytes_tx_1s.fetch_add(v.size());
+            // Push index to peer so backup can serve local GET -- but only
+            // when the peer is actually up; in degraded mode the SEND would
+            // just fail and spam the log.
+            if (!degraded) {
+                send_kv_index(k, off, (uint32_t)v.size());
+                bytes_tx_1s.fetch_add(v.size());
+            }
             ops_put.fetch_add(1);
-            char buf[192];
+            // Attach route decision so the control plane can show which
+            // node is *logically* primary / replica for this key. The
+            // physical write path is currently "write local + replicate to
+            // peer" regardless, but the router provides the sharding view
+            // the demo needs to talk about load balance.
+            auto rd = router.route(k);
+            char buf[512];
             int n = std::snprintf(buf, sizeof(buf),
                 "{\"ok\":true,\"key\":\"%s\",\"size\":%zu,"
-                "\"offset\":%lu,\"repl_ns\":%lu}",
-                k.c_str(), v.size(), (unsigned long)off, (unsigned long)dt);
+                "\"offset\":%lu,\"repl_ns\":%lu,\"degraded\":%s,"
+                "\"route\":{\"primary\":\"%s\",\"replica\":\"%s\","
+                "\"local_is_primary\":%s}}",
+                k.c_str(), v.size(), (unsigned long)off, (unsigned long)dt,
+                degraded ? "true" : "false",
+                rd.primary.c_str(), rd.replica.c_str(),
+                rd.local_is_primary ? "true" : "false");
             resp->assign(buf, n);
         } else {
             *resp = "{\"ok\":false,\"err\":\"replicate failed\"}";
@@ -550,6 +674,17 @@ int main(int argc, char** argv) {
 
     auto do_get = [&](const std::string& body, std::string* resp) {
         std::string k = body;
+        // Optional tenant prefix: same scheme as do_put (T<id>:key). When
+        // absent, tenant=0 (default) is used.
+        uint32_t tid = parse_tenant_prefix(&k);
+        if (!isolation.check(tid, "default/slab1k")) {
+            char buf[128];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"tenant %u not allowed on pool "
+                "default/slab1k\"}", tid);
+            resp->assign(buf, n);
+            return;
+        }
         nr::ObjectMeta meta{};
         if (!tier.get_meta_full(k, &meta)) {
             *resp = "{\"ok\":false,\"err\":\"not found\"}";
@@ -601,7 +736,15 @@ int main(int argc, char** argv) {
     // Wire: resp = [1 byte status][4 byte size][raw bytes ... size bytes]
     //   status = 1: OK,  0: not found.
     auto do_get_raw = [&](const std::string& body, std::string* resp) {
-        const std::string& k = body;
+        // Mirror do_get: parse optional tenant prefix, enforce ACL. On
+        // denial return the same 5-byte "not found" frame rather than a
+        // JSON error, to keep the binary response framing consistent.
+        std::string k = body;
+        uint32_t tid = parse_tenant_prefix(&k);
+        if (!isolation.check(tid, "default/slab1k")) {
+            resp->assign(5, '\0');  // status=0, size=0
+            return;
+        }
         nr::ObjectMeta meta{};
         if (!tier.get_meta_full(k, &meta)) {
             resp->assign(5, '\0');  // status=0, size=0
@@ -824,7 +967,9 @@ int main(int argc, char** argv) {
 
     // RPC_SIM_RUN: synchronously run the discrete-event SimEngine and return
     // its speedup/throughput report. Body is a '&'-separated list of k=v
-    // knobs, e.g. "entities=100000&events=1000000&threads=4&stress=32".
+    // knobs, e.g. "entities=100000&events=1000000&threads=4&stress=32"
+    // plus optional "capture_every_n=<N>" to control how often events are
+    // pushed into SimCapture during the run (default 256).
     auto do_sim_run = [&](const std::string& body, std::string* resp) {
         nr::SimEngine::Config c;
         c.entities = 100000;
@@ -832,6 +977,7 @@ int main(int argc, char** argv) {
         c.threads  = 4;
         c.step_us  = 10;
         c.stress   = 32;
+        c.capture_every_n = 256;
         auto parse_int = [&](const std::string& key) -> long long {
             auto p = body.find(key + "=");
             if (p == std::string::npos) return -1;
@@ -846,33 +992,157 @@ int main(int argc, char** argv) {
         if ((x = parse_int("threads"))  > 0) c.threads  = (uint32_t)x;
         if ((x = parse_int("step_us"))  > 0) c.step_us  = (uint32_t)x;
         if ((x = parse_int("stress"))   > 0) c.stress   = (uint32_t)x;
+        if ((x = parse_int("capture_every_n")) >= 0)
+            c.capture_every_n = (uint32_t)x;
+
+        // Snapshot capture counters before the run so we can report the
+        // delta attributable to this specific simulation.
+        auto cap_before = nr::SimCapture::instance().stats();
 
         nr::SimEngine eng;
         eng.init(c);
         auto r = eng.run();
-        char buf[512];
+
+        auto cap_after = nr::SimCapture::instance().stats();
+        uint64_t cap_pushed  = cap_after.pushed_events - cap_before.pushed_events;
+        uint64_t cap_dropped = cap_after.dropped_events - cap_before.dropped_events;
+
+        char buf[640];
         int n = std::snprintf(buf, sizeof(buf),
             "{\"ok\":true,\"entities\":%u,\"events\":%lu,\"threads\":%u,"
             "\"step_us\":%u,\"stress\":%u,\"wall_s\":%.6f,\"sim_s\":%.6f,"
-            "\"speedup\":%.4f,\"events_per_sec\":%.0f}",
+            "\"speedup\":%.4f,\"events_per_sec\":%.0f,"
+            "\"capture_every_n\":%u,\"captured_events\":%lu,"
+            "\"captured_dropped\":%lu}",
             r.entities, (unsigned long)r.events, c.threads, c.step_us,
-            c.stress, r.wall_s, r.sim_s, r.speedup, r.events_per_sec);
+            c.stress, r.wall_s, r.sim_s, r.speedup, r.events_per_sec,
+            c.capture_every_n,
+            (unsigned long)cap_pushed, (unsigned long)cap_dropped);
         resp->assign(buf, n);
+    };
+
+    // RPC_ROUTE_QUERY: look up the route decision for a key without doing
+    // any I/O. Body = raw key string. Used by the control plane / demo UI
+    // to visualize which node would own each shard, and by tests to verify
+    // the consistent-hash ring is populated consistently across both DPs.
+    auto do_route_query = [&](const std::string& body, std::string* resp) {
+        const std::string& k = body;
+        auto rd = router.route(k);
+        char buf[384];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"key\":\"%s\",\"primary\":\"%s\","
+            "\"replica\":\"%s\",\"local_is_primary\":%s,\"self\":\"%s\"}",
+            k.c_str(), rd.primary.c_str(), rd.replica.c_str(),
+            rd.local_is_primary ? "true" : "false",
+            args.self_ip.c_str());
+        resp->assign(buf, n);
+    };
+
+    // ---------- SimCapture RPCs ----------
+    // RPC_SIM_CAPTURE_STATS  body: (empty)
+    //   -> returns counters (pushed / flushed / dropped).
+    // RPC_SIM_CAPTURE_RESET  body: (empty)
+    //   -> truncates the WAL and clears the counters; useful between
+    //      demo takes so the numbers aren't cumulative from previous
+    //      runs.
+    auto do_sim_cap_stats = [&](const std::string& /*body*/, std::string* resp) {
+        auto s = nr::SimCapture::instance().stats();
+        char buf[384];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"pushed_events\":%lu,\"pushed_bytes\":%lu,"
+            "\"flushed_events\":%lu,\"flushed_bytes\":%lu,"
+            "\"dropped_events\":%lu}",
+            (unsigned long)s.pushed_events,  (unsigned long)s.pushed_bytes,
+            (unsigned long)s.flushed_events, (unsigned long)s.flushed_bytes,
+            (unsigned long)s.dropped_events);
+        resp->assign(buf, n);
+    };
+
+    auto do_sim_cap_reset = [&](const std::string& /*body*/, std::string* resp) {
+        nr::SimCapture::instance().reset();
+        *resp = "{\"ok\":true,\"action\":\"sim_capture_reset\"}";
+    };
+
+    // ---------- Isolation RPCs ----------
+    // Wire format for both ALLOW/DENY bodies is "<tenant_id> <pool_name>".
+    // Example body: "7 default/slab1k"
+    //
+    // These two RPCs are the only way to mutate the tenant ACL at runtime;
+    // everything else (do_put / do_get / do_get_raw) just consults the
+    // set via isolation.check(). The control plane (Flask) exposes them
+    // as /api/iso/allow and /api/iso/deny for demo & automated testing.
+    auto parse_iso_body = [](const std::string& body,
+                             uint32_t* tid, std::string* pool) -> bool {
+        auto sp = body.find(' ');
+        if (sp == std::string::npos) return false;
+        try { *tid = (uint32_t)std::stoul(body.substr(0, sp)); }
+        catch (...) { return false; }
+        *pool = body.substr(sp + 1);
+        return !pool->empty();
+    };
+
+    auto do_iso_allow = [&](const std::string& body, std::string* resp) {
+        uint32_t tid; std::string pool;
+        if (!parse_iso_body(body, &tid, &pool)) {
+            *resp = "{\"ok\":false,\"err\":\"bad iso body, expect '<tid> <pool>'\"}";
+            return;
+        }
+        isolation.allow(tid, pool);
+        char buf[192];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"action\":\"allow\",\"tenant_id\":%u,\"pool\":\"%s\"}",
+            tid, pool.c_str());
+        resp->assign(buf, n);
+    };
+
+    auto do_iso_deny = [&](const std::string& body, std::string* resp) {
+        uint32_t tid; std::string pool;
+        if (!parse_iso_body(body, &tid, &pool)) {
+            *resp = "{\"ok\":false,\"err\":\"bad iso body, expect '<tid> <pool>'\"}";
+            return;
+        }
+        isolation.deny(tid, pool);
+        char buf[192];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"action\":\"deny\",\"tenant_id\":%u,\"pool\":\"%s\"}",
+            tid, pool.c_str());
+        resp->assign(buf, n);
+    };
+
+    auto do_iso_list = [&](const std::string& /*body*/, std::string* resp) {
+        auto v = isolation.list_allowed();
+        std::string out = "{\"ok\":true,\"allowed\":[";
+        for (size_t i = 0; i < v.size(); ++i) {
+            if (i) out.push_back(',');
+            out.push_back('"');
+            // list items are already "tid|pool" strings; JSON-escape '|'
+            // is unnecessary, but we escape backslash/quote to be safe.
+            for (char c : v[i]) {
+                if (c == '"' || c == '\\') out.push_back('\\');
+                out.push_back(c);
+            }
+            out.push_back('"');
+        }
+        out += "]}";
+        *resp = std::move(out);
     };
 
     nr::UdsServer uds;
     uds.set_handler([&](const std::string& kind, const std::string& body,
                         std::string* resp) {
         if      (kind == "RPC_CLUSTER_STATUS") {
-            char buf[256];
+            char buf[384];
             int n = std::snprintf(buf, sizeof(buf),
                 "{\"ok\":true,\"self\":\"%s\",\"peer_alive\":%s,"
-                "\"peer_slab_base\":%lu,\"peer_slab_rkey\":%u,\"peer_num_qp\":%u}",
+                "\"peer_slab_base\":%lu,\"peer_slab_rkey\":%u,\"peer_num_qp\":%u,"
+                "\"degraded_puts\":%lu,\"degraded_bytes\":%lu}",
                 args.role.c_str(),
                 hb.peer_alive() ? "true" : "false",
                 (unsigned long)peer.slab_base,
                 peer.slab_rkey,
-                (unsigned)peer.qpns.size());
+                (unsigned)peer.qpns.size(),
+                (unsigned long)degraded_puts.load(),
+                (unsigned long)degraded_bytes.load());
             resp->assign(buf, n);
         }
         else if (kind == "RPC_KV_PUT")     do_put(body, resp, /*high_prio*/true);
@@ -887,6 +1157,12 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_COMPRESS_STATS") do_compress_stats(resp);
         else if (kind == "RPC_ADMIN_FLUSH")    do_admin_flush(resp);
         else if (kind == "RPC_SIM_RUN")        do_sim_run(body, resp);
+        else if (kind == "RPC_ROUTE_QUERY")    do_route_query(body, resp);
+        else if (kind == "RPC_SIM_CAPTURE_STATS") do_sim_cap_stats(body, resp);
+        else if (kind == "RPC_SIM_CAPTURE_RESET") do_sim_cap_reset(body, resp);
+        else if (kind == "RPC_ISO_ALLOW")       do_iso_allow(body, resp);
+        else if (kind == "RPC_ISO_DENY")        do_iso_deny(body, resp);
+        else if (kind == "RPC_ISO_LIST")        do_iso_list(body, resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }
@@ -911,6 +1187,9 @@ int main(int argc, char** argv) {
     if (metrics_thr.joinable()) metrics_thr.join();
     if (mig_thr.joinable())     mig_thr.join();
     batch.shutdown();
+    // Final flush of the simulation capture WAL. stop() joins the bg
+    // thread and writes any remaining buffered events.
+    nr::SimCapture::instance().stop();
     io.shutdown();
     slab.shutdown();
     return 0;

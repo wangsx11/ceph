@@ -1,4 +1,5 @@
 #include "sim_engine.h"
+#include "sim_capture.h"
 #include "../common/logger.h"
 #include "../common/time_util.h"
 
@@ -36,6 +37,7 @@ bool SimEngine::init(const Config& cfg) {
     if (cfg_.threads  == 0) cfg_.threads  = 1;
     if (cfg_.step_us  == 0) cfg_.step_us  = 1;
     if (cfg_.stress   == 0) cfg_.stress   = 1;
+    // capture_every_n = 0 is a valid "disabled" value; don't force it up.
     return true;
 }
 
@@ -55,6 +57,8 @@ SimEngine::Report SimEngine::run() {
     const uint64_t leftover   = cfg_.events - per_thread * T;
 
     std::atomic<uint64_t> checksum{0};
+    const uint32_t capture_n = cfg_.capture_every_n;
+    SimCapture& cap = SimCapture::instance();
     auto worker = [&](uint32_t tid, uint64_t n_events) {
         uint64_t seed = 0xC0FFEE00ULL ^ ((uint64_t)tid << 32) ^ n_events;
         uint64_t acc  = 0;
@@ -74,6 +78,25 @@ SimEngine::Report SimEngine::run() {
             world[eid].state  = s;
             world[eid].visits = world[eid].visits + 1;
             acc ^= s;
+
+            // In-run capture: every `capture_n` events, push a record to
+            // SimCapture. Alternating ObjectAttr (odd samples) and
+            // InteractionEvent (even samples) demonstrates the two event
+            // type codes the spec calls out ("对象属性、交互事件").
+            if (capture_n && ((i % capture_n) == 0)) {
+                struct AttrBlob {
+                    uint64_t state;
+                    uint64_t visits;
+                } ab{world[eid].state, world[eid].visits};
+                if ((i / capture_n) & 1ULL) {
+                    // Interaction: eid interacts with the entity chosen by
+                    // next PRNG draw (cheap, realistic locality).
+                    uint32_t peer_eid = (uint32_t)(splitmix64(seed) % ents);
+                    cap.push_event(eid, peer_eid, &ab, sizeof(ab));
+                } else {
+                    cap.push_attr(eid, &ab, sizeof(ab));
+                }
+            }
         }
         checksum.fetch_add(acc, std::memory_order_relaxed);
     };

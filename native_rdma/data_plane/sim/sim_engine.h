@@ -34,6 +34,13 @@ public:
         uint32_t step_us  = 10;         // simulated us per event
         uint32_t threads  = 4;          // parallel workers
         uint32_t stress   = 32;         // per-event inner iterations
+        // Sampling rate for the in-run SimCapture sink. One event out of
+        // every `capture_every_n` pushes an ObjectAttr record (and
+        // alternating InteractionEvent records every other sample) into
+        // SimCapture::instance(). Set to 0 to disable capture entirely
+        // (useful for clean speedup measurements); the default 256 adds
+        // <0.5% overhead at stress=32.
+        uint32_t capture_every_n = 256;
     };
     struct Report {
         uint32_t entities       = 0;
