@@ -88,34 +88,48 @@ static void parse_args(int argc, char** argv, Args& a) {
 }
 
 // ---------- RPC payload helpers ----------
-// Optional tenant prefix: body may start with "T<decimal_id>:" -- if it does,
-// that prefix is stripped off and the numeric id is returned in `tid`;
-// otherwise the default tenant id 0 is used and `body` is left alone.
-// Example: "T7:mykey\0value" -> tid=7, effective body "mykey\0value".
-// Example: "plainkey\0value"  -> tid=0, effective body unchanged.
-// This keeps the wire format backwards compatible with clients that don't
-// know about tenants (current nr_bench, Flask default path).
-static uint32_t parse_tenant_prefix(std::string* body /*in/out*/) {
-    if (body->empty() || (*body)[0] != 'T') return 0;
-    auto colon = body->find(':');
+// Optional tenant prefix: when the body starts with "T<decimal_id>:" we
+// parse the decimal id, set *start_off to the position right after ':',
+// and return the tid. Otherwise *start_off=0 and tid=0 (default tenant).
+// The caller then treats body.data()+*start_off, body.size()-*start_off
+// as the "effective body" WITHOUT copying the underlying string -- this
+// is performance-critical because perf_06 ships 1 MB payloads.
+// Example: "T7:mykey\0value" -> tid=7, *start_off=3  (points at 'm')
+// Example: "plainkey\0value"  -> tid=0, *start_off=0  (whole body as-is)
+static uint32_t parse_tenant_prefix(const std::string& body,
+                                    size_t* start_off) {
+    *start_off = 0;
+    if (body.empty() || body[0] != 'T') return 0;
+    auto colon = body.find(':');
     if (colon == std::string::npos || colon > 16) return 0;
     uint32_t tid = 0;
     for (size_t i = 1; i < colon; ++i) {
-        char c = (*body)[i];
+        char c = body[i];
         if (c < '0' || c > '9') return 0;   // not a pure integer -> not a prefix
         tid = tid * 10 + (uint32_t)(c - '0');
     }
-    body->erase(0, colon + 1);
+    *start_off = colon + 1;
     return tid;
 }
 
 // RPC_KV_PUT body: [key]\0[val]
-static bool parse_put_body(const std::string& body, std::string* k, std::string* v) {
-    auto p = body.find('\0');
+// The optional `start` offset lets callers skip a leading tenant prefix
+// (parsed by parse_tenant_prefix) without copying the whole buffer first.
+static bool parse_put_body(const std::string& body, size_t start,
+                           std::string* k, std::string* v) {
+    if (start >= body.size()) return false;
+    auto p = body.find('\0', start);
     if (p == std::string::npos) return false;
-    *k = body.substr(0, p);
+    *k = body.substr(start, p - start);
     *v = body.substr(p + 1);
     return true;
+}
+
+// Back-compat wrapper used by code paths that don't go through
+// parse_tenant_prefix (none today, but keeps the signature forgiving).
+static inline bool parse_put_body(const std::string& body,
+                                  std::string* k, std::string* v) {
+    return parse_put_body(body, 0, k, v);
 }
 
 // ---------- QP role map ----------
@@ -539,8 +553,11 @@ int main(int argc, char** argv) {
     // 9) UDS RPC handlers
     auto do_put = [&](const std::string& body, std::string* resp, bool high_prio) {
         // Parse optional tenant prefix ("T<id>:..."); default tenant=0.
-        std::string eff = body;
-        uint32_t tid = parse_tenant_prefix(&eff);
+        // We keep `body` unchanged and just remember where the "real" body
+        // begins, so a 1 MB PUT does NOT pay the cost of copying the whole
+        // buffer just to strip a tiny (or absent) prefix.
+        size_t body_off = 0;
+        uint32_t tid = parse_tenant_prefix(body, &body_off);
         // Enforce ACL: tenant must be whitelisted on this pool. The demo
         // pre-authorizes tenant=0 on default/slab1k at startup so the
         // existing, unprefixed traffic flows unchanged. Other tenants must
@@ -554,7 +571,7 @@ int main(int argc, char** argv) {
             return;
         }
         std::string k, v;
-        if (!parse_put_body(eff, &k, &v)) {
+        if (!parse_put_body(body, body_off, &k, &v)) {
             *resp = "{\"ok\":false,\"err\":\"bad put body\"}"; return;
         }
         if (v.size() > slab.slot_size()) {
@@ -673,10 +690,10 @@ int main(int argc, char** argv) {
     };
 
     auto do_get = [&](const std::string& body, std::string* resp) {
-        std::string k = body;
         // Optional tenant prefix: same scheme as do_put (T<id>:key). When
         // absent, tenant=0 (default) is used.
-        uint32_t tid = parse_tenant_prefix(&k);
+        size_t body_off = 0;
+        uint32_t tid = parse_tenant_prefix(body, &body_off);
         if (!isolation.check(tid, "default/slab1k")) {
             char buf[128];
             int n = std::snprintf(buf, sizeof(buf),
@@ -685,6 +702,10 @@ int main(int argc, char** argv) {
             resp->assign(buf, n);
             return;
         }
+        // Key extraction still needs a substring copy (downstream APIs take
+        // std::string), but it only copies the key bytes (usually <64 B)
+        // rather than the whole request body.
+        std::string k = body.substr(body_off);
         nr::ObjectMeta meta{};
         if (!tier.get_meta_full(k, &meta)) {
             *resp = "{\"ok\":false,\"err\":\"not found\"}";
@@ -739,12 +760,13 @@ int main(int argc, char** argv) {
         // Mirror do_get: parse optional tenant prefix, enforce ACL. On
         // denial return the same 5-byte "not found" frame rather than a
         // JSON error, to keep the binary response framing consistent.
-        std::string k = body;
-        uint32_t tid = parse_tenant_prefix(&k);
+        size_t body_off = 0;
+        uint32_t tid = parse_tenant_prefix(body, &body_off);
         if (!isolation.check(tid, "default/slab1k")) {
             resp->assign(5, '\0');  // status=0, size=0
             return;
         }
+        std::string k = body.substr(body_off);
         nr::ObjectMeta meta{};
         if (!tier.get_meta_full(k, &meta)) {
             resp->assign(5, '\0');  // status=0, size=0
