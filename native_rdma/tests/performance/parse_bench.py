@@ -44,6 +44,17 @@ def parse_bench_output(text: str) -> Dict[str, Any]:
         out["lat_p99_us"]   = float(m.group(3))
         out["lat_p99_9_us"] = float(m.group(4))
         out["lat_max_us"]   = float(m.group(5))
+    # Real bytes moved over UDS (added in nr_bench W5-fix). Falls back to
+    # missing keys when running an older nr_bench -- callers should handle
+    # absence gracefully.
+    m = re.search(rf"req_bytes\s*:\s*(\d+)\s*\(({_NUM})\s*MB/s\)", text)
+    if m:
+        out["req_bytes"]    = int(m.group(1))
+        out["req_mbps"]     = float(m.group(2))
+    m = re.search(rf"resp_bytes\s*:\s*(\d+)\s*\(({_NUM})\s*MB/s\)", text)
+    if m:
+        out["resp_bytes"]   = int(m.group(1))
+        out["resp_mbps"]    = float(m.group(2))
     # Recover val_size from the "nr_bench" header line that lives above the
     # report block (printed at startup).
     m = re.search(r"val_size=(\d+)", text)

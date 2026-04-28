@@ -53,7 +53,8 @@ METRIC_SUMMARY = {
                   f"(threshold {r.get('threshold_mbs','?')})"),
     "perf_06": ("tier read/write bandwidth",
         lambda r: (f"write {r.get('write_gbs','?')} GB/s, "
-                   f"read {r.get('read_gbs','?')} GB/s"
+                   f"read {r.get('read_gbs','?')} GB/s, "
+                   f"hit={r.get('read_hit_ratio','?')}"
                    + (f"  ({r.get('note')})" if r.get('note') else ""))),
     "perf_08": ("Simulation engine 1M events realtime",
         lambda r: f"speedup={r.get('speedup','?')}x "

@@ -75,19 +75,25 @@ static int read_all(int fd, void* buf, size_t n) {
 }
 
 // Wire: [u32 kind_len][kind][u32 body_len][body] -> [u32 resp_len][resp]
-static bool rpc_call(int fd, const char* kind, const void* body, size_t blen) {
+// Returns the number of response bytes received (not counting the 4-byte
+// length header) on success, or -1 on failure.  nr_bench uses this to
+// compute the *actual* bytes-per-second moved through the UDS, which is
+// what the bandwidth-oriented tests (perf_06) need -- otherwise a GET
+// that misses (server returns a short "not found" response) would be
+// counted as if it returned the requested val_size worth of bytes.
+static int64_t rpc_call(int fd, const char* kind, const void* body, size_t blen) {
     uint32_t kl = (uint32_t)std::strlen(kind);
-    if (write_all(fd, &kl, 4) < 0) return false;
-    if (write_all(fd, kind, kl) < 0) return false;
+    if (write_all(fd, &kl, 4) < 0) return -1;
+    if (write_all(fd, kind, kl) < 0) return -1;
     uint32_t bl = (uint32_t)blen;
-    if (write_all(fd, &bl, 4) < 0) return false;
-    if (bl && write_all(fd, body, bl) < 0) return false;
+    if (write_all(fd, &bl, 4) < 0) return -1;
+    if (bl && write_all(fd, body, bl) < 0) return -1;
     uint32_t rl = 0;
-    if (read_all(fd, &rl, 4) < 0) return false;
+    if (read_all(fd, &rl, 4) < 0) return -1;
     // Drain and discard response body.
     std::vector<char> buf(rl);
-    if (rl && read_all(fd, buf.data(), rl) < 0) return false;
-    return true;
+    if (rl && read_all(fd, buf.data(), rl) < 0) return -1;
+    return (int64_t)rl;
 }
 
 static inline uint64_t now_ns() {
@@ -106,6 +112,8 @@ int main(int argc, char** argv) {
     std::atomic<bool> stop{false};
     std::atomic<uint64_t> ops_done{0};
     std::atomic<uint64_t> ops_fail{0};
+    std::atomic<uint64_t> bytes_resp{0};   // sum of response payload bytes
+    std::atomic<uint64_t> bytes_req{0};    // sum of request payload bytes
     std::vector<std::vector<uint32_t>> lats(o.threads); // per-thread ns samples
 
     // Pre-generate a value buffer.
@@ -160,10 +168,13 @@ int main(int argc, char** argv) {
             kind += prio_suffix;
 
             uint64_t t0 = now_ns();
-            bool ok = rpc_call(fd, kind.c_str(), body.data(), body.size());
+            int64_t recv = rpc_call(fd, kind.c_str(), body.data(), body.size());
             uint64_t dt = now_ns() - t0;
+            bool ok = (recv >= 0);
             if (ok) {
                 ops_done.fetch_add(1, std::memory_order_relaxed);
+                bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
+                bytes_req.fetch_add(body.size(), std::memory_order_relaxed);
                 if (dt < 0xFFFFFFFFu) lats[tid].push_back((uint32_t)dt);
             } else {
                 ops_fail.fetch_add(1, std::memory_order_relaxed);
@@ -217,6 +228,15 @@ int main(int argc, char** argv) {
     std::printf("  ops ok/fail   : %lu / %lu\n",
                 (unsigned long)ops, (unsigned long)fail);
     std::printf("  ops/s         : %.0f\n",   ops / elapsed);
+    // Bytes-based bandwidth: this is what the UDS really moved, not an
+    // assumed ops*val_size product. For GETs where the key misses, the
+    // server only returns 5 bytes and that's what gets counted here.
+    uint64_t tx = bytes_req.load();
+    uint64_t rx = bytes_resp.load();
+    std::printf("  req_bytes     : %lu (%.2f MB/s)\n",
+                (unsigned long)tx, tx / elapsed / 1e6);
+    std::printf("  resp_bytes    : %lu (%.2f MB/s)\n",
+                (unsigned long)rx, rx / elapsed / 1e6);
     std::printf("  latency us    : avg=%.2f  p50=%.2f  p99=%.2f  p99.9=%.2f  max=%.2f\n",
                 avg_us, p50, p99, p999, pmax);
     return 0;
