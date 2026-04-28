@@ -36,7 +36,12 @@ void QosSched::on_submit(bool high_priority) {
     // are available. The lock also becomes a serialization point for the
     // low-priority class -- exactly what we want for docs/§7 row #3 where
     // high priority must beat low priority by >=22%.
-    std::lock_guard<std::mutex> lk(lo_mu_);
+    //
+    // NB: use unique_lock (not lock_guard) because we need to .unlock()
+    // while sleeping so other low-prio callers aren't blocked on us; the
+    // destructor will then correctly decide based on the current lock
+    // state instead of double-unlocking.
+    std::unique_lock<std::mutex> lk(lo_mu_);
     const uint64_t cap = (uint64_t)cfg_.lo_rate_limit_kops * 1000ULL;
     while (true) {
         uint64_t t = now_ns();
@@ -50,19 +55,16 @@ void QosSched::on_submit(bool high_priority) {
         }
         if (lo_tokens_ > 0) {
             --lo_tokens_;
-            return;
+            return;    // unique_lock dtor releases the lock.
         }
-        // Not enough tokens: sleep the minimal wait window. One token per
-        // (1e9 / rate_per_sec) nanoseconds.  Sleep a quarter of that to
-        // avoid oversleeping but keep CPU overhead low.
+        // Not enough tokens: sleep briefly before retrying. Drop the lock
+        // first so other low-prio callers can attempt a refill too.
         uint64_t wait_ns = 1000000000ULL / ((uint64_t)cfg_.lo_rate_limit_kops * 1000ULL);
         if (wait_ns < 1000) wait_ns = 1000;      // >= 1 us
         wait_ns /= 4;
-        // Drop the lock while sleeping so other low-prio callers can try
-        // (they'll just find tokens still empty and sleep too -- fine).
-        lo_mu_.unlock();
+        lk.unlock();
         std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ns));
-        lo_mu_.lock();
+        lk.lock();
     }
 }
 
