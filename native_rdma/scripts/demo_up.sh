@@ -79,21 +79,55 @@ nohup bash "$ROOT/scripts/start_node.sh" --role="$ROLE" \
 DP_PID=$!
 say "  DP pid=$DP_PID"
 
-# 等 UDS 就绪（若对端 DP 未启动，OOB 握手会卡住，最多等 15s）
-for i in $(seq 1 30); do
-    [ -S /tmp/native_rdma-dp.sock ] && break
-    sleep 0.5
-    if ! kill -0 "$DP_PID" 2>/dev/null; then
+# ---- 关键：A 与 B 等不同的信号 ----
+# 数据平面的 OOB 握手里 role=B 是 listener（监听 TCP 18515），role=A 是
+# connector（主动去 connect peer）。UDS 只会在握手成功后才创建。
+# 因此：
+#   B 启动后：等 TCP:DATA_PORT 进入 LISTEN 状态即视为 OK（A 还没 connect 前
+#             UDS 是不会创建的，不能拿 UDS 当"B 就绪"信号）
+#   A 启动后：等 UDS socket 出现即 OK（A 这边握手完成才会开 UDS server）
+# 这样解决了"A/B 互等 -> 谁先启谁被脚本判死"的鸡蛋悖论。
+DATA_PORT=$(awk -F= '/^DATA_PORT=/{print $2}' "$ENV_FILE")
+DATA_PORT="${DATA_PORT:-18515}"
+
+if [ "$ROLE" = "B" ]; then
+    say "role=B 是 OOB listener，等 TCP:${DATA_PORT} 进入 LISTEN（最多 20s）"
+    got_listen=0
+    for i in $(seq 1 40); do
+        if ss -tln 2>/dev/null | awk '{print $4}' | grep -qE ":${DATA_PORT}$"; then
+            got_listen=1; break
+        fi
+        sleep 0.5
+        if ! kill -0 "$DP_PID" 2>/dev/null; then
+            tail -20 "logs/dp_${ROLE}.log" 2>/dev/null
+            die "DP 已退出，检查 logs/dp_${ROLE}.log"
+        fi
+    done
+    if [ $got_listen -eq 0 ]; then
         tail -20 "logs/dp_${ROLE}.log" 2>/dev/null
-        die "DP 已退出，检查 logs/dp_${ROLE}.log"
+        die "TCP:${DATA_PORT} 等待 20s 未进入 LISTEN"
     fi
-done
-if [ ! -S /tmp/native_rdma-dp.sock ]; then
-    warn "等待 UDS 15s 超时。请确认对端 DP 已启动 (PEER_IP=$PEER_IP)"
-    warn "对端启动命令: ROLE=$([ "$ROLE" = "A" ] && echo B || echo A) bash scripts/demo_up.sh"
-    die "OOB 握手可能未完成"
+    ok "Data Plane (B) 已监听 TCP:${DATA_PORT}，等待 A 端 connect 即可完成握手"
+    # B 端即便还没 UDS，也先退出脚本 —— A 端起来后会自动完成握手，B 端 UDS
+    # 也会随之创建。Flask 暂时无 UDS 可用，但会在 uds_call 时懒重连。
+else
+    say "role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）"
+    got_uds=0
+    for i in $(seq 1 30); do
+        [ -S /tmp/native_rdma-dp.sock ] && { got_uds=1; break; }
+        sleep 0.5
+        if ! kill -0 "$DP_PID" 2>/dev/null; then
+            tail -20 "logs/dp_${ROLE}.log" 2>/dev/null
+            die "DP 已退出，检查 logs/dp_${ROLE}.log"
+        fi
+    done
+    if [ $got_uds -eq 0 ]; then
+        warn "UDS 超时。请确认 B 端 (PEER_IP=$PEER_IP) 已在 TCP:${DATA_PORT} LISTEN"
+        warn "B 端启动: 在 B 主机上执行  ROLE=B bash scripts/demo_up.sh"
+        die "OOB 握手未完成"
+    fi
+    ok "Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)"
 fi
-ok "Data Plane 就绪 (uds=/tmp/native_rdma-dp.sock)"
 
 # 6) 启动 Flask 控制面
 say "启动 Flask (port=$FLASK_PORT, role=$ROLE)"
@@ -106,14 +140,18 @@ NR_DASH_DIR="$ROOT/../dashboard" \
 CP_PID=$!
 say "  Flask pid=$CP_PID"
 
-# 等 Flask listen
+# 等 Flask listen（只要求 HTTP 有响应即可；此时 B 端若还没完成握手，
+# /api/cluster/status 会返回 ok:false + dp_offline，但 HTTP 本身是通的）
+got_flask=0
 for i in $(seq 1 30); do
-    if curl -s --max-time 1 "http://127.0.0.1:$FLASK_PORT/api/cluster/status" >/dev/null 2>&1; then
-        break
+    code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 \
+           "http://127.0.0.1:$FLASK_PORT/api/cluster/status" 2>/dev/null || echo 000)
+    if [ "$code" = "200" ]; then
+        got_flask=1; break
     fi
     sleep 0.3
 done
-if ! curl -s --max-time 1 "http://127.0.0.1:$FLASK_PORT/api/cluster/status" >/dev/null 2>&1; then
+if [ $got_flask -eq 0 ]; then
     tail -20 "logs/cp_${ROLE}.stdout.log" 2>/dev/null
     die "Flask 启动失败，检查 logs/cp_${ROLE}.stdout.log"
 fi
