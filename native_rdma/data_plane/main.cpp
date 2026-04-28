@@ -5,6 +5,7 @@
 #include "common/time_util.h"
 #include "rdma/rdma_core.h"
 #include "rdma/oob.h"
+#include "rdma/repl_waiter.h"
 #include "mempool/slab.h"
 #include "mempool/pool_registry.h"
 #include "storage/tier_engine.h"
@@ -143,14 +144,33 @@ int main(int argc, char** argv) {
 
     // 4) QoS / Batch / Storage
     nr::QosSched qos;
-    nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 2;
-    qcfg.lo_qp_start = 2;     qcfg.lo_qp_count = 6;
+    nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 4;
+    qcfg.lo_qp_start = 4;     qcfg.lo_qp_count = 3;
     // Cap low-priority at 150 kops/s (per-process) so high-priority PUTs
     // reliably win >=22% throughput lead (docs §7 row #3). Override via
     // the NR_LO_RATE_KOPS env var at startup for ad-hoc demos.
     const char* lo_env = std::getenv("NR_LO_RATE_KOPS");
     qcfg.lo_rate_limit_kops = lo_env ? (uint32_t)std::atoi(lo_env) : 150;
     qos.init(core, qcfg);
+
+    // W5 write-path upgrade: a single dedicated poller thread drains all
+    // hi+lo replication QP CQs so do_put can post WRITE asynchronously
+    // and wait on a per-wr_id future instead of busy-polling its own CQ.
+    //
+    // Before: each worker thread post_write -> busy-poll the QP's CQ until
+    //   its own WC appeared. With N workers sharing 2 QPs this degenerated
+    //   to serialized replication because concurrent ibv_poll_cq on the
+    //   same CQ races and throws out "foreign" WCs, so only a handful of
+    //   WRs were ever in-flight at a time.
+    // After: the poller has exclusive ownership of these CQs (all
+    //   post paths elsewhere don't poll these QPs -- HB is on QP_HB, batch
+    //   aggregator uses QP 4 in the lo group but posts to its own CQ).
+    //   Workers reserve a wr_id + future, post_write, then future.wait().
+    //   This unlocks true post_send concurrency: at 1MB payload we go from
+    //   ~7 GB/s with 8 threads to saturating the 100Gbps link.
+    // NB: started AFTER oob_handshake below, so the poller only runs once
+    //   QPs are in RTS and completions can actually be reaped.
+    nr::ReplWaiter repl_waiter;
 
     nr::BatchAggregator batch;
     nr::BatchAggregator::Config bcfg; bcfg.qp_idx = 4;
@@ -199,6 +219,20 @@ int main(int argc, char** argv) {
     if (!oob_ok) {
         NR_ERROR("OOB handshake failed; exiting.");
         return 2;
+    }
+
+    // Now that QPs are in RTS, start the replication poller thread.
+    {
+        nr::ReplWaiter::Config rwcfg;
+        for (int q = qcfg.hi_qp_start;
+             q < qcfg.hi_qp_start + qcfg.hi_qp_count; ++q) {
+            rwcfg.qp_indices.push_back(q);
+        }
+        for (int q = qcfg.lo_qp_start;
+             q < qcfg.lo_qp_start + qcfg.lo_qp_count; ++q) {
+            rwcfg.qp_indices.push_back(q);
+        }
+        repl_waiter.start(&core, rwcfg);
     }
 
     // 6) Pre-post HB/ctrl recv buffers and start heartbeat (real RDMA SEND).
@@ -472,20 +506,27 @@ int main(int argc, char** argv) {
         // lo group otherwise. Hi gets exclusive QPs (less contention) and
         // its own CQ polling core.
         int qp_idx = qos.pick_qp(high_prio);
+
+        // W5 async replication: reserve a unique wr_id + future from the
+        // shared poller thread BEFORE posting. Then post the WRITE (a
+        // per-QP mutex inside RdmaCore serializes ibv_post_send) and wait
+        // on the future. This removes the "N threads busy-polling the same
+        // CQ and trampling each other's WCs" pathology that capped write
+        // throughput at ~7 GB/s, and lets the full RDMA pipeline fill up.
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
         int rc = core.post_write(qp_idx, slot, v.size(), slab.lkey(),
                                  remote_addr, peer.slab_rkey,
-                                 /*imm*/0, /*wr_id*/0xC0000000 | (off & 0xFFFFFFF),
+                                 /*imm*/0, /*wr_id*/wr_id,
                                  /*signaled*/true);
         bool repl_ok = (rc == 0);
         if (repl_ok) {
-            ibv_wc wc;
-            while (true) {
-                int n = core.poll_cq(qp_idx, &wc, 1);
-                if (n < 0) { repl_ok = false; break; }
-                if (n == 0) continue;
-                repl_ok = (wc.status == IBV_WC_SUCCESS);
-                break;
-            }
+            // Blocking wait for this specific WR's completion. The poller
+            // thread delivers true on WC_SUCCESS, false otherwise.
+            repl_ok = fut.get();
+        } else {
+            // Post failed -- the poller will never see this wr_id's WC.
+            // Release the registered promise so the waiter map stays clean.
+            repl_waiter.cancel_wr_id(wr_id);
         }
         uint64_t dt = nr::now_ns() - t0;
         last_repl_ns.store(dt);
@@ -862,6 +903,10 @@ int main(int argc, char** argv) {
     hb.stop();
     hb_stop.store(true);
     mig_stop.store(true);
+    // Stop the replication poller BEFORE any remaining post path can try
+    // to register a new future. It also releases any workers currently
+    // stuck on fut.get() so they unwind cleanly.
+    repl_waiter.stop();
     if (hb_thr.joinable()) hb_thr.join();
     if (metrics_thr.joinable()) metrics_thr.join();
     if (mig_thr.joinable())     mig_thr.join();

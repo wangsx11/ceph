@@ -3,6 +3,8 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <mutex>
+#include <memory>
 
 namespace nr {
 
@@ -13,6 +15,12 @@ struct RdmaCore::Impl {
     struct ibv_srq*         srq  = nullptr;
     std::vector<ibv_cq*>    cqs;   // one per QP group
     std::vector<ibv_qp*>    qps;
+    // Per-QP post/poll mutexes. ibverbs SQ is NOT thread-safe: concurrent
+    // ibv_post_send on the same QP must be externally serialized. Likewise
+    // ibv_poll_cq is not safe to call from multiple threads on the same CQ.
+    // We use unique_ptr<mutex> so the container is stable even after resize.
+    std::vector<std::unique_ptr<std::mutex>> post_mu;
+    std::vector<std::unique_ptr<std::mutex>> poll_mu;
     union ibv_gid           local_gid{};
 
     bool open_device();
@@ -67,7 +75,13 @@ bool RdmaCore::Impl::create_pd_cqs_qps() {
     // One CQ per QP for simplicity; can share later for efficiency.
     cqs.resize(cfg.num_qp, nullptr);
     qps.resize(cfg.num_qp, nullptr);
+    post_mu.clear();
+    poll_mu.clear();
+    post_mu.reserve(cfg.num_qp);
+    poll_mu.reserve(cfg.num_qp);
     for (int i = 0; i < cfg.num_qp; ++i) {
+        post_mu.emplace_back(new std::mutex());
+        poll_mu.emplace_back(new std::mutex());
         cqs[i] = ibv_create_cq(ctx, cfg.cq_depth, nullptr, nullptr, 0);
         if (!cqs[i]) { NR_ERROR("ibv_create_cq failed"); return false; }
 
@@ -163,6 +177,7 @@ int RdmaCore::post_write(int qp_idx, const void* buf, size_t len, uint32_t lkey,
     wr.wr.rdma.remote_addr = remote_addr;
     wr.wr.rdma.rkey        = rkey;
     ibv_send_wr* bad = nullptr;
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
@@ -179,6 +194,7 @@ int RdmaCore::post_read(int qp_idx, void* buf, size_t len, uint32_t lkey,
     wr.wr.rdma.remote_addr = remote_addr;
     wr.wr.rdma.rkey        = rkey;
     ibv_send_wr* bad = nullptr;
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
@@ -193,6 +209,7 @@ int RdmaCore::post_send_inline(int qp_idx, const void* buf, size_t len,
     wr.opcode     = IBV_WR_SEND;
     wr.send_flags = IBV_SEND_INLINE | (signaled ? IBV_SEND_SIGNALED : 0);
     ibv_send_wr* bad = nullptr;
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
@@ -205,6 +222,7 @@ int RdmaCore::post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
     wr.sg_list = &sge;
     wr.num_sge = 1;
     ibv_recv_wr* bad = nullptr;
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_recv(impl_->qps[qp_idx], &wr, &bad);
 }
 
@@ -219,16 +237,19 @@ int RdmaCore::post_send(int qp_idx, const void* buf, size_t len, uint32_t lkey,
     wr.opcode     = IBV_WR_SEND;
     wr.send_flags = signaled ? IBV_SEND_SIGNALED : 0;
     ibv_send_wr* bad = nullptr;
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_send(impl_->qps[qp_idx], &wr, &bad);
 }
 
 int RdmaCore::post_send_batch(int qp_idx, ibv_send_wr* wr_list, ibv_send_wr** bad)
 {
+    std::lock_guard<std::mutex> lk(*impl_->post_mu[qp_idx]);
     return ibv_post_send(impl_->qps[qp_idx], wr_list, bad);
 }
 
 int RdmaCore::poll_cq(int cq_idx, ibv_wc* out, int max)
 {
+    std::lock_guard<std::mutex> lk(*impl_->poll_mu[cq_idx]);
     return ibv_poll_cq(impl_->cqs[cq_idx], max, out);
 }
 
