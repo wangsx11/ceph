@@ -6,6 +6,11 @@
 # so that we can push 1 MB payloads per request and saturate the RDMA link.
 # If the slab slot is too small, the test reports a skip and passes the knob
 # back to the caller via exit code 3.
+#
+# NOTE: the read side uses RPC_KV_GET_RAW (nr_bench --op=get-raw) so the
+# server actually serialises the full payload over the UDS back to the
+# client. The JSON-formatted RPC_KV_GET truncates the response to a 64-byte
+# preview and would grossly overstate read bandwidth.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BIN="$ROOT/build/bin/nr_bench"
@@ -32,7 +37,8 @@ raw_w=$(run_one put || true)
 echo "$raw_w" >&2
 j_w=$(echo "$raw_w" | python3 "$ROOT/tests/performance/parse_bench.py")
 
-raw_r=$(run_one get || true)
+# Read side: use get-raw so the UDS actually carries the whole payload.
+raw_r=$(run_one get-raw || true)
 echo "$raw_r" >&2
 j_r=$(echo "$raw_r" | python3 "$ROOT/tests/performance/parse_bench.py")
 

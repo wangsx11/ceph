@@ -58,7 +58,7 @@ METRIC_SUMMARY = {
     "perf_08": ("Simulation engine 1M events realtime",
         lambda r: f"speedup={r.get('speedup','?')}x "
                   f"({int(r.get('events_per_sec',0)):,} events/s, "
-                  f"{r.get('wall_s','?')}s wall)"),
+                  f"{r.get('wall_s','?')}s wall, stress={r.get('stress','?')})"),
     "perf_09": ("mempool overhead/savings/scale",
         lambda r: f"overhead={r.get('overhead_pct','?')}%, "
                   f"savings={r.get('savings_pct','?')}%, "

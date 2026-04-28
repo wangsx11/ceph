@@ -35,6 +35,7 @@ bool SimEngine::init(const Config& cfg) {
     if (cfg_.events   == 0) cfg_.events   = 1;
     if (cfg_.threads  == 0) cfg_.threads  = 1;
     if (cfg_.step_us  == 0) cfg_.step_us  = 1;
+    if (cfg_.stress   == 0) cfg_.stress   = 1;
     return true;
 }
 
@@ -58,13 +59,18 @@ SimEngine::Report SimEngine::run() {
         uint64_t seed = 0xC0FFEE00ULL ^ ((uint64_t)tid << 32) ^ n_events;
         uint64_t acc  = 0;
         const uint32_t ents = cfg_.entities;
+        const uint32_t stress = cfg_.stress;
         for (uint64_t i = 0; i < n_events; ++i) {
-            uint64_t r     = splitmix64(seed);
-            uint32_t eid   = (uint32_t)(r % ents);
-            // Integrate the entity's state: a cheap non-trivial op so the
-            // compiler can't elide the loop, and it touches memory.
-            uint64_t s     = world[eid].state;
-            s = (s * 6364136223846793005ULL) + (r | 1ULL);
+            uint64_t r   = splitmix64(seed);
+            uint32_t eid = (uint32_t)(r % ents);
+            uint64_t s   = world[eid].state;
+            // Each event does `stress` rounds of LCG state integration,
+            // modelling the inner cost of a real DES event handler
+            // (e.g. particle update, queue service).
+            for (uint32_t k = 0; k < stress; ++k) {
+                s = (s * 6364136223846793005ULL) + (r | 1ULL);
+                r = splitmix64(seed);
+            }
             world[eid].state  = s;
             world[eid].visits = world[eid].visits + 1;
             acc ^= s;

@@ -554,6 +554,37 @@ int main(int argc, char** argv) {
         resp->append("\"}");
     };
 
+    // RPC_KV_GET_RAW: like RPC_KV_GET but returns the full payload verbatim
+    // (no JSON encoding) so that nr_bench / perf_06 measurements reflect
+    // the real bytes transferred over the UDS back to the client.
+    // Wire: resp = [1 byte status][4 byte size][raw bytes ... size bytes]
+    //   status = 1: OK,  0: not found.
+    auto do_get_raw = [&](const std::string& body, std::string* resp) {
+        const std::string& k = body;
+        nr::ObjectMeta meta{};
+        if (!tier.get_meta_full(k, &meta)) {
+            resp->assign(5, '\0');  // status=0, size=0
+            return;
+        }
+        prefetcher.on_access(k);
+        uint32_t sz = meta.size;
+        if (meta.tier != nr::Tier::DRAM) {
+            void* slot = slab.alloc();
+            if (!slot) { resp->assign(5, '\0'); return; }
+            uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());
+            if (!tier.promote(k, slot, dram_off)) {
+                slab.free(slot); resp->assign(5, '\0'); return;
+            }
+            meta.offset = dram_off;
+        }
+        resp->resize(5 + sz);
+        (*resp)[0] = 1;   // ok
+        std::memcpy(&(*resp)[1], &sz, 4);
+        std::memcpy(&(*resp)[5], (char*)slab.base_addr() + meta.offset, sz);
+        ops_get.fetch_add(1);
+        bytes_rx_1s.fetch_add(sz);
+    };
+
     auto do_snapshot = [&](const std::string& body, std::string* resp) {
         std::string tag = body.empty() ? "snap" : body;
         std::error_code ec;
@@ -752,13 +783,14 @@ int main(int argc, char** argv) {
 
     // RPC_SIM_RUN: synchronously run the discrete-event SimEngine and return
     // its speedup/throughput report. Body is a '&'-separated list of k=v
-    // knobs, e.g. "entities=100000&events=1000000&threads=4".
+    // knobs, e.g. "entities=100000&events=1000000&threads=4&stress=32".
     auto do_sim_run = [&](const std::string& body, std::string* resp) {
         nr::SimEngine::Config c;
         c.entities = 100000;
         c.events   = 1000000;
         c.threads  = 4;
         c.step_us  = 10;
+        c.stress   = 32;
         auto parse_int = [&](const std::string& key) -> long long {
             auto p = body.find(key + "=");
             if (p == std::string::npos) return -1;
@@ -772,6 +804,7 @@ int main(int argc, char** argv) {
         if ((x = parse_int("events"))   > 0) c.events   = (uint64_t)x;
         if ((x = parse_int("threads"))  > 0) c.threads  = (uint32_t)x;
         if ((x = parse_int("step_us"))  > 0) c.step_us  = (uint32_t)x;
+        if ((x = parse_int("stress"))   > 0) c.stress   = (uint32_t)x;
 
         nr::SimEngine eng;
         eng.init(c);
@@ -779,10 +812,10 @@ int main(int argc, char** argv) {
         char buf[512];
         int n = std::snprintf(buf, sizeof(buf),
             "{\"ok\":true,\"entities\":%u,\"events\":%lu,\"threads\":%u,"
-            "\"step_us\":%u,\"wall_s\":%.6f,\"sim_s\":%.6f,"
+            "\"step_us\":%u,\"stress\":%u,\"wall_s\":%.6f,\"sim_s\":%.6f,"
             "\"speedup\":%.4f,\"events_per_sec\":%.0f}",
             r.entities, (unsigned long)r.events, c.threads, c.step_us,
-            r.wall_s, r.sim_s, r.speedup, r.events_per_sec);
+            c.stress, r.wall_s, r.sim_s, r.speedup, r.events_per_sec);
         resp->assign(buf, n);
     };
 
@@ -805,6 +838,7 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_KV_PUT_HI")  do_put(body, resp, /*high_prio*/true);
         else if (kind == "RPC_KV_PUT_LO")  do_put(body, resp, /*high_prio*/false);
         else if (kind == "RPC_KV_GET")   do_get(body, resp);
+        else if (kind == "RPC_KV_GET_RAW") do_get_raw(body, resp);
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);
         else if (kind == "RPC_TIER_STATS")  do_tier_stats(resp);
         else if (kind == "RPC_TIER_DEMOTE") do_tier_demote(body, resp);

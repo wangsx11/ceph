@@ -134,6 +134,12 @@ int main(int argc, char** argv) {
             if (o.op == "get") {
                 kind = "RPC_KV_GET";
                 // body: just the key
+            } else if (o.op == "get-raw") {
+                // Raw GET: server returns [1-byte status][4-byte size][payload]
+                // so the client's UDS read actually transfers the full bytes.
+                // Use this for bandwidth measurements (perf_06) where the
+                // JSON-formatted RPC_KV_GET response would under-count.
+                kind = "RPC_KV_GET_RAW";
             } else {
                 // PUT body: key \0 val
                 body.push_back('\0');

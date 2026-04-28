@@ -5,6 +5,14 @@
 #
 # We send RPC_SIM_RUN over the data plane's UDS. The DP spawns N worker
 # threads, runs the event loop, and returns a JSON report we pass through.
+#
+# Parameters (env):
+#   ENTITIES  default 100000 (spec §7 row #8 target scale)
+#   EVENTS    default 1000000
+#   THREADS   default 4
+#   STEP_US   default 10     (simulated us per event)
+#   STRESS    default 32     (inner LCG iterations per event: models real
+#                             DES per-event cost; ~150 ns of pure math)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 UDS="${UDS:-/tmp/native_rdma-dp.sock}"
@@ -12,6 +20,7 @@ ENTITIES="${ENTITIES:-100000}"
 EVENTS="${EVENTS:-1000000}"
 THREADS="${THREADS:-4}"
 STEP_US="${STEP_US:-10}"
+STRESS="${STRESS:-32}"
 OUT_DIR="${OUT_DIR:-$ROOT/logs/perf}"
 TS="$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
@@ -19,15 +28,15 @@ OUT="$OUT_DIR/perf_08_simulation_${TS}.json"
 
 [ -S "$UDS" ] || { echo "data plane not running (no $UDS)" >&2; exit 2; }
 
-echo ">>> perf#8 sim run: entities=$ENTITIES events=$EVENTS threads=$THREADS step_us=$STEP_US" >&2
+echo ">>> perf#8 sim run: entities=$ENTITIES events=$EVENTS threads=$THREADS step_us=$STEP_US stress=$STRESS" >&2
 
 # Talk the UDS wire protocol: [u32 kind_len][kind][u32 body_len][body] ->
 # [u32 resp_len][resp]. Python does struct packing + read.
-resp=$(python3 - "$UDS" "$ENTITIES" "$EVENTS" "$THREADS" "$STEP_US" <<'PY'
+resp=$(python3 - "$UDS" "$ENTITIES" "$EVENTS" "$THREADS" "$STEP_US" "$STRESS" <<'PY'
 import socket, struct, sys
-uds, ent, evt, thr, step = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])
+uds, ent, evt, thr, step, stress = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5]), int(sys.argv[6])
 kind = b"RPC_SIM_RUN"
-body = f"entities={ent}&events={evt}&threads={thr}&step_us={step}".encode()
+body = f"entities={ent}&events={evt}&threads={thr}&step_us={step}&stress={stress}".encode()
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.settimeout(600)   # sim may take tens of seconds for 10M events
 s.connect(uds)
@@ -66,6 +75,7 @@ result = {
     "events":       r.get("events", 0),
     "threads":      r.get("threads", 0),
     "step_us":      r.get("step_us", 0),
+    "stress":       r.get("stress", 0),
     "wall_s":       r.get("wall_s", 0),
     "sim_s":        r.get("sim_s", 0),
     "speedup":      speedup,

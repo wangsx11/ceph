@@ -6,20 +6,34 @@ namespace nr {
 // Discrete-event simulation engine: one instance per data-plane process.
 //
 // Models an N-entity, M-event workload where every event updates an
-// entity's numeric state, validates it, and feeds the result back into
-// the event pool. Matches docs/自研实施清单.md §7 row #8 requirement:
-// "100 万 events across 10 万 entities >= 1x realtime".
+// entity's numeric state and validates it. Matches docs/自研实施清单.md
+// §7 row #8 requirement: "100 万 events across 10 万 entities >= 1x
+// realtime".
 //
-// Realtime baseline: 1 simulated event takes `step_us` microseconds of
-// simulated time. A wall-clock 1x run means we finished
-// `events * step_us` us of simulated time in the same wall-clock budget.
+// ----- Semantics of the numbers reported -----
+// wall_s         : actual CPU wall-clock time to execute all events.
+// sim_s          : simulated wall-clock time = events * step_us / 1e6.
+//                  i.e., if every event corresponds to `step_us` us of
+//                  simulated time, sim_s is how long the scenario would
+//                  take in real time to play out.
+// speedup        : sim_s / wall_s. speedup > 1 means we finished the
+//                  scenario faster than realtime.
+// events_per_sec : raw compute throughput.
+//
+// `stress` controls how much per-event work we perform (number of LCG
+// iterations). With stress=1 the loop body is ~5 ns on modern x86 and the
+// reported speedup gets dominated by the step_us constant. Setting
+// stress=32 gives each event ~150 ns of pure arithmetic which makes the
+// throughput representative of real discrete-event workloads (particle,
+// Monte-Carlo, queueing).
 class SimEngine {
 public:
     struct Config {
         uint32_t entities = 100000;     // default: spec row #8 target
         uint64_t events   = 1000000;
-        uint32_t step_us  = 10;         // 10us per simulated tick
+        uint32_t step_us  = 10;         // simulated us per event
         uint32_t threads  = 4;          // parallel workers
+        uint32_t stress   = 32;         // per-event inner iterations
     };
     struct Report {
         uint32_t entities       = 0;
