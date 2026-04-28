@@ -28,6 +28,17 @@ struct Opt {
     int         val_size = 64;
     int         keyspace = 10000;      // rotating key id range
     std::string prio     = "";         // "hi" | "lo" | "" (default)
+    // Default key layout is per-thread ("bk_<tid>_<id>") so independent
+    // threads don't step on each other -- useful for measuring per-thread
+    // latency (perf_02) or QoS isolation (perf_03).
+    //
+    // For bandwidth tests (perf_06) we want a *shared* keyspace: the PUT
+    // phase writes keyspace=N unique keys, then the GET phase reads the
+    // same N keys regardless of thread count. Otherwise 16-thread warmup
+    // would create 16*N keys (= many GB at 1MB payload) and overflow the
+    // slab, leaving subsequent GETs missing -> bogus "high" read bandwidth
+    // reported because server replies are mostly 5-byte "not found".
+    bool        shared_keyspace = false;
 };
 
 static void parse(int argc, char** argv, Opt& o) {
@@ -43,6 +54,8 @@ static void parse(int argc, char** argv, Opt& o) {
         else if (k == "--val-size") o.val_size = std::stoi(v);
         else if (k == "--keyspace") o.keyspace = std::stoi(v);
         else if (k == "--prio")     o.prio = v;
+        else if (k == "--shared-keyspace") o.shared_keyspace =
+            (v.empty() || v == "1" || v == "true");
     }
 }
 
@@ -104,9 +117,10 @@ static inline uint64_t now_ns() {
 int main(int argc, char** argv) {
     Opt o; parse(argc, argv, o);
     std::printf("[nr_bench] uds=%s op=%s threads=%d duration=%ds "
-                "val_size=%d keyspace=%d prio=%s\n",
+                "val_size=%d keyspace=%d%s prio=%s\n",
                 o.uds.c_str(), o.op.c_str(), o.threads, o.duration,
                 o.val_size, o.keyspace,
+                o.shared_keyspace ? "(shared)" : "",
                 o.prio.empty() ? "default" : o.prio.c_str());
 
     std::atomic<bool> stop{false};
@@ -134,7 +148,20 @@ int main(int argc, char** argv) {
         body.reserve(64 + o.val_size);
         while (!stop.load(std::memory_order_relaxed)) {
             int key_id = (int)((tid * 1000003ULL + local_cnt) % (uint64_t)o.keyspace);
-            int kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d_%d", tid, key_id);
+            int kn;
+            if (o.shared_keyspace) {
+                // One global keyspace: key_id alone determines the key, so
+                // all threads (and all phases: PUT warmup + GET read) touch
+                // the same N objects. Bounded memory footprint = keyspace *
+                // val_size, which makes perf_06 reproducible without
+                // overflowing the slab.
+                kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d", key_id);
+            } else {
+                // Per-thread keyspace: each worker has its own cone of
+                // keys ("bk_<tid>_<id>"). Useful when we want threads not
+                // to contend on the same slab slot (perf_01/02/03).
+                kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d_%d", tid, key_id);
+            }
             body.clear();
             body.insert(body.end(), keybuf, keybuf + kn);
 

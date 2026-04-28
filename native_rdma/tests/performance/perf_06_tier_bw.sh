@@ -49,10 +49,20 @@ run_one() {
     local op=$1
     local dur=$2
     local th=$3
-    echo ">>> perf#6 op=$op threads=$th val=$VAL_SIZE keyspace=$KEYSPACE dur=${dur}s" >&2
+    echo ">>> perf#6 op=$op threads=$th val=$VAL_SIZE keyspace=$KEYSPACE(shared) dur=${dur}s" >&2
+    # --shared-keyspace is crucial: all threads (and all three phases --
+    # write, warmup, read) touch the SAME $KEYSPACE keys. Without this
+    # flag nr_bench prefixes each key with its thread id, so 16-thread
+    # warmup would create 16*$KEYSPACE distinct keys. At val_size=1MB
+    # and keyspace=512 that is 8GB -- it overflows a 4GB slab, leaves
+    # many PUTs failing with "slab oom", and the subsequent 8-thread
+    # GET phase reads a partly-populated keyspace => mostly misses =>
+    # read bandwidth is inflated by tiny "not found" replies. With
+    # shared-keyspace the footprint is fixed at $KEYSPACE * val_size
+    # (512 MB), well within any reasonable slab.
     "$BIN" --uds="$UDS" --op="$op" --threads="$th" \
            --val-size="$VAL_SIZE" --duration="$dur" \
-           --keyspace="$KEYSPACE" 2>&1
+           --keyspace="$KEYSPACE" --shared-keyspace=1 2>&1
 }
 
 # Phase 1: write throughput (16 threads to saturate RDMA link).
