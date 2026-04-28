@@ -196,6 +196,202 @@ def admin_flush():
     resp = uds_call("RPC_ADMIN_FLUSH")
     return resp, 200, {"Content-Type": "application/json"}
 
+# ============================================================
+# Demo APIs (W6): thin HTTP wrappers over the new data-plane RPCs
+# that the dashboard pages m7..m10 call from the browser.
+# Each group mirrors one functional requirement from docs/功能要求.md.
+# ============================================================
+
+# ---- m7: routing / consistent hash ----
+@app.route("/api/route/query")
+def route_query():
+    # GET /api/route/query?key=<...>
+    # Returns: {ok, key, primary, replica, local_is_primary, self}
+    key = request.args.get("key", "")
+    resp = uds_call("RPC_ROUTE_QUERY", key.encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/route/scan")
+def route_scan():
+    # GET /api/route/scan?prefix=demo_&count=20
+    # Convenience: fan-out RPC_ROUTE_QUERY over a batch of keys so the
+    # UI can render a sharding heat-map in a single request.
+    prefix = request.args.get("prefix", "demo_")
+    try: count = max(1, min(200, int(request.args.get("count", "20"))))
+    except ValueError: count = 20
+    results = []
+    for i in range(count):
+        k = f"{prefix}{i}"
+        raw = uds_call("RPC_ROUTE_QUERY", k.encode())
+        try: results.append(json.loads(raw.decode()))
+        except Exception: results.append({"ok": False, "key": k, "raw": raw.decode(errors="replace")})
+    return jsonify({"ok": True, "self": ROLE, "count": count, "items": results})
+
+# ---- m8: tenant isolation ACL ----
+@app.route("/api/iso/list")
+def iso_list():
+    resp = uds_call("RPC_ISO_LIST")
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/iso/allow", methods=["POST"])
+def iso_allow():
+    j = request.get_json(force=True)
+    tid  = int(j.get("tenant_id", 0))
+    pool = j.get("pool", "default/slab1k")
+    resp = uds_call("RPC_ISO_ALLOW", f"{tid} {pool}".encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/iso/deny", methods=["POST"])
+def iso_deny():
+    j = request.get_json(force=True)
+    tid  = int(j.get("tenant_id", 0))
+    pool = j.get("pool", "default/slab1k")
+    resp = uds_call("RPC_ISO_DENY", f"{tid} {pool}".encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/iso/kv_put", methods=["POST"])
+def iso_kv_put():
+    # Convenience: do a KV_PUT *with* a tenant prefix, so the demo UI
+    # can show "T7:key -> ALLOW / T7:key -> DENY" without having to
+    # build the wire body on the frontend.
+    j = request.get_json(force=True)
+    tid = int(j.get("tenant_id", 0))
+    key = j.get("key", "")
+    val = j.get("val", "")
+    body = f"T{tid}:{key}\x00{val}".encode()
+    resp = uds_call("RPC_KV_PUT", body)
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/iso/kv_get")
+def iso_kv_get():
+    tid = int(request.args.get("tenant_id", "0"))
+    key = request.args.get("key", "")
+    resp = uds_call("RPC_KV_GET", f"T{tid}:{key}".encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+# ---- m9: high availability / degraded mode ----
+# Peer control is strictly optional and disabled unless the operator
+# opts in explicitly via env vars -- we never bake IPs into the code.
+#   NR_PEER_SSH       (e.g. "user@peer.example.com")
+#   NR_PEER_DP_PATH   (absolute path to native_rdma_dp on the peer)
+#   NR_PEER_START_CMD (optional: full command used to start the peer DP)
+PEER_SSH       = os.environ.get("NR_PEER_SSH", "")
+PEER_DP_PATH   = os.environ.get("NR_PEER_DP_PATH", "")
+PEER_START_CMD = os.environ.get("NR_PEER_START_CMD", "")
+
+def _peer_ctl_ok() -> bool:
+    return bool(PEER_SSH) and bool(PEER_DP_PATH)
+
+@app.route("/api/ha/status")
+def ha_status():
+    # Mirror of /api/cluster/status but trimmed down to just the bits
+    # the HA demo page cares about: peer heartbeat, degraded counters.
+    raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
+    try: body = json.loads(raw)
+    except Exception: body = {"ok": False, "raw": raw}
+    body["self"]       = ROLE
+    body["dp_online"]  = is_dp_online()
+    body["peer_ctl"]   = _peer_ctl_ok()
+    return jsonify(body)
+
+def _ssh_run(cmd: str, timeout: float = 5.0) -> dict:
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes",
+             "-o", "ConnectTimeout=3",
+             "-o", "StrictHostKeyChecking=no",
+             PEER_SSH, cmd],
+            capture_output=True, text=True, timeout=timeout)
+        return {"ok": (out.returncode == 0), "rc": out.returncode,
+                "stdout": out.stdout, "stderr": out.stderr}
+    except Exception as e:
+        return {"ok": False, "err": str(e)}
+
+@app.route("/api/ha/kill_peer", methods=["POST"])
+def ha_kill_peer():
+    # Intentionally SIGKILL the peer data plane to demonstrate
+    # degraded-mode behavior. Requires NR_PEER_SSH + NR_PEER_DP_PATH.
+    if not _peer_ctl_ok():
+        return jsonify({"ok": False,
+                        "err": "peer control disabled: set NR_PEER_SSH and "
+                               "NR_PEER_DP_PATH before starting app.py"}), 400
+    # Match by full path so we don't accidentally kill our own ssh session.
+    r = _ssh_run(f"pkill -9 -f '{PEER_DP_PATH}'")
+    return jsonify({"ok": True, "action": "kill_peer", "ssh": r})
+
+@app.route("/api/ha/restore_peer", methods=["POST"])
+def ha_restore_peer():
+    # Best-effort restart via NR_PEER_START_CMD (a full shell command
+    # the operator chose at deploy time). If it's not set we just
+    # surface guidance rather than guessing arguments.
+    if not _peer_ctl_ok():
+        return jsonify({"ok": False,
+                        "err": "peer control disabled"}), 400
+    if not PEER_START_CMD:
+        return jsonify({"ok": False,
+                        "err": "NR_PEER_START_CMD not set; restore the peer "
+                               "manually with your start_node.sh equivalent"}), 400
+    r = _ssh_run(PEER_START_CMD, timeout=8.0)
+    return jsonify({"ok": True, "action": "restore_peer", "ssh": r})
+
+# ---- m10: in-run simulation capture ----
+@app.route("/api/sim/run", methods=["POST"])
+def sim_run():
+    # Body (JSON): entities, events, threads, step_us, stress, capture_every_n
+    j = request.get_json(force=True) or {}
+    parts = []
+    for k in ("entities", "events", "threads", "step_us", "stress",
+              "capture_every_n"):
+        if k in j: parts.append(f"{k}={int(j[k])}")
+    resp = uds_call("RPC_SIM_RUN", "&".join(parts).encode())
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/sim/capture/stats")
+def sim_cap_stats():
+    resp = uds_call("RPC_SIM_CAPTURE_STATS")
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/sim/capture/reset", methods=["POST"])
+def sim_cap_reset():
+    resp = uds_call("RPC_SIM_CAPTURE_RESET")
+    return resp, 200, {"Content-Type": "application/json"}
+
+@app.route("/api/sim/capture/wal_head")
+def sim_cap_wal_head():
+    # Returns the first N events decoded from the capture WAL so the UI
+    # can render a "what got captured" preview. Path is derived from
+    # the C++ default (<capture_dir>/sim_<role>.log); overridable via env.
+    cap_dir = os.environ.get("NR_SIM_CAPTURE_DIR", "/tmp/nr_sim_capture")
+    cap_tag = os.environ.get("NR_SIM_CAPTURE_TAG", ROLE)
+    path = os.path.join(cap_dir, f"sim_{cap_tag}.log")
+    try: limit = max(1, min(200, int(request.args.get("limit", "20"))))
+    except ValueError: limit = 20
+    out = {"ok": True, "path": path, "size": 0, "events": []}
+    if not os.path.exists(path):
+        out["ok"] = False
+        out["err"] = "wal not found"
+        return jsonify(out)
+    out["size"] = os.path.getsize(path)
+    # struct: ts_ns(Q) entity(Q) peer(Q) type(H) blob_len(H) reserved(I) = 32 B
+    HDR = struct.Struct("<QQQHHI")
+    with open(path, "rb") as f:
+        for _ in range(limit):
+            h = f.read(HDR.size)
+            if len(h) < HDR.size: break
+            ts_ns, eid, peer, t, blen, _r = HDR.unpack(h)
+            blob = f.read(blen)
+            out["events"].append({
+                "ts_ns":     ts_ns,
+                "entity_id": eid,
+                "peer_id":   peer,
+                "type":      t,
+                "type_name": {1: "ObjectAttr", 2: "InteractionEvent"}.get(t, f"type_{t}"),
+                "blob_len":  blen,
+                "blob_hex":  blob.hex(),
+            })
+    return jsonify(out)
+
 # ---------- Dashboard static serving ----------
 @app.route("/")
 def index():

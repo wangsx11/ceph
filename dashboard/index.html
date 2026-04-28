@@ -41,6 +41,12 @@
       <button class="sidebar-btn" onclick="goPage('m5',this)">⑤ 系统吞吐量测试</button>
       <button class="sidebar-btn" onclick="goPage('m6',this)">⑥ 分级存储</button>
       <div class="sidebar-sep"></div>
+      <div class="sidebar-section-label">功能演示</div>
+      <button class="sidebar-btn" onclick="goPage('m7',this)">⑦ 路由·负载均衡</button>
+      <button class="sidebar-btn" onclick="goPage('m8',this)">⑧ 租户隔离 ACL</button>
+      <button class="sidebar-btn" onclick="goPage('m9',this)">⑨ 高可靠降级</button>
+      <button class="sidebar-btn" onclick="goPage('m10',this)">⑩ 仿真运行时采集</button>
+      <div class="sidebar-sep"></div>
       <div class="sidebar-info">
         分布式存储集群<br>
         3 OSD · 3 MON<br>
@@ -55,6 +61,10 @@
       <div id="pg-m3" class="pg"></div>
       <div id="pg-m5" class="pg hidden"></div>
       <div id="pg-m6" class="pg hidden"></div>
+      <div id="pg-m7" class="pg hidden"></div>
+      <div id="pg-m8" class="pg hidden"></div>
+      <div id="pg-m9" class="pg hidden"></div>
+      <div id="pg-m10" class="pg hidden"></div>
     </div>
 
   </div>
@@ -75,10 +85,18 @@
   <script src="m3_sync.js"></script>
   <script src="m5_perf.js"></script>
   <script src="m6_tiering.js"></script>
+  <script src="m7_route.js"></script>
+  <script src="m8_isolation.js"></script>
+  <script src="m9_ha.js"></script>
+  <script src="m10_capture.js"></script>
   <script>
     renderM3();
     renderM5();
     renderM6();
+    renderM7();
+    renderM8();
+    renderM9();
+    renderM10();
     tick();
   </script>
 </body>
