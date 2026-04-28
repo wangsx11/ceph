@@ -35,29 +35,40 @@ OUT="$OUT_DIR/perf_06_tier_bw_${TS}.json"
 [ -x "$BIN" ] || { echo "nr_bench missing: $BIN" >&2; exit 2; }
 [ -S "$UDS" ] || { echo "data plane not running (no $UDS)" >&2; exit 2; }
 
+# PUT and GET have different bottlenecks at 1MB payload:
+#   * PUT is bottlenecked by RDMA WRITE round-trip latency to the peer --
+#     more concurrent writers -> more in-flight WRs on the wire -> higher
+#     aggregate bandwidth. 16 threads is empirically enough to saturate
+#     the 100 Gbps link.
+#   * GET is bottlenecked by UDS kernel-to-user copy; 8 threads already
+#     approaches the DDR-copy ceiling.
+PUT_THREADS="${PUT_THREADS:-16}"
+GET_THREADS="${GET_THREADS:-$THREADS}"
+
 run_one() {
     local op=$1
     local dur=$2
-    echo ">>> perf#6 op=$op threads=$THREADS val=$VAL_SIZE keyspace=$KEYSPACE dur=${dur}s" >&2
-    "$BIN" --uds="$UDS" --op="$op" --threads="$THREADS" \
+    local th=$3
+    echo ">>> perf#6 op=$op threads=$th val=$VAL_SIZE keyspace=$KEYSPACE dur=${dur}s" >&2
+    "$BIN" --uds="$UDS" --op="$op" --threads="$th" \
            --val-size="$VAL_SIZE" --duration="$dur" \
            --keyspace="$KEYSPACE" 2>&1
 }
 
-# Phase 1: write throughput.
-raw_w=$(run_one put "$DUR" || true)
+# Phase 1: write throughput (16 threads to saturate RDMA link).
+raw_w=$(run_one put "$DUR" "$PUT_THREADS" || true)
 echo "$raw_w" >&2
 j_w=$(echo "$raw_w" | python3 "$ROOT/tests/performance/parse_bench.py")
 
 # Phase 2 warmup: make sure every key in the keyspace has a 1MB value
 # so phase 3 GETs can hit. 3 seconds at ~1GB/s * 8 threads is several GB,
 # way more than KEYSPACE * 1MB = 512MB.
-raw_warm=$(run_one put 3 || true)
+raw_warm=$(run_one put 3 "$PUT_THREADS" || true)
 echo "(warmup complete)" >&2
 
 # Phase 3: read throughput (uses RPC_KV_GET_RAW which really transmits
 # the whole payload back to the client).
-raw_r=$(run_one get-raw "$DUR" || true)
+raw_r=$(run_one get-raw "$DUR" "$GET_THREADS" || true)
 echo "$raw_r" >&2
 j_r=$(echo "$raw_r" | python3 "$ROOT/tests/performance/parse_bench.py")
 
@@ -90,7 +101,12 @@ r_bw_gbs   = (r_rx_bytes / elapsed_r) / 1e9
 # overstated (miss inflation). If it sits above 1.05 something is wrong
 # in the accounting layer (e.g. bytes counter double-counting) and the
 # number should not be trusted.
-avg_resp = (r_rx_bytes / rops) if rops > 0 else 0
+# NB: divide by ops_ok (the total count) NOT ops_per_sec -- the latter
+# already divides by elapsed_s and would produce a 10x-inflated avg_resp
+# for a 10-second run.
+rops_total = int(jr.get("ops_ok", 0))
+rops_per_s = float(jr.get("ops_per_sec", 0))
+avg_resp = (r_rx_bytes / rops_total) if rops_total > 0 else 0
 hit_ratio = avg_resp / vsz if vsz > 0 else 0
 hit_lo, hit_hi = 0.95, 1.05
 
@@ -107,7 +123,8 @@ result = {
     "write_ops":  wops,
     "write_tx_bytes": w_tx_bytes,
     "write_gbs":  round(w_bw_gbs, 3),
-    "read_ops":   rops,
+    "read_ops":   rops_per_s,
+    "read_ops_total": rops_total,
     "read_rx_bytes":  r_rx_bytes,
     "read_gbs":   round(r_bw_gbs, 3),
     "read_avg_resp_bytes": int(avg_resp),
