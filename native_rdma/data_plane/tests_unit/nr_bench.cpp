@@ -27,6 +27,7 @@ struct Opt {
     int         duration = 10;         // seconds
     int         val_size = 64;
     int         keyspace = 10000;      // rotating key id range
+    std::string prio     = "";         // "hi" | "lo" | "" (default)
 };
 
 static void parse(int argc, char** argv, Opt& o) {
@@ -41,6 +42,7 @@ static void parse(int argc, char** argv, Opt& o) {
         else if (k == "--duration") o.duration = std::stoi(v);
         else if (k == "--val-size") o.val_size = std::stoi(v);
         else if (k == "--keyspace") o.keyspace = std::stoi(v);
+        else if (k == "--prio")     o.prio = v;
     }
 }
 
@@ -96,9 +98,10 @@ static inline uint64_t now_ns() {
 int main(int argc, char** argv) {
     Opt o; parse(argc, argv, o);
     std::printf("[nr_bench] uds=%s op=%s threads=%d duration=%ds "
-                "val_size=%d keyspace=%d\n",
+                "val_size=%d keyspace=%d prio=%s\n",
                 o.uds.c_str(), o.op.c_str(), o.threads, o.duration,
-                o.val_size, o.keyspace);
+                o.val_size, o.keyspace,
+                o.prio.empty() ? "default" : o.prio.c_str());
 
     std::atomic<bool> stop{false};
     std::atomic<uint64_t> ops_done{0};
@@ -107,6 +110,11 @@ int main(int argc, char** argv) {
 
     // Pre-generate a value buffer.
     std::string val(o.val_size, 'X');
+
+    // Build suffix once; worker threads can just append it to the RPC kind.
+    std::string prio_suffix;
+    if (o.prio == "hi")      prio_suffix = "_HI";
+    else if (o.prio == "lo") prio_suffix = "_LO";
 
     auto worker = [&](int tid) {
         int fd = uds_connect(o.uds);
@@ -122,7 +130,7 @@ int main(int argc, char** argv) {
             body.clear();
             body.insert(body.end(), keybuf, keybuf + kn);
 
-            const char* kind = "RPC_KV_PUT";
+            std::string kind = "RPC_KV_PUT";
             if (o.op == "get") {
                 kind = "RPC_KV_GET";
                 // body: just the key
@@ -141,9 +149,12 @@ int main(int argc, char** argv) {
                     kind = "RPC_KV_GET";
                 }
             }
+            // QoS: append priority suffix so the data plane can pick a
+            // dedicated QP for hi-prio traffic vs rate-limited lo-prio.
+            kind += prio_suffix;
 
             uint64_t t0 = now_ns();
-            bool ok = rpc_call(fd, kind, body.data(), body.size());
+            bool ok = rpc_call(fd, kind.c_str(), body.data(), body.size());
             uint64_t dt = now_ns() - t0;
             if (ok) {
                 ops_done.fetch_add(1, std::memory_order_relaxed);

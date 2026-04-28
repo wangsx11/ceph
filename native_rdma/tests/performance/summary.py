@@ -40,6 +40,11 @@ METRIC_SUMMARY = {
                   if isinstance(r.get('samples'), int)
                   else f"avg={r.get('lat_avg_us','?')}us "
                        f"p99={r.get('lat_p99_us','?')}us"),
+    "perf_03": ("QoS high/low priority gain",
+        lambda r: f"hi={int(r.get('hi_ops',0)):,} ops/s vs "
+                  f"lo={int(r.get('lo_ops',0)):,} ops/s, "
+                  f"gain={r.get('gain_pct','?')}% "
+                  f"(threshold {r.get('threshold_gain_pct','?')}%)"),
     "perf_04": ("batch latency",
         lambda r: f"1000x100={r.get('batches_1000x100_ms','?')}ms, "
                   f"100x1000={r.get('batches_100x1000_ms','?')}ms"),
@@ -50,18 +55,21 @@ METRIC_SUMMARY = {
         lambda r: (f"write {r.get('write_gbs','?')} GB/s, "
                    f"read {r.get('read_gbs','?')} GB/s"
                    + (f"  ({r.get('note')})" if r.get('note') else ""))),
+    "perf_08": ("Simulation engine 1M events realtime",
+        lambda r: f"speedup={r.get('speedup','?')}x "
+                  f"({int(r.get('events_per_sec',0)):,} events/s, "
+                  f"{r.get('wall_s','?')}s wall)"),
     "perf_09": ("mempool overhead/savings/scale",
         lambda r: f"overhead={r.get('overhead_pct','?')}%, "
                   f"savings={r.get('savings_pct','?')}%, "
                   f"scale={r.get('scale_gain_pct','?')}%"),
 }
 
-# Non-yet-implemented metrics; keep them in the matrix as TODO so the report
-# still reflects the full target list from docs/自研实施清单.md §7.
-METRIC_TODO = {
-    "perf_03": ("QoS high/low priority gain",           "pending: nr_bench --prio flag"),
-    "perf_08": ("Simulation engine 1M events realtime", "pending: sim_engine driver"),
-}
+# Non-yet-implemented metrics; kept in the matrix as TODO so reports still
+# reflect the full target list from docs/自研实施清单.md §7. Currently all
+# metrics have at least a driver; this map is empty so the matrix shows
+# the real PASS/FAIL state for every row.
+METRIC_TODO = {}
 
 
 def find_latest(dir_path: str, prefix: str) -> Optional[str]:

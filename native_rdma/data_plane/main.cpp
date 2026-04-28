@@ -14,6 +14,7 @@
 #include "qos/qos_sched.h"
 #include "batch/batch_aggregator.h"
 #include "replication/heartbeat.h"
+#include "sim/sim_engine.h"
 #include "api/uds_server.h"
 #include "api/metrics_agent.h"
 
@@ -423,7 +424,7 @@ int main(int argc, char** argv) {
     });
 
     // 9) UDS RPC handlers
-    auto do_put = [&](const std::string& body, std::string* resp) {
+    auto do_put = [&](const std::string& body, std::string* resp, bool high_prio) {
         std::string k, v;
         if (!parse_put_body(body, &k, &v)) {
             *resp = "{\"ok\":false,\"err\":\"bad put body\"}"; return;
@@ -431,6 +432,9 @@ int main(int argc, char** argv) {
         if (v.size() > slab.slot_size()) {
             *resp = "{\"ok\":false,\"err\":\"value too large\"}"; return;
         }
+        // QoS accounting: refill low-prio tokens (actual throttling happens
+        // via QP selection + separate poll core).
+        qos.on_submit(high_prio);
         // Fast path: try to speculatively allocate a slab slot for a new
         // key, then commit under a single TierEngine critical section. If
         // the key already existed, we just free back the speculation and
@@ -458,7 +462,11 @@ int main(int argc, char** argv) {
         // Replicate to peer at the SAME offset so primary & backup indices align.
         uint64_t remote_addr = peer.slab_base + off;
         uint64_t t0 = nr::now_ns();
-        int rc = core.post_write(QP_REPL, slot, v.size(), slab.lkey(),
+        // QoS: pick a QP from the hi group for high-prio PUTs and from the
+        // lo group otherwise. Hi gets exclusive QPs (less contention) and
+        // its own CQ polling core.
+        int qp_idx = qos.pick_qp(high_prio);
+        int rc = core.post_write(qp_idx, slot, v.size(), slab.lkey(),
                                  remote_addr, peer.slab_rkey,
                                  /*imm*/0, /*wr_id*/0xC0000000 | (off & 0xFFFFFFF),
                                  /*signaled*/true);
@@ -466,7 +474,7 @@ int main(int argc, char** argv) {
         if (repl_ok) {
             ibv_wc wc;
             while (true) {
-                int n = core.poll_cq(QP_REPL, &wc, 1);
+                int n = core.poll_cq(qp_idx, &wc, 1);
                 if (n < 0) { repl_ok = false; break; }
                 if (n == 0) continue;
                 repl_ok = (wc.status == IBV_WC_SUCCESS);
@@ -736,6 +744,42 @@ int main(int argc, char** argv) {
         resp->assign(buf, n);
     };
 
+    // RPC_SIM_RUN: synchronously run the discrete-event SimEngine and return
+    // its speedup/throughput report. Body is a '&'-separated list of k=v
+    // knobs, e.g. "entities=100000&events=1000000&threads=4".
+    auto do_sim_run = [&](const std::string& body, std::string* resp) {
+        nr::SimEngine::Config c;
+        c.entities = 100000;
+        c.events   = 1000000;
+        c.threads  = 4;
+        c.step_us  = 10;
+        auto parse_int = [&](const std::string& key) -> long long {
+            auto p = body.find(key + "=");
+            if (p == std::string::npos) return -1;
+            p += key.size() + 1;
+            auto e = body.find('&', p);
+            std::string v = body.substr(p, e == std::string::npos ? body.size()-p : e-p);
+            try { return std::stoll(v); } catch (...) { return -1; }
+        };
+        long long x;
+        if ((x = parse_int("entities")) > 0) c.entities = (uint32_t)x;
+        if ((x = parse_int("events"))   > 0) c.events   = (uint64_t)x;
+        if ((x = parse_int("threads"))  > 0) c.threads  = (uint32_t)x;
+        if ((x = parse_int("step_us"))  > 0) c.step_us  = (uint32_t)x;
+
+        nr::SimEngine eng;
+        eng.init(c);
+        auto r = eng.run();
+        char buf[512];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"entities\":%u,\"events\":%lu,\"threads\":%u,"
+            "\"step_us\":%u,\"wall_s\":%.6f,\"sim_s\":%.6f,"
+            "\"speedup\":%.4f,\"events_per_sec\":%.0f}",
+            r.entities, (unsigned long)r.events, c.threads, c.step_us,
+            r.wall_s, r.sim_s, r.speedup, r.events_per_sec);
+        resp->assign(buf, n);
+    };
+
     nr::UdsServer uds;
     uds.set_handler([&](const std::string& kind, const std::string& body,
                         std::string* resp) {
@@ -751,7 +795,9 @@ int main(int argc, char** argv) {
                 (unsigned)peer.qpns.size());
             resp->assign(buf, n);
         }
-        else if (kind == "RPC_KV_PUT")   do_put(body, resp);
+        else if (kind == "RPC_KV_PUT")     do_put(body, resp, /*high_prio*/true);
+        else if (kind == "RPC_KV_PUT_HI")  do_put(body, resp, /*high_prio*/true);
+        else if (kind == "RPC_KV_PUT_LO")  do_put(body, resp, /*high_prio*/false);
         else if (kind == "RPC_KV_GET")   do_get(body, resp);
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);
         else if (kind == "RPC_TIER_STATS")  do_tier_stats(resp);
@@ -759,6 +805,7 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_PREFETCH_STATS") do_prefetch_stats(body, resp);
         else if (kind == "RPC_COMPRESS_STATS") do_compress_stats(resp);
         else if (kind == "RPC_ADMIN_FLUSH")    do_admin_flush(resp);
+        else if (kind == "RPC_SIM_RUN")        do_sim_run(body, resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }

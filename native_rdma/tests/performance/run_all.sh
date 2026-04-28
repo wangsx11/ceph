@@ -20,8 +20,10 @@ mkdir -p "$ROOT/logs/perf"
 declare -a SCRIPTS=(
     "perf_01_ops_1kb.sh"
     "perf_02_latency.sh"
+    "perf_03_qos.sh"
     "perf_04_batch_latency.sh"
     "perf_05_batch_bw.sh"
+    "perf_08_simulation.sh"
     "perf_09_mempool.sh"
     # perf_06_tier_bw.sh requires SLAB_SLOT_SIZE>=1MB at DP startup; opt-in
     # via TEST_TIER_BW=1 so run_all.sh doesn't fail on a 1KB-slot deployment.
