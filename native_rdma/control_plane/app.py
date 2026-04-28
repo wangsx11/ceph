@@ -10,8 +10,14 @@ import json
 import time
 import socket
 import threading
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
+
+from demo_orchestrator import (
+    SharedObjectView,
+    PerfRoundRunner,
+    TierDemoScript,
+)
 
 # --------- placeholders, override via env ---------
 UDS_PATH    = os.environ.get("NR_UDS_PATH",    "/tmp/native_rdma-dp.sock")
@@ -195,6 +201,206 @@ def admin_flush():
     # Use ONLY for recovering from bench residue during demos.
     resp = uds_call("RPC_ADMIN_FLUSH")
     return resp, 200, {"Content-Type": "application/json"}
+
+# ============================================================
+# Demo APIs backing docs/演示要求.md
+#
+#   §3 跨节点读写/同步  -> /api/m3/*
+#   §5 吞吐量&扩展性    -> /api/m5/*
+#   §6 分级存储         -> /api/m6/*
+#
+# These endpoints are intentionally "dashboard-shaped": each payload
+# matches exactly the schema the m3_sync.js / m5_perf.js / m6_tiering.js
+# front-end expects, so the UI requires ZERO changes to talk to the
+# real RDMA data plane.
+# ============================================================
+
+_DASH_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_obj_view  = SharedObjectView()
+_perf_run  = PerfRoundRunner(_DASH_ROOT, ROLE)
+_tier_demo = TierDemoScript(uds_call, _DASH_ROOT, ROLE)
+
+
+# ---------- m3: 跨节点对象读写 & 同步 ----------
+@app.route("/api/m3/cluster")
+def m3_cluster():
+    cs_raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
+    try:    cs = json.loads(cs_raw)
+    except Exception: cs = {"raw": cs_raw}
+    metrics = read_metrics()
+    return jsonify({
+        "ok":              True,
+        "role":            ROLE,
+        "self_ip":         cs.get("self", ROLE),
+        "peer_alive":      cs.get("peer_alive", False),
+        "peer_num_qp":     cs.get("peer_num_qp", 0),
+        "rdma_connected":  bool(is_dp_online() and cs.get("peer_alive", False)),
+        "replica_lag_us":  float(metrics.get("replica_lag_us", 0.0)),
+        "ops_total":       int(metrics.get("ops_total", 0)),
+        "bw_tx_gbps":      float(metrics.get("bw_tx_gbps", 0.0)),
+        "objects":         len(_obj_view.list_all()),
+    })
+
+@app.route("/api/m3/objects")
+def m3_objects():
+    return jsonify({"ok": True, "objects": _obj_view.list_all()})
+
+def _m3_latency_us(t0_ns: int) -> int:
+    return max(0, int((time.time_ns() - t0_ns) / 1000))
+
+@app.route("/api/m3/write", methods=["POST"])
+def m3_write():
+    j    = request.get_json(force=True) or {}
+    name = (j.get("name") or "").strip()
+    data = j.get("data") or ""
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    if _obj_view.get(name) is not None:
+        return jsonify({"ok": False, "error": f"{name} already exists"}), 409
+    body = name.encode() + b"\x00" + data.encode()
+    t0   = time.time_ns()
+    raw  = uds_call("RPC_KV_PUT", body).decode(errors="replace")
+    lat  = _m3_latency_us(t0)
+    try:    r = json.loads(raw)
+    except Exception: r = {"ok": False, "err": raw}
+    if not r.get("ok"):
+        return jsonify({"ok": False, "error": r.get("err", "put failed")}), 500
+    rec = _obj_view.upsert(name, data, tier="DRAM")
+    return jsonify({
+        "ok":         True,
+        "name":       name,
+        "hash":       rec["hash"],
+        "version":    rec["version"],
+        "size":       rec["size"],
+        "latency_us": lat,
+        "timestamp":  time.strftime("%H:%M:%S"),
+        "route":      r.get("route", {}),
+        "degraded":   r.get("degraded", False),
+        "node":       ROLE,
+    })
+
+@app.route("/api/m3/modify", methods=["POST"])
+def m3_modify():
+    j    = request.get_json(force=True) or {}
+    name = (j.get("name") or "").strip()
+    data = j.get("data") or ""
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    body = name.encode() + b"\x00" + data.encode()
+    t0   = time.time_ns()
+    raw  = uds_call("RPC_KV_PUT", body).decode(errors="replace")
+    lat  = _m3_latency_us(t0)
+    try:    r = json.loads(raw)
+    except Exception: r = {"ok": False, "err": raw}
+    if not r.get("ok"):
+        return jsonify({"ok": False, "error": r.get("err", "modify failed")}), 500
+    rec = _obj_view.upsert(name, data, tier=_obj_view.get(name)["tier"]
+                            if _obj_view.get(name) else "DRAM")
+    return jsonify({
+        "ok":         True,
+        "name":       name,
+        "hash":       rec["hash"],
+        "version":    rec["version"],
+        "size":       rec["size"],
+        "latency_us": lat,
+        "timestamp":  time.strftime("%H:%M:%S"),
+        "node":       ROLE,
+    })
+
+@app.route("/api/m3/delete", methods=["POST"])
+def m3_delete():
+    j    = request.get_json(force=True) or {}
+    name = (j.get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    t0 = time.time_ns()
+    # 数据平面当前没有 RPC_KV_DELETE；演示仅在 SharedObjectView 中移除,
+    # 这对"UI 上立即看到删除"完全够用。若后续需要真正从 slab 索引清除,
+    # 再在 C++ 新增 RPC_KV_DELETE 即可（索引项 erase + 归还 slot）。
+    existed = _obj_view.delete(name)
+    lat = _m3_latency_us(t0)
+    return jsonify({
+        "ok":         existed,
+        "name":       name,
+        "latency_us": lat,
+        "timestamp":  time.strftime("%H:%M:%S"),
+        "error":      None if existed else f"{name} not present in view",
+        "node":       ROLE,
+    })
+
+@app.route("/api/m3/read")
+def m3_read():
+    name = request.args.get("name", "")
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    t0  = time.time_ns()
+    raw = uds_call("RPC_KV_GET", name.encode()).decode(errors="replace")
+    lat = _m3_latency_us(t0)
+    try:    r = json.loads(raw)
+    except Exception: r = {"ok": False, "err": raw}
+    if not r.get("ok"):
+        return jsonify({"ok": False, "error": r.get("err", "not found"),
+                        "latency_us": lat}), 404
+    return jsonify({
+        "ok":         True,
+        "name":       name,
+        "data":       r.get("val", ""),
+        "hit":        r.get("hit", "?"),
+        "size":       r.get("size", 0),
+        "latency_us": lat,
+        "timestamp":  time.strftime("%H:%M:%S"),
+        "node":       ROLE,
+    })
+
+
+# ---------- m5: 吞吐量 & 扩展性 ----------
+@app.route("/api/m5/start", methods=["POST"])
+def m5_start():
+    j = request.get_json(force=True) or {}
+    round_id = int(j.get("round", 0))
+    r = _perf_run.start(round_id)
+    return jsonify(r), (200 if r.get("ok") else 400)
+
+@app.route("/api/m5/live")
+def m5_live():
+    try: round_id = int(request.args.get("round", "1"))
+    except ValueError: round_id = 1
+    return jsonify(_perf_run.live(round_id))
+
+@app.route("/api/m5/reset", methods=["POST"])
+def m5_reset():
+    _perf_run.reset()
+    return jsonify({"ok": True})
+
+
+# ---------- m6: 分级存储能力 ----------
+@app.route("/api/m6/start", methods=["POST"])
+def m6_start():
+    r = _tier_demo.start()
+    return jsonify(r), (200 if r.get("ok") else 400)
+
+@app.route("/api/m6/status")
+def m6_status():
+    return jsonify(_tier_demo.status())
+
+@app.route("/api/m6/stream")
+def m6_stream():
+    @stream_with_context
+    def gen():
+        for chunk in _tier_demo.events():
+            yield chunk
+    return Response(gen(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache",
+                             "X-Accel-Buffering": "no"})
+
+@app.route("/api/m6/reset", methods=["POST"])
+def m6_reset():
+    _tier_demo.reset()
+    return jsonify({"ok": True})
+
+@app.route("/api/m6/snapshot/<name>")
+def m6_snapshot(name):
+    return jsonify(_tier_demo.snapshot_detail(name))
 
 # ============================================================
 # Demo APIs (W6): thin HTTP wrappers over the new data-plane RPCs

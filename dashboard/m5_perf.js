@@ -1,6 +1,6 @@
 // ============================================================
 // m5_perf.js — 模块五：系统吞吐量及实体数量增加对性能影响
-// 调用真实后端API (Flask + Ceph聚合写入 / RADOS严格基线)
+// 调用真实后端API (Flask + native_rdma 分布式共享空间)
 // 使用轮询实时拉取性能数据
 // ============================================================
 
@@ -24,7 +24,7 @@ function renderM5() {
         <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">系统吞吐量与扩展性测试</div>
         <div class="ctrl-status ${perfRunning ? 'running' : perfRound > 0 ? 'done' : 'idle'}">
           <div class="dot ${perfRunning ? 'dot-pulse' : ''}" style="background:${perfRunning ? '#00e888' : '#5a7a96'};width:6px;height:6px"></div>
-          ${perfRunning ? 'Ceph聚合写入中...' : perfRound > 0 ? `已完成${perfRound}轮` : '就绪'}
+          ${perfRunning ? 'RDMA 分布式写入中...' : perfRound > 0 ? `已完成${perfRound}轮` : '就绪'}
         </div>
       </div>
 
@@ -43,8 +43,8 @@ function renderM5() {
       </div>
 
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:8px;font-family:'Share Tech Mono',monospace;background:#0d1b2a;padding:8px;border-radius:4px">
-        执行: 双节点真实Ceph聚合写入 | 1KB逻辑对象打包为RADOS segment | 每轮12秒<br>
-        后端: librados aio_write_full 完成计时 | Pool: perf_pool | 展示真实逻辑吞吐与延迟分布
+        执行: 双节点真实 RDMA 分布式共享空间写入 | 1KB 逻辑对象进行跨节点复制 | 每轮 12 秒<br>
+        后端: nr_bench + native_rdma_dp | Pool: default/slab1k | 展示真实 RDMA 逻辑吞吐与延迟分布
       </div>
       <div class="ctrl-row">
         <button class="btn btn-round-1 btn-sm" onclick="startPerfRound(1)" ${perfRound >= 1 || perfRunning ? 'disabled' : ''}>▶ 第一轮: 1万对象</button>
@@ -67,11 +67,10 @@ function renderM5() {
       ${renderPerfTable()}
     </div></div>
     <div class="card" style="margin-top:14px">${chead('指标注释', '📖')}<div class="card-body" style="font-size:1.1rem;color:#7a95b0;line-height:1.8">
-      <b style="color:#c0d8f0">Ceph聚合写入</b> - 真实写入Ceph，IOPS按1KB逻辑对象折算 |
-      <b style="color:#c0d8f0">平均延迟</b> - 每个1KB逻辑对象在聚合批次内的摊销完成时间 |
-      <b style="color:#c0d8f0">P99延迟</b> - 性能要求项，目标≤100μs，来自真实Ceph聚合写入耗时
-    </div></div>`;
-}
+      <b style="color:#c0d8f0">RDMA 分布式写入</b> - 真实跨节点 RDMA WRITE，IOPS 按 1KB 逻辑对象统计 |
+      <b style="color:#c0d8f0">平均延迟</b> - 每个 PUT 包含本地写入 + 跨节点复制 + ACK |
+      <b style="color:#c0d8f0">P99 延迟</b> - 性能要求项，目标 ≤ 100μs，来自真实 shm 采样
+    </div></div>`;}
 
 function renderPerfChart(type) {
   const w = 480, h = 150, pad = 35;
@@ -211,7 +210,7 @@ async function startPerfRound(round) {
     const res = await fetch(`${PERF_API}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ round, mode: 'ceph_aggregate' }),
+      body: JSON.stringify({ round, mode: 'rdma_shared' }),
     });
     const data = await res.json();
     if (!data.ok) {
@@ -242,10 +241,10 @@ function startPerfPolling(round) {
 
       // 显示当前阶段
       const statusEl = document.querySelector('.ctrl-status');
-      if (statusEl && (data.phase === 'preparing_ceph_aggregate' || data.phase === 'queued_ceph_aggregate')) {
-        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#ffb020;width:6px;height:6px"></div>准备Ceph聚合写入...`;
-      } else if (statusEl && data.phase === 'testing_ceph_aggregate') {
-        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#00e888;width:6px;height:6px"></div>真实Ceph聚合写入测试中...`;
+      if (statusEl && (data.phase === 'preparing_rdma_shared' || data.phase === 'queued_rdma_shared')) {
+        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#ffb020;width:6px;height:6px"></div>准备 RDMA 共享写入...`;
+      } else if (statusEl && data.phase === 'testing_rdma_shared') {
+        statusEl.innerHTML = `<div class="dot dot-pulse" style="background:#00e888;width:6px;height:6px"></div>真实 RDMA 分布式共享写入测试中...`;
       }
 
       // 更新曲线数据

@@ -21,7 +21,7 @@
     </div>
     <div style="display:flex;align-items:center;gap:14px">
       <span class="h-tag" style="color:#00e888;background:#00e88815;border:1px solid #00e88830">RDMA 跨节点</span>
-      <span class="h-tag" style="color:#00d0f0;background:#00d0f015;border:1px solid #00d0f030">3节点在线</span>
+      <span class="h-tag" style="color:#00d0f0;background:#00d0f015;border:1px solid #00d0f030">2 节点在线</span>
       <span id="clock" class="h-clock"></span>
     </div>
   </header>
@@ -48,11 +48,11 @@
       <button class="sidebar-btn" onclick="goPage('m10',this)">⑩ 仿真运行时采集</button>
       <div class="sidebar-sep"></div>
       <div class="sidebar-info">
-        分布式存储集群<br>
-        3 OSD · 3 MON<br>
-        RDMA: async+rdma<br>
-        Public: 10.26.42.0/24<br>
-        Cluster: 192.168.0.0/24
+        native_rdma 分布式共享空间<br>
+        2 节点 · A=primary · B=replica<br>
+        RDMA: RoCEv2 (mlx5_0)<br>
+        Control: TCP/18515 (OOB)<br>
+        Data: RDMA WRITE+READ<br>
       </div>
     </nav>
 
@@ -72,14 +72,32 @@
   <!-- ===== SCRIPTS ===== -->
   <script>
     // 双节点部署配置
-    window.API_BASE_A = 'http://127.0.0.1:5000';
-    window.API_BASE_B = 'http://127.0.0.1:5001';
-    // 兼容单节点模式
-    window.API_BASE = window.API_BASE_A;
-    // 获取指定节点的API地址
-    window.getNodeAPI = function (node) {
-      return node === 'A' ? window.API_BASE_A : window.API_BASE_B;
-    };
+    //   ?a=host:port  覆盖节点 A 的 Flask 地址
+    //   ?b=host:port  覆盖节点 B 的 Flask 地址
+    // 未指定时：
+    //   A = 当前页面所在 host:port（即提供 index.html 的那个 Flask）
+    //   B = 同 host、端口 5001（本机双 Flask 场景）
+    // 生产环境通常：
+    //   http://nodeA:5000/?b=nodeB:5000
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const origin = location.origin;          // e.g. http://192.168.0.218:5000
+      const defHost = location.hostname;
+      const qA = params.get('a');
+      const qB = params.get('b');
+      window.API_BASE_A = qA
+        ? (qA.startsWith('http') ? qA : 'http://' + qA)
+        : origin;
+      window.API_BASE_B = qB
+        ? (qB.startsWith('http') ? qB : 'http://' + qB)
+        : 'http://' + defHost + ':5001';
+      window.API_BASE = window.API_BASE_A;
+      window.getNodeAPI = function (node) {
+        return node === 'A' ? window.API_BASE_A : window.API_BASE_B;
+      };
+      console.log('[dashboard] API_BASE_A =', window.API_BASE_A,
+                  'API_BASE_B =', window.API_BASE_B);
+    })();
   </script>
   <script src="utils.js"></script>
   <script src="m3_sync.js"></script>
