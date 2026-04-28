@@ -84,16 +84,21 @@ r_rx_bytes = int(jr.get("resp_bytes", 0))   # GET: server->client payload
 w_bw_gbs   = (w_tx_bytes / elapsed_w) / 1e9
 r_bw_gbs   = (r_rx_bytes / elapsed_r) / 1e9
 
-# Sanity: what fraction of GET responses look full-size? If <80%, the
-# hit ratio is too low and the bandwidth is not meaningful.
+# Sanity: what fraction of GET responses look full-size? A healthy run
+# has avg_resp ≈ val_size + 5B header ⇒ hit_ratio ≈ 1.000005. If it drops
+# below 0.95 we probably got "not found" replies and bandwidth is
+# overstated (miss inflation). If it sits above 1.05 something is wrong
+# in the accounting layer (e.g. bytes counter double-counting) and the
+# number should not be trusted.
 avg_resp = (r_rx_bytes / rops) if rops > 0 else 0
 hit_ratio = avg_resp / vsz if vsz > 0 else 0
+hit_lo, hit_hi = 0.95, 1.05
 
 skipped = (wops == 0 and wfail > 0)
 passed = (not skipped) \
     and (w_bw_gbs >= 10.0) \
     and (r_bw_gbs >= 20.0) \
-    and (hit_ratio >= 0.80)    # reject the test if GETs mostly missed
+    and (hit_lo <= hit_ratio <= hit_hi)
 
 result = {
     "metric":     "perf_06_tier_bw",
@@ -106,14 +111,18 @@ result = {
     "read_rx_bytes":  r_rx_bytes,
     "read_gbs":   round(r_bw_gbs, 3),
     "read_avg_resp_bytes": int(avg_resp),
-    "read_hit_ratio":      round(hit_ratio, 3),
-    "thresholds": {"write_gbs": 10.0, "read_gbs": 20.0, "min_hit_ratio": 0.80},
+    "read_hit_ratio":      round(hit_ratio, 4),
+    "thresholds": {"write_gbs": 10.0, "read_gbs": 20.0,
+                   "hit_ratio_min": hit_lo, "hit_ratio_max": hit_hi},
     "passed":     bool(passed),
     "note":       ("slab_slot_size too small, payload rejected; "
                    "restart data plane with SLAB_SLOT_SIZE=1048576 SLAB_TOTAL_BYTES=4294967296"
                    if skipped else
-                   ("LOW HIT RATIO %.2f: GETs mostly missed, bandwidth not trustworthy"
-                    % hit_ratio if hit_ratio < 0.80 else "")),
+                   ("LOW HIT RATIO %.4f: GETs mostly missed, bandwidth overstated"
+                    % hit_ratio if hit_ratio < hit_lo else
+                    ("ANOMALOUS HIT RATIO %.4f: avg_resp is %d B vs val_size %d B -- "
+                     "suspect accounting bug, bandwidth not trustworthy"
+                     % (hit_ratio, int(avg_resp), vsz) if hit_ratio > hit_hi else ""))),
     "raw_put":    jw,
     "raw_get":    jr,
 }
