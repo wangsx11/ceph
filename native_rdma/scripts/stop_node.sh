@@ -8,15 +8,23 @@
 # silently leave a zombie DP running (observed during W5: stop_node reported
 # success over ssh but `pgrep` later still returned the old PID because the
 # first SIGTERM arrived during post_send and was ignored).
+#
+# IMPORTANT: match on 'build/bin/native_rdma_dp' (the full executable path
+# fragment) instead of bare 'native_rdma_dp'. When this script is invoked
+# via `ssh host "pkill -f native_rdma_dp"`, the remote login shell's own
+# command line contains the literal string "native_rdma_dp" and pkill would
+# happily kill itself, severing the session before it actually gets to the
+# real DP process. Using the build path fragment avoids the self-match.
 set -u
-pkill -TERM -f 'native_rdma_dp' 2>/dev/null || true
+MATCH='build/bin/native_rdma_dp'
+pkill -TERM -f "$MATCH" 2>/dev/null || true
 for _ in 1 2 3 4 5; do
-    pgrep -f 'native_rdma_dp' >/dev/null || break
+    pgrep -f "$MATCH" >/dev/null || break
     sleep 0.5
 done
-pkill -KILL -f 'native_rdma_dp' 2>/dev/null || true
+pkill -KILL -f "$MATCH" 2>/dev/null || true
 for _ in 1 2 3 4 5; do
-    pgrep -f 'native_rdma_dp' >/dev/null || break
+    pgrep -f "$MATCH" >/dev/null || break
     sleep 0.5
 done
 
@@ -24,7 +32,7 @@ done
 rm -f /tmp/native_rdma-dp.sock /tmp/native_rdma-metrics.shm 2>/dev/null || true
 
 # Sanity check: report any leftover PIDs so the caller can tell.
-leftover=$(pgrep -af 'native_rdma_dp' || true)
+leftover=$(pgrep -af "$MATCH" || true)
 if [ -n "$leftover" ]; then
     echo "[stop_node] WARNING: DP processes still running after KILL:"
     echo "$leftover"
