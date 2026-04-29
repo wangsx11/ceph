@@ -10,6 +10,9 @@ import json
 import time
 import socket
 import threading
+import urllib.request
+import urllib.error
+from typing import Any, Dict
 from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 
@@ -203,16 +206,14 @@ def admin_flush():
     return resp, 200, {"Content-Type": "application/json"}
 
 # ============================================================
-# Demo APIs backing docs/演示要求.md
+# 演示用 REST (重写版, 对应 docs/演示要求.md 三条演示项)
 #
-#   §3 跨节点读写/同步  -> /api/m3/*
-#   §5 吞吐量&扩展性    -> /api/m5/*
-#   §6 分级存储         -> /api/m6/*
+#   §3 跨节点对象读写/同步   -> /api/demo3/*
+#   §5 吞吐量 & 扩展性        -> /api/demo5/*
+#   §6 分级存储能力           -> /api/demo6/*
 #
-# These endpoints are intentionally "dashboard-shaped": each payload
-# matches exactly the schema the m3_sync.js / m5_perf.js / m6_tiering.js
-# front-end expects, so the UI requires ZERO changes to talk to the
-# real RDMA data plane.
+# 同时提供 /api/peer/* 反向代理到 PEER_URL（A->B 或 B->A），
+# 这样前端**始终只打本端 Flask**，完全绕开浏览器跨源/CORS 问题。
 # ============================================================
 
 _DASH_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -220,67 +221,112 @@ _obj_view  = SharedObjectView()
 _perf_run  = PerfRoundRunner(_DASH_ROOT, ROLE)
 _tier_demo = TierDemoScript(uds_call, _DASH_ROOT, ROLE)
 
+# peer url: 由 env 注入，例如 "http://192.168.0.214:5001"
+PEER_URL = os.environ.get("NR_PEER_URL", "")
 
-# ---------- m3: 跨节点对象读写 & 同步 ----------
-@app.route("/api/m3/cluster")
-def m3_cluster():
-    cs_raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
-    try:    cs = json.loads(cs_raw)
-    except Exception: cs = {"raw": cs_raw}
-    metrics = read_metrics()
-    return jsonify({
+
+def _peer_get(path: str) -> tuple:
+    """Fetch <PEER_URL><path> and return (body_bytes, status, content_type)."""
+    if not PEER_URL:
+        return (b'{"ok":false,"error":"NR_PEER_URL not set"}',
+                503, "application/json")
+    url = PEER_URL.rstrip("/") + path
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=3) as r:
+            return (r.read(), r.status,
+                    r.headers.get("Content-Type", "application/json"))
+    except urllib.error.HTTPError as e:
+        return (e.read() or f'{{"ok":false,"error":"peer {e.code}"}}'.encode(),
+                e.code, "application/json")
+    except Exception as e:
+        return (f'{{"ok":false,"error":"peer unreachable: {e}"}}'.encode(),
+                502, "application/json")
+
+
+def _peer_post(path: str, body_json: Any) -> tuple:
+    if not PEER_URL:
+        return (b'{"ok":false,"error":"NR_PEER_URL not set"}',
+                503, "application/json")
+    url = PEER_URL.rstrip("/") + path
+    data = json.dumps(body_json or {}).encode()
+    try:
+        req = urllib.request.Request(
+            url, data=data, method="POST",
+            headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return (r.read(), r.status,
+                    r.headers.get("Content-Type", "application/json"))
+    except urllib.error.HTTPError as e:
+        return (e.read() or f'{{"ok":false,"error":"peer {e.code}"}}'.encode(),
+                e.code, "application/json")
+    except Exception as e:
+        return (f'{{"ok":false,"error":"peer unreachable: {e}"}}'.encode(),
+                502, "application/json")
+
+
+# ---------- Generic peer reverse proxy ----------
+@app.route("/api/peer/<path:rest>", methods=["GET", "POST"])
+def peer_proxy(rest):
+    """Forward the request to PEER_URL with the same sub-path.
+    Keeps the browser origin single, so no CORS preflight, no mixed-content.
+
+    GET  /api/peer/demo3/cluster  -> GET  $PEER_URL/api/demo3/cluster
+    POST /api/peer/demo3/write    -> POST $PEER_URL/api/demo3/write (body forwarded)
+    """
+    # 保留查询串
+    qs = request.query_string.decode() if request.query_string else ""
+    target = "/api/" + rest + (("?" + qs) if qs else "")
+    if request.method == "GET":
+        body, status, ct = _peer_get(target)
+    else:
+        body, status, ct = _peer_post(target, request.get_json(silent=True) or {})
+    return body, status, {"Content-Type": ct}
+
+
+# ============================================================
+# §3  跨节点对象读写 / 同步
+# ============================================================
+def _cluster_core() -> Dict[str, Any]:
+    raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
+    try:    cs = json.loads(raw)
+    except Exception: cs = {"raw": raw}
+    m = read_metrics()
+    return {
         "ok":              True,
         "role":            ROLE,
-        "self_ip":         cs.get("self", ROLE),
-        "peer_alive":      cs.get("peer_alive", False),
-        "peer_num_qp":     cs.get("peer_num_qp", 0),
+        "self_ip":         cs.get("self", "?"),
+        "peer_alive":      bool(cs.get("peer_alive", False)),
+        "peer_num_qp":     int(cs.get("peer_num_qp", 0) or 0),
         "rdma_connected":  bool(is_dp_online() and cs.get("peer_alive", False)),
-        "replica_lag_us":  float(metrics.get("replica_lag_us", 0.0)),
-        "ops_total":       int(metrics.get("ops_total", 0)),
-        "bw_tx_gbps":      float(metrics.get("bw_tx_gbps", 0.0)),
-        "objects":         len(_obj_view.list_all()),
-    })
+        "dp_online":       is_dp_online(),
+        "degraded_puts":   int(cs.get("degraded_puts", 0) or 0),
+        "degraded_bytes":  int(cs.get("degraded_bytes", 0) or 0),
+        "metrics":         m,
+        "replica_lag_us":  float(m.get("replica_lag_us", 0.0) or 0.0),
+        "objects_here":    len(_obj_view.list_all()),
+    }
 
-@app.route("/api/m3/objects")
-def m3_objects():
-    return jsonify({"ok": True, "objects": _obj_view.list_all()})
 
-def _m3_latency_us(t0_ns: int) -> int:
+@app.route("/api/demo3/cluster")
+def demo3_cluster():
+    return jsonify(_cluster_core())
+
+
+@app.route("/api/demo3/objects")
+def demo3_objects():
+    return jsonify({"ok": True,
+                    "role":    ROLE,
+                    "count":   len(_obj_view.list_all()),
+                    "objects": _obj_view.list_all()})
+
+
+def _lat_us(t0_ns: int) -> int:
     return max(0, int((time.time_ns() - t0_ns) / 1000))
 
-@app.route("/api/m3/write", methods=["POST"])
-def m3_write():
-    j    = request.get_json(force=True) or {}
-    name = (j.get("name") or "").strip()
-    data = j.get("data") or ""
-    if not name:
-        return jsonify({"ok": False, "error": "name required"}), 400
-    if _obj_view.get(name) is not None:
-        return jsonify({"ok": False, "error": f"{name} already exists"}), 409
-    body = name.encode() + b"\x00" + data.encode()
-    t0   = time.time_ns()
-    raw  = uds_call("RPC_KV_PUT", body).decode(errors="replace")
-    lat  = _m3_latency_us(t0)
-    try:    r = json.loads(raw)
-    except Exception: r = {"ok": False, "err": raw}
-    if not r.get("ok"):
-        return jsonify({"ok": False, "error": r.get("err", "put failed")}), 500
-    rec = _obj_view.upsert(name, data, tier="DRAM")
-    return jsonify({
-        "ok":         True,
-        "name":       name,
-        "hash":       rec["hash"],
-        "version":    rec["version"],
-        "size":       rec["size"],
-        "latency_us": lat,
-        "timestamp":  time.strftime("%H:%M:%S"),
-        "route":      r.get("route", {}),
-        "degraded":   r.get("degraded", False),
-        "node":       ROLE,
-    })
 
-@app.route("/api/m3/modify", methods=["POST"])
-def m3_modify():
+@app.route("/api/demo3/write", methods=["POST"])
+def demo3_write():
     j    = request.get_json(force=True) or {}
     name = (j.get("name") or "").strip()
     data = j.get("data") or ""
@@ -289,117 +335,174 @@ def m3_modify():
     body = name.encode() + b"\x00" + data.encode()
     t0   = time.time_ns()
     raw  = uds_call("RPC_KV_PUT", body).decode(errors="replace")
-    lat  = _m3_latency_us(t0)
+    lat  = _lat_us(t0)
     try:    r = json.loads(raw)
-    except Exception: r = {"ok": False, "err": raw}
+    except Exception: r = {"ok": False, "err": raw[:200]}
     if not r.get("ok"):
-        return jsonify({"ok": False, "error": r.get("err", "modify failed")}), 500
-    rec = _obj_view.upsert(name, data, tier=_obj_view.get(name)["tier"]
-                            if _obj_view.get(name) else "DRAM")
+        return jsonify({"ok": False, "error": r.get("err", "put failed"),
+                        "latency_us": lat}), 500
+    rec = _obj_view.upsert(name, data, via="write",
+                           extra={"repl_ns": r.get("repl_ns"),
+                                  "degraded": bool(r.get("degraded", False)),
+                                  "route": r.get("route", {})})
     return jsonify({
-        "ok":         True,
-        "name":       name,
-        "hash":       rec["hash"],
-        "version":    rec["version"],
-        "size":       rec["size"],
-        "latency_us": lat,
-        "timestamp":  time.strftime("%H:%M:%S"),
-        "node":       ROLE,
+        "ok":          True,
+        "op":          "write",
+        "name":        name,
+        "size":        rec["size"],
+        "hash":        rec["hash"],
+        "version":     rec["version"],
+        "latency_us":  lat,
+        "repl_ns":     r.get("repl_ns", 0),
+        "degraded":    rec.get("degraded", False),
+        "route":       r.get("route", {}),
+        "node":        ROLE,
+        "ts":          rec["ts"],
     })
 
-@app.route("/api/m3/delete", methods=["POST"])
-def m3_delete():
+
+@app.route("/api/demo3/modify", methods=["POST"])
+def demo3_modify():
+    # 等同 write；单独路由是为了让事件日志里区分操作类型
     j    = request.get_json(force=True) or {}
     name = (j.get("name") or "").strip()
+    data = j.get("data") or ""
     if not name:
         return jsonify({"ok": False, "error": "name required"}), 400
-    t0 = time.time_ns()
-    # 数据平面当前没有 RPC_KV_DELETE；演示仅在 SharedObjectView 中移除,
-    # 这对"UI 上立即看到删除"完全够用。若后续需要真正从 slab 索引清除,
-    # 再在 C++ 新增 RPC_KV_DELETE 即可（索引项 erase + 归还 slot）。
-    existed = _obj_view.delete(name)
-    lat = _m3_latency_us(t0)
+    body = name.encode() + b"\x00" + data.encode()
+    t0   = time.time_ns()
+    raw  = uds_call("RPC_KV_PUT", body).decode(errors="replace")
+    lat  = _lat_us(t0)
+    try:    r = json.loads(raw)
+    except Exception: r = {"ok": False, "err": raw[:200]}
+    if not r.get("ok"):
+        return jsonify({"ok": False, "error": r.get("err", "modify failed"),
+                        "latency_us": lat}), 500
+    rec = _obj_view.upsert(name, data, via="modify",
+                           extra={"repl_ns": r.get("repl_ns")})
     return jsonify({
-        "ok":         existed,
+        "ok":         True,
+        "op":         "modify",
         "name":       name,
+        "size":       rec["size"],
+        "hash":       rec["hash"],
+        "version":    rec["version"],
         "latency_us": lat,
-        "timestamp":  time.strftime("%H:%M:%S"),
-        "error":      None if existed else f"{name} not present in view",
+        "repl_ns":    r.get("repl_ns", 0),
         "node":       ROLE,
+        "ts":         rec["ts"],
     })
 
-@app.route("/api/m3/read")
-def m3_read():
-    name = request.args.get("name", "")
+
+@app.route("/api/demo3/read")
+def demo3_read():
+    name = request.args.get("name", "").strip()
     if not name:
         return jsonify({"ok": False, "error": "name required"}), 400
     t0  = time.time_ns()
     raw = uds_call("RPC_KV_GET", name.encode()).decode(errors="replace")
-    lat = _m3_latency_us(t0)
+    lat = _lat_us(t0)
     try:    r = json.loads(raw)
-    except Exception: r = {"ok": False, "err": raw}
+    except Exception: r = {"ok": False, "err": raw[:200]}
     if not r.get("ok"):
         return jsonify({"ok": False, "error": r.get("err", "not found"),
-                        "latency_us": lat}), 404
+                        "latency_us": lat, "node": ROLE}), 404
+    hit = r.get("hit", "?")
+    _obj_view.touch(name, hit, lat)
     return jsonify({
         "ok":         True,
+        "op":         "read",
         "name":       name,
         "data":       r.get("val", ""),
-        "hit":        r.get("hit", "?"),
+        "hit":        hit,                    # local / remote / nvme / hdd
         "size":       r.get("size", 0),
         "latency_us": lat,
-        "timestamp":  time.strftime("%H:%M:%S"),
         "node":       ROLE,
+        "ts":         time.strftime("%H:%M:%S"),
     })
 
 
-# ---------- m5: 吞吐量 & 扩展性 ----------
-@app.route("/api/m5/start", methods=["POST"])
-def m5_start():
+@app.route("/api/demo3/delete", methods=["POST"])
+def demo3_delete():
+    j    = request.get_json(force=True) or {}
+    name = (j.get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    existed = _obj_view.delete(name)
+    return jsonify({"ok": existed, "op": "delete", "name": name,
+                    "node": ROLE, "ts": time.strftime("%H:%M:%S"),
+                    "error": None if existed else "not present in local view"})
+
+
+@app.route("/api/demo3/flush", methods=["POST"])
+def demo3_flush():
+    # 在 §3 演示开始前调用；同时 flush DP 和本端视图
+    try: uds_call("RPC_ADMIN_FLUSH")
+    except Exception: pass
+    _obj_view.clear()
+    return jsonify({"ok": True, "node": ROLE})
+
+
+# ============================================================
+# §5  吞吐量 & 扩展性
+# ============================================================
+@app.route("/api/demo5/start", methods=["POST"])
+def demo5_start():
     j = request.get_json(force=True) or {}
-    round_id = int(j.get("round", 0))
+    try: round_id = int(j.get("round", 0))
+    except (TypeError, ValueError): round_id = 0
     r = _perf_run.start(round_id)
     return jsonify(r), (200 if r.get("ok") else 400)
 
-@app.route("/api/m5/live")
-def m5_live():
-    try: round_id = int(request.args.get("round", "1"))
-    except ValueError: round_id = 1
-    return jsonify(_perf_run.live(round_id))
+@app.route("/api/demo5/live")
+def demo5_live():
+    try: rid = int(request.args.get("round", "1"))
+    except ValueError: rid = 1
+    return jsonify(_perf_run.live(rid))
 
-@app.route("/api/m5/reset", methods=["POST"])
-def m5_reset():
+@app.route("/api/demo5/snapshot")
+def demo5_snapshot():
+    # 一次性拉回所有轮次 + 本端当前 shm 即时指标（用于页首"实时指标"区）
+    s = _perf_run.snapshot_all()
+    s["metrics"] = read_metrics()
+    s["node"]    = ROLE
+    return jsonify(s)
+
+@app.route("/api/demo5/reset", methods=["POST"])
+def demo5_reset():
     _perf_run.reset()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "node": ROLE})
 
 
-# ---------- m6: 分级存储能力 ----------
-@app.route("/api/m6/start", methods=["POST"])
-def m6_start():
+# ============================================================
+# §6  分级存储能力
+# ============================================================
+@app.route("/api/demo6/start", methods=["POST"])
+def demo6_start():
     r = _tier_demo.start()
     return jsonify(r), (200 if r.get("ok") else 400)
 
-@app.route("/api/m6/status")
-def m6_status():
+@app.route("/api/demo6/status")
+def demo6_status():
     return jsonify(_tier_demo.status())
 
-@app.route("/api/m6/stream")
-def m6_stream():
+@app.route("/api/demo6/stream")
+def demo6_stream():
     @stream_with_context
     def gen():
-        for chunk in _tier_demo.events():
+        for chunk in _tier_demo.stream():
             yield chunk
     return Response(gen(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache",
                              "X-Accel-Buffering": "no"})
 
-@app.route("/api/m6/reset", methods=["POST"])
-def m6_reset():
+@app.route("/api/demo6/reset", methods=["POST"])
+def demo6_reset():
     _tier_demo.reset()
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "node": ROLE})
 
-@app.route("/api/m6/snapshot/<name>")
-def m6_snapshot(name):
+@app.route("/api/demo6/snapshot/<name>")
+def demo6_snapshot(name):
     return jsonify(_tier_demo.snapshot_detail(name))
 
 # ============================================================

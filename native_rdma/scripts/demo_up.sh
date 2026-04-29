@@ -131,10 +131,16 @@ fi
 
 # 6) 启动 Flask 控制面
 say "启动 Flask (port=$FLASK_PORT, role=$ROLE)"
+# 对端 Flask URL 根据约定：A 端默认 5000，B 端默认 5001；对端端口取"反向"默认值
+PEER_FLASK_PORT=$([ "$ROLE" = "A" ] && echo 5001 || echo 5000)
+PEER_URL="http://${PEER_IP}:${PEER_FLASK_PORT}"
+say "  peer url = $PEER_URL （将作为反向代理目标注入 Flask）"
+
 NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
 NR_UDS_PATH=/tmp/native_rdma-dp.sock \
 NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
 NR_DASH_DIR="$ROOT/../dashboard" \
+NR_PEER_URL="$PEER_URL" \
     nohup python3 "$ROOT/control_plane/app.py" \
     > "logs/cp_${ROLE}.stdout.log" 2>&1 &
 CP_PID=$!
@@ -165,12 +171,12 @@ ${C_GRN}════════════════════════
 ${C_GRN}═══════════════════════════════════════════════════════════════${C_RST}
 
   ➤ 本端 Flask:   http://${SELF_IP}:${FLASK_PORT}/
-  ➤ Dashboard:    http://${SELF_IP}:${FLASK_PORT}/?b=${PEER_IP}:$([ "$ROLE" = "A" ] && echo 5001 || echo 5000)
-                  (URL 里的 ?b=<peer-host:port> 告诉前端 B 节点的 Flask 在哪)
+  ➤ Dashboard:    http://${SELF_IP}:${FLASK_PORT}/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
 
   ➤ 健康检查:
-      curl -s http://${SELF_IP}:${FLASK_PORT}/api/m3/cluster   | python3 -m json.tool
-      curl -s http://${SELF_IP}:${FLASK_PORT}/api/cluster/status | python3 -m json.tool
+      curl -s http://${SELF_IP}:${FLASK_PORT}/api/demo3/cluster | python3 -m json.tool
+      curl -s http://${SELF_IP}:${FLASK_PORT}/api/peer/demo3/cluster | python3 -m json.tool
 
   ➤ 停止本端栈:
       bash scripts/demo_down.sh
