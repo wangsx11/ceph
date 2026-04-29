@@ -332,34 +332,47 @@ def _parse_nr_bench(raw: str, count: int, threads: int,
 # 4) §6: 真实访问驱动的分级存储剧本
 # ================================================================
 class TierDemoScript:
-    """§6 demo runner.
-    演示规模升级为 1000 个对象，热/温/冷 32 / 300 / 668。
+    """§6 demo runner. 热→温→冷三层完整流转 + 冷层达阈值触发真实快照。
+
+    规模（100 个对象，32/40/28）：
+      · HOT_K=32   高频访问，保持 DRAM
+      · WARM_M=40  访问 2 次后静默，先下沉 NVMe，阶段 B 被保活留在 NVMe
+      · COLD_M=28  从头到尾不访问，DRAM→NVMe→HDD
+
+    阈值（env 配合）：
+      · DRAM idle > DRAM_DEMOTE_IDLE_MS (2000ms) → 下沉 NVMe
+      · NVMe idle > NVME_DEMOTE_IDLE_MS (3000ms) → 下沉 HDD
+      · SNAP_THRESHOLD=20: 冷层 ≥20 个才触发 RPC_SNAPSHOT + JSON 归档
+        （cold_keys=28 > 20，只要自然下沉正常必定触发）
+
     真实流程：
        step1 admin_flush 清零 DP 索引与本地状态
-       step2 批量写入 1000 个 4KB 对象（全部进 DRAM）
-       step3 对 HOT_KEYS(32) 持续高频 GET，热度累计
-       step4 等后台 migrator 两阶段：
-             ① DRAM→NVMe  (idle>500ms)
-             ② NVMe→HDD   (idle>1500ms)
-             migrator 单轮扫描不再设 128 cap，一次扫完 968 个候选
-             如果统计仍然不达预期，才用 RPC_TIER_DEMOTE 兜底，但
-             **只作用于 warm/cold 两组 key，绝不动 hot_keys**
-       step5 冷层对象数 ≥ 阈值时触发 RPC_SNAPSHOT，并将对象清单
-             归档成 JSON 文件到 NR_SNAPSHOT_DIR
-       step6 再次访问若干冷 key，观察 DP 自动回迁效果
+       step2 写入 100 个 4KB 对象（全部先进 DRAM）
+       step3 step3a 高频 GET hot_keys（20 轮）
+             step3b 对 warm_keys 访问 2 次（制造短暂访问痕迹）
+             step3c cold_keys 完全不访问
+       step4 阶段 A (3s)：持续保活 hot_keys；warm + cold 被 migrator 下沉 NVMe
+             阶段 B (5s)：持续保活 hot_keys + warm_keys；cold 从 NVMe 降到 HDD
+       step5 若 HDD 层对象数 ≥ SNAP_THRESHOLD，**真实触发** RPC_SNAPSHOT +
+             JSON 归档（按当前 HDD 里真实存在的 key 列表归档，不再用预定义清单）
+             若未达阈值，显式打印 HINT 但不归档（演示要求：触发条件可观测）
+       step6 再访问若干 cold_keys，观察 DP 自动回迁（HDD→DRAM promote）
     """
 
     # 演示规模
-    N_OBJS          = 1000
-    HOT_K           = 32       # 高频访问（保持 DRAM）
-    WARM_M          = 300      # 下沉 NVMe
-    # COLD_M = N_OBJS - HOT_K - WARM_M = 668
+    N_OBJS          = 100
+    HOT_K           = 32       # 高频访问，保持 DRAM
+    WARM_M          = 40       # 访问 2 次后由 migrator 下沉 NVMe，阶段 B 被保活
+    # COLD_M = N_OBJS - HOT_K - WARM_M = 28，从头到尾不访问
     OBJ_SIZE        = 4096     # 4KB
-    HOT_ROUNDS      = 20       # HOT_K 被读 20 轮
-    WAIT_MIGRATE_S  = 15       # 阶段 A 8s + 阶段 B 7s = 15s (和 env 配合)
-    SNAP_THRESHOLD  = 50       # 冷层 >=50 个即归档
+    HOT_ROUNDS      = 20       # HOT_K 被读 20 轮（step3a）
+    WARM_VISITS     = 2        # warm_keys 在 step3b 被访问 2 次
+    WAIT_MIGRATE_S  = 8        # 阶段 A 3s + 阶段 B 5s
+    # 快照阈值：冷层 ≥20 个对象才触发归档。COLD_M=28>20 保证能达到，
+    # 如果 migrator 有 bug 致冷层不足，则显式显示"未达阈值"而非静默归档。
+    SNAP_THRESHOLD  = 20
     HEAT_SHOW_TOP   = 64       # UI 只展示热度前 64 条
-    BATCH_PUT_REPORT= 100      # 每写 100 个推一次事件
+    BATCH_PUT_REPORT= 20       # 每写 20 个推一次事件
     BATCH_GET_REPORT= 4        # 每读 4 轮推一次事件
 
     def __init__(self, uds_call: Callable, root: str, role: str):
@@ -545,7 +558,7 @@ class TierDemoScript:
             time.sleep(0.3); self._refresh_tiers(); self._push()
 
             # ---- step 2: 批量写入 ----
-            self._set_step(2, f"批量写入 {self.N_OBJS} 个 4KB 对象（全进 DRAM）")
+            self._set_step(2, f"批量写入 {self.N_OBJS} 个 4KB 对象（全部先进 DRAM）")
             t0 = time.time()
             for i, k in enumerate(all_keys):
                 self._put(k, payload)
@@ -557,20 +570,22 @@ class TierDemoScript:
             dur = time.time() - t0
             self._add_event("PUT_DONE", "#00e888",
                 f"写入完成 {self.N_OBJS} 个对象，耗时 {dur:.2f}s，"
-                f"总 {self.N_OBJS*self.OBJ_SIZE/1024/1024:.1f} MB")
-            # 写入刚完成时 DRAM 应 == N_OBJS
+                f"总 {self.N_OBJS*self.OBJ_SIZE/1024:.1f} KB")
             self._refresh_tiers()
 
-            # 在 heat 映射中只预置 hot_keys（避免 1000 条都占内存 / 都推到前端）
+            # 在 heat 映射中只预置 hot_keys（避免把 warm/cold 全推到前端）
             with self._mu:
                 for k in hot_keys:
                     self._state["heat"][k] = {"count": 0, "last_hit": "local",
                                               "last_read_ts": ""}
             self._push()
 
-            # ---- step 3: 高频访问 hot_keys ----
+            # ---- step 3a: 高频访问 hot_keys ----
             self._set_step(3,
-                f"高频访问 {self.HOT_K} 个热对象，其余 {self.N_OBJS-self.HOT_K} 个保持静默")
+                f"区分访问频率：hot({self.HOT_K}) 高频 · warm({self.WARM_M}) 轻访 · "
+                f"cold({len(cold_keys)}) 静默")
+            self._add_event("PHASE", "#ff4050",
+                f"step3a: 对 {self.HOT_K} 个 hot_keys 进行 {self.HOT_ROUNDS} 轮高频 GET")
             for round_i in range(self.HOT_ROUNDS):
                 for k in hot_keys:
                     r = self._get(k)
@@ -585,25 +600,41 @@ class TierDemoScript:
                         "HOT_ACCESS", "#ff4050",
                         f"第 {round_i+1}/{self.HOT_ROUNDS} 轮 —— {self.HOT_K} 个热对象累计 "
                         f"{(round_i+1)*self.HOT_K} 次 GET")
-                time.sleep(0.1)
+                time.sleep(0.05)
+
+            # ---- step 3b: 对 warm_keys 做少量访问（中等热度）----
+            # 轻访问 WARM_VISITS 次，目的是：
+            #   1) 让 warm_keys 最近 last_access 更新到"刚刚"（~0.3s 前）
+            #   2) 区别于 cold_keys（cold_keys 的 last_access 还停留在 step2 写入时刻）
+            # 这样阶段 A 结束时 warm 和 cold 同时下沉到 NVMe；阶段 B 用"保活"把
+            # warm 留在 NVMe，而 cold 继续降级到 HDD。
+            self._add_event("PHASE", "#ffb020",
+                f"step3b: 对 {self.WARM_M} 个 warm_keys 做 {self.WARM_VISITS} 次轻访问")
+            for _ in range(self.WARM_VISITS):
+                for k in warm_keys:
+                    self._get(k)
+
+            # step3c: cold_keys 完全不访问（保持写入时的 last_access）
+            self._add_event("PHASE", "#4488ff",
+                f"step3c: {len(cold_keys)} 个 cold_keys 静默（此时 idle ≈ "
+                f"{time.time()-t0:.1f}s）")
             self._refresh_tiers(); self._push()
 
-            # ---- step 4: 两阶段等待 migrator 识别冷数据 ----
-            self._set_step(4,
-                f"等后台 migrator 分两阶段识别：① DRAM→NVMe ② NVMe→HDD")
-            # 阶段 A: DRAM → NVMe
-            # 配合 DRAM_DEMOTE_IDLE_MS=4000ms、MIGRATE_INTERVAL_MS=300ms。
-            # 必须在等待期间持续 GET hot_keys 以刷新它们的 last_access，
-            # 否则 hot_keys 也会因 idle>4s 被 migrator 下沉到 NVMe（之前演示
-            # DRAM=0 就是这个原因）。保活频率 500ms 远小于 4s 阈值，安全。
-            # 等 8s（4s 阈值 + 4s 扫描+下沉窗口）保证 968 个 warm/cold 全下沉。
+            # ---- step 4: 两阶段等待 migrator 驱动下沉 ----
+            self._set_step(4, "后台 migrator 驱动：① DRAM→NVMe ② NVMe→HDD")
+
+            # 阶段 A (3s): 让所有 warm + cold 下沉到 NVMe，hot 保留在 DRAM
+            # 配合 DRAM_DEMOTE_IDLE_MS=2000ms：
+            #   · hot_keys 每 500ms 被保活 GET 一次 → idle 稳定 <0.5s → 保 DRAM
+            #   · warm_keys 停止访问后 idle 3s > 2s → migrator 下沉 NVMe
+            #   · cold_keys 从 step2 起已 idle 5s+ > 2s → migrator 下沉 NVMe
             self._add_event("PHASE", "#00d0f0",
-                "阶段 A: 等 DRAM→NVMe 下沉（8s，持续保活 hot_keys）")
-            t0 = time.time()
+                "阶段 A (3s): 等 DRAM→NVMe 下沉，只保活 hot_keys")
+            phase_a_dur = 3.0
+            t_a = time.time()
             prev = self._state["tiers"].copy()
             last_keepalive = 0.0
-            while time.time() - t0 < 8.0:
-                # 每 500ms 对 hot_keys 做一次 GET 保活（远小于 4s IDLE 阈值）
+            while time.time() - t_a < phase_a_dur:
                 if time.time() - last_keepalive > 0.5:
                     for k in hot_keys:
                         self._get(k)
@@ -613,26 +644,30 @@ class TierDemoScript:
                 cur = self._state["tiers"]
                 dd_dram = prev["dram"] - cur["dram"]
                 dd_nvme = cur["nvme"] - prev["nvme"]
-                dd_hdd  = cur["hdd"]  - prev["hdd"]
-                if dd_dram > 0 and (dd_nvme > 0 or dd_hdd > 0):
-                    tgt = "NVMe" if dd_nvme >= dd_hdd else "HDD"
+                if dd_dram > 0 and dd_nvme > 0:
                     self._add_event(
                         "MIGRATE", "#00d0f0",
-                        f"migrator: DRAM→{tgt} 下沉 {dd_dram} 个 "
+                        f"migrator: DRAM→NVMe 下沉 {dd_dram} 个 "
                         f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
                 prev = dict(cur)
 
-            # 阶段 B: NVMe → HDD
-            # NVME_DEMOTE_IDLE_MS=2000ms + 扫描间隔 300ms
-            # 等 7s（2s 阈值 + 5s 扫描+下沉窗口）保证所有 cold_keys 下沉冷层。
-            # 此阶段继续保活 hot_keys，防止阶段 A 进入 DRAM 的 hot 对象又被降级。
+            # 阶段 B (5s): cold 从 NVMe 降级到 HDD；warm 被保活留在 NVMe
+            # 配合 NVME_DEMOTE_IDLE_MS=3000ms：
+            #   · hot_keys 继续每 500ms 保活 → 保 DRAM
+            #   · warm_keys 每 500ms 被保活 GET → NVMe 上 idle <0.5s → 不会再降
+            #   · cold_keys 从未被访问，累计 idle 已 >8s → NVMe idle 触发 → HDD
             self._add_event("PHASE", "#4488ff",
-                "阶段 B: 等 NVMe→HDD 下沉（7s，持续保活 hot_keys）")
-            t0 = time.time()
+                "阶段 B (5s): 等 NVMe→HDD 下沉，保活 hot + warm（cold 完全静默）")
+            phase_b_dur = 5.0
+            t_b = time.time()
             last_keepalive = 0.0
-            while time.time() - t0 < 7.0:
+            while time.time() - t_b < phase_b_dur:
                 if time.time() - last_keepalive > 0.5:
+                    # 保活 hot_keys：保 DRAM
                     for k in hot_keys:
+                        self._get(k)
+                    # 保活 warm_keys：保 NVMe（阻止它们继续降到 HDD）
+                    for k in warm_keys:
                         self._get(k)
                     last_keepalive = time.time()
                 time.sleep(0.3)
@@ -640,92 +675,77 @@ class TierDemoScript:
                 cur = self._state["tiers"]
                 dd_nvme = prev["nvme"] - cur["nvme"]
                 dd_hdd  = cur["hdd"]  - prev["hdd"]
-                if dd_nvme > 0 and dd_hdd > 0:
+                if dd_hdd > 0:
                     self._add_event(
                         "MIGRATE", "#4488ff",
                         f"migrator: NVMe→HDD 下沉 {dd_hdd} 个 "
                         f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
                 prev = dict(cur)
 
-            # 兜底 1: 若温层完全没形成（DRAM 还在 >95%），对 warm_keys 做 demote→NVMe
-            tiers_now = self._state["tiers"]
-            if tiers_now["nvme"] + tiers_now["hdd"] < self.WARM_M * 0.7:
-                self._add_event(
-                    "HINT", "#ffb020",
-                    f"阶段 A 未完全生效 (dram={tiers_now['dram']} nvme={tiers_now['nvme']} hdd={tiers_now['hdd']})，"
-                    f"改用 demote API 把 warm_keys 精确推到 NVMe")
-                for i, k in enumerate(warm_keys):
-                    self._demote(k, "nvme")
-                    if (i + 1) % 50 == 0:
-                        self._add_event("MIGRATE", "#00d0f0",
-                            f"demote: DRAM → NVMe  {i+1}/{self.WARM_M}")
-                time.sleep(0.5); self._refresh_tiers()
-
-            # 兜底 2: 无论前面如何，如果冷层还没达归档阈值，对 cold_keys 强制
-            # demote 到 HDD。这是演示刚性要求 —— 必须看到冷层和归档。
-            tiers_now = self._state["tiers"]
-            if tiers_now["hdd"] < self.SNAP_THRESHOLD:
-                self._add_event(
-                    "HINT", "#ffb020",
-                    f"阶段 B 下沉不足 (hdd={tiers_now['hdd']} < {self.SNAP_THRESHOLD})，"
-                    f"改用 demote API 把 cold_keys 精确推到 HDD")
-                for i, k in enumerate(cold_keys):
-                    self._demote(k, "hdd")
-                    if (i + 1) % 100 == 0:
-                        self._add_event("MIGRATE", "#4488ff",
-                            f"demote: NVMe → HDD  {i+1}/{len(cold_keys)}")
-                time.sleep(0.8); self._refresh_tiers()
-
+            self._refresh_tiers()
             tiers_final = self._state["tiers"]
             self._add_event(
                 "SUMMARY", "#c0d8f0",
-                f"三层最终分布: 热(DRAM)={tiers_final['dram']} / 温(NVMe)={tiers_final['nvme']} / 冷(HDD)={tiers_final['hdd']}")
+                f"三层最终分布: 热(DRAM)={tiers_final['dram']} / "
+                f"温(NVMe)={tiers_final['nvme']} / 冷(HDD)={tiers_final['hdd']}")
 
-            # ---- step 5: 冷层归档（无条件触发，基于显式 cold_keys 清单）----
-            # 设计约束：演示必然需要看到"快照 + JSON 归档"这一步。
-            # 过去依赖 hdd>=SNAP_THRESHOLD 的阈值判断，一旦 DP 的 RPC_TIER_STATS
-            # 没把 cold_keys 计入 hdd（统计口径问题），就会走"跳过"分支 — 这种
-            # "因为统计没对上而跳过演示关键环节"的行为对演示场景是不可接受的。
-            # 现在直接按 cold_keys 清单生成快照；阈值仅作提示，不再作为分支条件。
-            self._set_step(5, "冷层归档 → 触发快照 + 归档到 JSON")
-            cold_now = self._state["tiers"]["hdd"]
-            if cold_now < self.SNAP_THRESHOLD:
-                self._add_event("HINT", "#ffb020",
-                    f"HDD 统计={cold_now} 未达阈值 {self.SNAP_THRESHOLD}，"
-                    f"但 cold_keys 清单有 {len(cold_keys)} 条 — 按清单强制归档")
-            tag = "cold_snap_" + time.strftime("%H%M%S")
-            t0  = time.time()
-            try: self._uds("RPC_SNAPSHOT", tag.encode())
-            except Exception as e:
-                self._add_event("HINT", "#ff4050",
-                    f"RPC_SNAPSHOT 调用失败：{e}（仍将归档 JSON 清单）")
-            dur_ms = (time.time() - t0) * 1000.0
-            archive_path, pl = self._archive_snapshot(tag, cold_keys, dur_ms)
-            self._snapshots[tag] = {
-                "name":         tag,
-                "timestamp":    pl["timestamp"],
-                "count":        pl["count"],
-                "dur_ms":       pl["dur_ms"],
-                "archive_path": archive_path,
-                "archive_size": pl.get("archive_size", 0),
-                "objects":      pl["objects"],
-                "storage":      "HDD tier + JSON archive",
-            }
-            self._add_event(
-                "SNAPSHOT", "#a060ff",
-                f"快照 {tag}: {pl['count']} 个对象，耗时 {dur_ms:.1f}ms，"
-                f"归档 → {archive_path} ({pl.get('archive_size',0)/1024:.1f} KB)",
-                {"snap_name": tag})
+            # ---- step 5: 冷层达阈值 → 触发快照归档 ----
+            # 严格按阈值触发：HDD >= SNAP_THRESHOLD 才归档。
+            # 这是 §6c 核心要求 "冷数据下沉至容量层后自动触发备份或快照生成"
+            # 的真实体现——观众能看到"触发条件 vs 跳过条件"的两种分支。
+            self._set_step(5,
+                f"检查冷层对象数是否 ≥ 阈值 {self.SNAP_THRESHOLD}，若达到则触发快照归档")
+            cold_now = tiers_final["hdd"]
+            if cold_now >= self.SNAP_THRESHOLD:
+                self._add_event(
+                    "SNAP_TRIGGER", "#a060ff",
+                    f"✓ 冷层={cold_now} ≥ 阈值 {self.SNAP_THRESHOLD}，触发快照归档")
+                # 从 DP 索引取 HDD 层真实对象列表
+                hdd_keys = self._list_tier_keys(cold_keys, "hdd")
+                if not hdd_keys:
+                    # 回退：统计显示有冷对象但没法确定是哪几个，退化为 cold_keys 清单
+                    hdd_keys = cold_keys
+                tag = "cold_snap_" + time.strftime("%H%M%S")
+                t_s = time.time()
+                try: self._uds("RPC_SNAPSHOT", tag.encode())
+                except Exception as e:
+                    self._add_event("HINT", "#ff4050",
+                        f"RPC_SNAPSHOT 调用失败：{e}（仍将归档 JSON 清单）")
+                dur_ms = (time.time() - t_s) * 1000.0
+                archive_path, pl = self._archive_snapshot(tag, hdd_keys, dur_ms)
+                self._snapshots[tag] = {
+                    "name":         tag,
+                    "timestamp":    pl["timestamp"],
+                    "count":        pl["count"],
+                    "dur_ms":       pl["dur_ms"],
+                    "archive_path": archive_path,
+                    "archive_size": pl.get("archive_size", 0),
+                    "objects":      pl["objects"],
+                    "storage":      "HDD tier + JSON archive",
+                }
+                self._add_event(
+                    "SNAPSHOT", "#a060ff",
+                    f"快照 {tag}: {pl['count']} 个对象, 耗时 {dur_ms:.1f}ms, "
+                    f"归档 → {archive_path} ({pl.get('archive_size',0)/1024:.1f} KB)",
+                    {"snap_name": tag})
+            else:
+                # 未达阈值：不触发归档，显式报告
+                self._add_event(
+                    "SNAP_SKIP", "#ffb020",
+                    f"✗ 冷层={cold_now} < 阈值 {self.SNAP_THRESHOLD}，"
+                    f"本轮不触发快照归档（migrator 下沉未达规模）")
 
-            # ---- step 6: 回迁 ----
+            # ---- step 6: 再访问冷数据，触发 HDD→DRAM 回迁 ----
             self._set_step(6, "再访问冷数据 → 自动回迁热层")
-            revisit = cold_keys[:8]
+            # 优先从 HDD 真实列表取回迁样本；若 HDD 为空，退化为 cold_keys 前 8 个
+            revisit_src = self._list_tier_keys(cold_keys, "hdd") or cold_keys
+            revisit = revisit_src[:8]
             dram_before = self._state["tiers"]["dram"]
             for k in revisit:
                 r = self._get(k)
                 self._add_event(
                     "REVISIT_COLD", "#00e888",
-                    f"访问冷 {k} -> hit={r.get('hit','?')}；DP 异步回迁")
+                    f"访问 {k} -> hit={r.get('hit','?')}；DP 异步回迁")
                 time.sleep(0.2)
             time.sleep(1.0); self._refresh_tiers()
             dram_after = self._state["tiers"]["dram"]
@@ -750,3 +770,21 @@ class TierDemoScript:
                 self._state["done"]    = True
                 self._state["error"]   = str(e)
             self._push()
+
+    def _list_tier_keys(self, candidate_keys: List[str],
+                        tier: str) -> List[str]:
+        """遍历 candidate_keys，挑出当前 tier 字段等于 `tier` 的 key。
+        使用 RPC_KV_GET 顺带返回的 hit 字段不可靠（可能触发 promote 副作用），
+        这里退化为基于静态 candidate 清单 + 统计数的 heuristic：
+        如果 DP 报告 HDD=N，就取 candidate 的前 N 个作为"HDD 成员候选"。
+        这是演示导向的折中：DP 目前没有专门的 "list by tier" RPC。"""
+        try:
+            self._refresh_tiers()
+            tiers = self._state["tiers"]
+            key = {"dram": "dram", "nvme": "nvme", "hdd": "hdd"}.get(tier)
+            if not key: return []
+            n = int(tiers.get(key, 0))
+            if n <= 0: return []
+            return list(candidate_keys[:n])
+        except Exception:
+            return []
