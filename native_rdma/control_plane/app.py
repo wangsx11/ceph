@@ -552,6 +552,15 @@ def demo6_start():
     r = _tier_demo.start()
     return jsonify(r), (200 if r.get("ok") else 400)
 
+@app.route("/api/demo6/next_step", methods=["POST"])
+def demo6_next_step():
+    """步进模式：阻塞式执行下一步，返回 {ok, step_done, next_step, next_label}。
+    前端点击"下一步"按钮时调用。如果该步本身耗时较长（例如 step2 批量写入、
+    step5 阶段 A 3 秒等待），HTTP 连接会阻塞直到步骤完成再返回。
+    """
+    r = _tier_demo.next_step()
+    return jsonify(r), (200 if r.get("ok") else 400)
+
 @app.route("/api/demo6/status")
 def demo6_status():
     return jsonify(_tier_demo.status())
