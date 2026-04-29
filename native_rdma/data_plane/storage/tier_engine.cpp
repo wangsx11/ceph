@@ -5,6 +5,7 @@
 #include "../common/time_util.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -12,15 +13,46 @@ namespace nr {
 
 bool TierEngine::init(const Config& cfg) {
     cfg_ = cfg;
-    NR_INFO("TierEngine init: nvme=%s hdd=%s dram_cap=%zuMB "
-            "nvme_cap=%zuMB hdd_cap=%zuMB demote_idle=%llu/%llu ns",
+    NR_INFO("TierEngine init (heat-score mode): nvme=%s hdd=%s "
+            "dram_cap=%zuMB nvme_cap=%zuMB hdd_cap=%zuMB "
+            "demote_hot=%.3f demote_warm=%.3f alpha=%.3f init=%.2f grace=%llums",
             cfg.nvme_path.c_str(), cfg.hdd_path.c_str(),
             cfg.dram_cap_bytes / (1024ULL * 1024),
             cfg.nvme_cap_bytes / (1024ULL * 1024),
             cfg.hdd_cap_bytes  / (1024ULL * 1024),
-            (unsigned long long)cfg.dram_demote_idle_ns,
-            (unsigned long long)cfg.nvme_demote_idle_ns);
+            cfg.demote_hot_score, cfg.demote_warm_score,
+            cfg.time_decay_alpha, cfg.heat_score_init,
+            (unsigned long long)(cfg.score_grace_ns / 1000000ULL));
     return true;
+}
+
+// ---------- Heat-score helpers (M6 v2) ----------
+double TierEngine::calc_heat_score(const ObjectMeta& m, uint64_t now) const {
+    if (m.score_ts == 0) return m.heat_score;
+    double dt_s = 0.0;
+    if (now > m.score_ts) {
+        dt_s = (double)(now - m.score_ts) / 1e9;
+    }
+    // Pure read-only decay, NO +heat_score_init term (that's bump's job).
+    return m.heat_score * std::exp(-cfg_.time_decay_alpha * dt_s);
+}
+
+void TierEngine::bump_score_locked(ObjectMeta& m, uint64_t now) {
+    if (m.score_ts == 0) {
+        // First-ever access: seed the score, birth if not yet set.
+        m.heat_score = cfg_.heat_score_init;
+        if (m.birth_ns == 0) m.birth_ns = now;
+    } else {
+        double dt_s = 0.0;
+        if (now > m.score_ts) {
+            dt_s = (double)(now - m.score_ts) / 1e9;
+        }
+        m.heat_score = m.heat_score * std::exp(-cfg_.time_decay_alpha * dt_s)
+                     + cfg_.heat_score_init;
+    }
+    m.score_ts    = now;
+    m.last_access = now;
+    m.access_cnt++;
 }
 
 void TierEngine::shutdown() {}
@@ -30,9 +62,12 @@ bool TierEngine::put(std::string_view key, std::string_view val, uint8_t /*prio*
     auto& m = index_[std::string(key)];
     bool was_new = (m.size == 0);
     m.size       = (uint32_t)val.size();
-    m.last_access= now_ns();
-    m.access_cnt = 1;
-    if (was_new) ndram_.fetch_add(1);
+    uint64_t now = now_ns();
+    if (was_new) {
+        m.birth_ns = now;
+        ndram_.fetch_add(1);
+    }
+    bump_score_locked(m, now);
     m.tier = Tier::DRAM;
     return true;
 }
@@ -41,8 +76,7 @@ bool TierEngine::get(std::string_view key, std::string* out) {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = index_.find(std::string(key));
     if (it == index_.end()) return false;
-    it->second.last_access = now_ns();
-    it->second.access_cnt++;
+    bump_score_locked(it->second, now_ns());
     if (out) out->assign(it->second.size, '\0');
     return true;
 }
@@ -69,8 +103,9 @@ void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) 
     m.offset      = offset;
     m.size        = size;
     m.tier        = Tier::DRAM;
-    m.last_access = now_ns();
-    m.access_cnt  = m.access_cnt + 1;
+    uint64_t now = now_ns();
+    if (was_new) m.birth_ns = now;
+    bump_score_locked(m, now);  // updates last_access/access_cnt/heat_score
     m.dram_slot_free = false;
     m.dram_offset = offset;
     if (was_new) {
@@ -96,6 +131,7 @@ bool TierEngine::reserve_or_reuse_slot(std::string_view key,
     // when the key already existed (caller should NOT call slab.alloc, and
     // `*existing_off/*existing_size` reflect the in-place target).
     std::lock_guard<std::mutex> lk(mu_);
+    uint64_t now = now_ns();
     auto it = index_.find(std::string(key));
     if (it != index_.end()) {
         // Key exists. Report its current slot and just bump counters.
@@ -109,8 +145,7 @@ bool TierEngine::reserve_or_reuse_slot(std::string_view key,
         m.offset      = m.offset;          // unchanged
         m.size        = new_size;          // new payload length
         m.tier        = Tier::DRAM;
-        m.last_access = now_ns();
-        m.access_cnt++;
+        bump_score_locked(m, now);
         m.dram_slot_free = false;
         m.dram_offset = m.offset;
         if (prev_tier != Tier::DRAM) {
@@ -125,8 +160,8 @@ bool TierEngine::reserve_or_reuse_slot(std::string_view key,
     m.offset      = new_off;
     m.size        = new_size;
     m.tier        = Tier::DRAM;
-    m.last_access = now_ns();
-    m.access_cnt  = 1;
+    m.birth_ns    = now;
+    bump_score_locked(m, now);
     m.dram_slot_free = false;
     m.dram_offset = new_off;
     ndram_.fetch_add(1);
@@ -139,8 +174,7 @@ bool TierEngine::get_meta(std::string_view key, uint64_t* offset, uint32_t* size
     if (it == index_.end()) return false;
     if (offset) *offset = it->second.offset;
     if (size)   *size   = it->second.size;
-    it->second.last_access = now_ns();
-    it->second.access_cnt++;
+    bump_score_locked(it->second, now_ns());
     return true;
 }
 
@@ -156,8 +190,7 @@ void TierEngine::on_access(std::string_view key) {
     std::lock_guard<std::mutex> lk(mu_);
     auto it = index_.find(std::string(key));
     if (it == index_.end()) return;
-    it->second.last_access = now_ns();
-    it->second.access_cnt++;
+    bump_score_locked(it->second, now_ns());
 }
 
 namespace {
@@ -345,7 +378,11 @@ bool TierEngine::promote(std::string_view key, void* dram_slot,
         it->second.offset = dram_offset;
         it->second.dram_offset    = dram_offset;
         it->second.dram_slot_free = false;
-        it->second.last_access = now_ns();
+        // Promotion is triggered by a fresh access, so treat it like one:
+        // bump the heat score + last_access. Without this, the object lands
+        // in DRAM with a stale low score and could be demoted again on the
+        // very next migrator tick.
+        bump_score_locked(it->second, now_ns());
 
         if (from == Tier::NVME) {
             uint64_t cur = nnvme_.load(std::memory_order_relaxed);

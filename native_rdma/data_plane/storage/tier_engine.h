@@ -28,6 +28,19 @@ struct ObjectMeta {
     // W4 M1-4: compression info (only meaningful on HDD tier for now).
     uint32_t compressed_size = 0;  // bytes actually written on disk (<=size)
     uint8_t  algo         = 0;     // 0=none, 1=zstd, 2=lz4
+    // -------- Heat-score tiering (M6 v2) --------
+    // Exponentially-decaying access score inspired by m6_tiering.py's
+    // calculate_heat_score().  Algorithm (O(1) per access, zero extra
+    // memory per access):
+    //     on_access(now):
+    //         dt = (now - score_ts) / 1e9         // seconds
+    //         heat_score = heat_score * exp(-alpha*dt) + score_init
+    //         score_ts   = now
+    // On migrator scan we only need the time-decayed "view" without the
+    // +score_init term (see calc_heat_score()).
+    double   heat_score   = 0.0;   // current decayed activity score
+    uint64_t score_ts     = 0;     // last time heat_score was updated (ns)
+    uint64_t birth_ns     = 0;     // object first seen (for grace window)
 };
 
 struct MigrationEvent {
@@ -47,9 +60,16 @@ public:
         size_t      nvme_cap_bytes = 64ULL * 1024 * 1024 * 1024;
         size_t      hdd_cap_bytes  = 512ULL* 1024 * 1024 * 1024;
         int         migrate_interval_ms = 1000;
-        // Heat thresholds.
-        uint64_t    dram_demote_idle_ns = 10ULL * 1000 * 1000 * 1000; // 10s idle -> NVMe
-        uint64_t    nvme_demote_idle_ns = 30ULL * 1000 * 1000 * 1000; // 30s idle -> HDD
+        // ---- Heat-score thresholds (M6 v2) ----
+        // Objects are demoted when their decayed score falls below these
+        // cutoffs; promotion back UP the hierarchy is driven by actual
+        // reads (handled in main.cpp's GET path via TierEngine::promote)
+        // and does NOT need a threshold here.
+        double      demote_hot_score  = 0.30;  // DRAM < 0.30 -> NVMe
+        double      demote_warm_score = 0.05;  // NVMe < 0.05 -> HDD
+        double      time_decay_alpha  = 0.10;  // per-second decay rate
+        double      heat_score_init   = 1.0;   // score bump per access
+        uint64_t    score_grace_ns    = 2ULL * 1000 * 1000 * 1000; // 2s protection
         // NVMe/HDD tier slot sizing (fixed 1KB for simplicity in demo).
         size_t      tier_slot_size = 1024;
         size_t      nvme_max_objects = 1ULL * 1024 * 1024; // 1M slots
@@ -97,6 +117,15 @@ public:
 
     void on_access(std::string_view key);
     void tick_migration();   // called by tier_migrator thread
+
+    // ---- Heat score (M6 v2) ----
+    // Read-only query: decays the stored score to `now` (ns) but does NOT
+    // mutate the object. Used by the tier migrator to pick demote targets.
+    double calc_heat_score(const ObjectMeta& m, uint64_t now_ns) const;
+    // Access callback used by put/get paths: decays the score then
+    // adds `heat_score_init`, updates `score_ts`, and bumps `last_access`.
+    // Caller must hold `mu_`.
+    void   bump_score_locked(ObjectMeta& m, uint64_t now_ns);
 
     // ---- W4 migration primitives (used by tick_migration) ----
     // Migrate `key` from its current tier to `to` tier. Needs slab_base to

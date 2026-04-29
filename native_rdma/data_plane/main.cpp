@@ -57,8 +57,13 @@ struct Args {
     // W4: multi-tier storage backing paths.
     std::string nvme_path  = "/dev/shm/native_rdma_warm";
     std::string hdd_path   = "/dev/shm/native_rdma_cold";
-    uint64_t    dram_demote_idle_ms = 10000;  // -> NVMe after 10s idle
-    uint64_t    nvme_demote_idle_ms = 30000;  // -> HDD  after 30s idle
+    // M6 v2: heat-score tiering parameters. The migrator uses a decayed
+    // activity score (see tier_engine.h) instead of raw idle windows.
+    double      demote_hot_score  = 0.30;   // DRAM < cutoff -> NVMe
+    double      demote_warm_score = 0.05;   // NVMe < cutoff -> HDD
+    double      time_decay_alpha  = 0.10;   // score decay rate per second
+    double      heat_score_init   = 1.0;    // score bump per access
+    uint64_t    score_grace_ms    = 2000;   // new-object protection window
     int         migrate_interval_ms = 1000;
 };
 
@@ -81,8 +86,11 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--slab-total-bytes") a.slab_bytes_1k = std::stoull(v);
         else if (k == "--nvme-path")  a.nvme_path = v;
         else if (k == "--hdd-path")   a.hdd_path = v;
-        else if (k == "--dram-demote-idle-ms") a.dram_demote_idle_ms = std::stoull(v);
-        else if (k == "--nvme-demote-idle-ms") a.nvme_demote_idle_ms = std::stoull(v);
+        else if (k == "--demote-hot-score")  a.demote_hot_score  = std::stod(v);
+        else if (k == "--demote-warm-score") a.demote_warm_score = std::stod(v);
+        else if (k == "--time-decay-alpha")  a.time_decay_alpha  = std::stod(v);
+        else if (k == "--heat-score-init")   a.heat_score_init   = std::stod(v);
+        else if (k == "--score-grace-ms")    a.score_grace_ms    = std::stoull(v);
         else if (k == "--migrate-interval-ms") a.migrate_interval_ms = std::stoi(v);
     }
 }
@@ -263,8 +271,11 @@ int main(int argc, char** argv) {
     tcfg.nvme_path = args.nvme_path;
     tcfg.hdd_path  = args.hdd_path;
     tcfg.migrate_interval_ms  = args.migrate_interval_ms;
-    tcfg.dram_demote_idle_ns  = args.dram_demote_idle_ms * 1000000ULL;
-    tcfg.nvme_demote_idle_ns  = args.nvme_demote_idle_ms * 1000000ULL;
+    tcfg.demote_hot_score     = args.demote_hot_score;
+    tcfg.demote_warm_score    = args.demote_warm_score;
+    tcfg.time_decay_alpha     = args.time_decay_alpha;
+    tcfg.heat_score_init      = args.heat_score_init;
+    tcfg.score_grace_ns       = args.score_grace_ms * 1000000ULL;
     // NVMe/HDD 上每个对象占用的槽位大小。默认 1KB 对小对象够用，但演示 §6
     // 使用 4KB 对象，如果 tier_slot_size 仍然是 1KB，bump-pointer 每次只
     // 前进 1KB 而写入 4KB，就会发生对象之间相互覆盖、NVMe→HDD 二次下沉时
@@ -553,11 +564,13 @@ int main(int argc, char** argv) {
         }
     });
 
-    // 8b) Tier migrator thread (W4): demote cold DRAM/NVMe objects.
+    // 8b) Tier migrator thread (W4 / M6 v2):
     //
-    // Every `migrate_interval_ms` we scan the index and move objects whose
-    // `last_access` exceeded the configured idle window. DRAM slots are
-    // returned to the slab allocator after successful demotion.
+    // Every `migrate_interval_ms` we recompute each object's decayed heat
+    // score (TierEngine::calc_heat_score) and demote those whose score has
+    // fallen below the configured cutoff.  Promotion back up the hierarchy
+    // is driven by actual reads on the GET path (see TierEngine::promote),
+    // NOT by this thread.
     std::atomic<bool> mig_stop{false};
     std::atomic<uint64_t> mig_d_n_{0}, mig_n_h_{0};  // counters for stats RPC
     std::thread mig_thr([&]() {
@@ -566,30 +579,28 @@ int main(int argc, char** argv) {
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(args.migrate_interval_ms));
             uint64_t now_n = nr::now_ns();
-            const uint64_t dram_idle = args.dram_demote_idle_ms * 1000000ULL;
-            const uint64_t nvme_idle = args.nvme_demote_idle_ms * 1000000ULL;
+            const double   hot_cut   = args.demote_hot_score;
+            const double   warm_cut  = args.demote_warm_score;
+            const uint64_t grace_ns  = args.score_grace_ms * 1000000ULL;
 
-            // Collect demotion candidates (copy key+tier) under lock, then
-            // call demote() without holding the index lock.
-            //
-            // Removed the previous `cands.size() >= 128` cap: with the demo
-            // driver pushing 1000 objects at once and deliberately waiting
-            // only a few seconds for the migrator to catch up, the 128-
-            // candidate cap per tick caused most objects to get stranded
-            // in DRAM (e.g. 437/1000 not demoted, HDD tier stays at 0).
-            // Demo scale is small; scanning the whole index is cheap and
-            // keeps the visible tier distribution matching user intent.
+            // Collect demotion candidates under index lock, then call
+            // demote() after releasing the lock.  We scan the whole index
+            // (demo scale is small, O(N) is cheap).
             struct Cand { std::string key; nr::Tier from; nr::Tier to;
-                          uint64_t dram_off; };
+                          uint64_t dram_off; double score; };
             std::vector<Cand> cands;
             cands.reserve(1024);
             tier.for_each([&](const std::string& k, const nr::ObjectMeta& m) {
-                if (m.tier == nr::Tier::DRAM && dram_idle > 0 &&
-                    m.last_access > 0 && now_n - m.last_access > dram_idle) {
-                    cands.push_back({k, nr::Tier::DRAM, nr::Tier::NVME, m.offset});
-                } else if (m.tier == nr::Tier::NVME && nvme_idle > 0 &&
-                           m.last_access > 0 && now_n - m.last_access > nvme_idle) {
-                    cands.push_back({k, nr::Tier::NVME, nr::Tier::HDD, 0});
+                // Respect grace window for freshly-written objects so they
+                // don't get demoted before the workload has a chance to
+                // access them.
+                if (m.birth_ns > 0 && now_n - m.birth_ns < grace_ns) return true;
+                double s = tier.calc_heat_score(m, now_n);
+                if (m.tier == nr::Tier::DRAM && s < hot_cut) {
+                    cands.push_back({k, nr::Tier::DRAM, nr::Tier::NVME,
+                                     m.offset, s});
+                } else if (m.tier == nr::Tier::NVME && s < warm_cut) {
+                    cands.push_back({k, nr::Tier::NVME, nr::Tier::HDD, 0, s});
                 }
                 return true;
             });

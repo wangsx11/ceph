@@ -48,7 +48,10 @@ exec "$BIN" \
     --slab-total-bytes="${SLAB_TOTAL_BYTES:-1073741824}" \
     --nvme-path="${NVME_PATH:-/dev/shm/native_rdma_warm}" \
     --hdd-path="${HDD_PATH:-/dev/shm/native_rdma_cold}" \
-    --dram-demote-idle-ms="${DRAM_DEMOTE_IDLE_MS:-10000}" \
-    --nvme-demote-idle-ms="${NVME_DEMOTE_IDLE_MS:-30000}" \
+    --demote-hot-score="${DEMOTE_HOT_SCORE:-0.30}" \
+    --demote-warm-score="${DEMOTE_WARM_SCORE:-0.05}" \
+    --time-decay-alpha="${TIME_DECAY_ALPHA:-0.10}" \
+    --heat-score-init="${HEAT_SCORE_INIT:-1.0}" \
+    --score-grace-ms="${SCORE_GRACE_MS:-2000}" \
     --migrate-interval-ms="${MIGRATE_INTERVAL_MS:-1000}" \
     2>&1 | tee -a "$LOG_DIR/dp_${ROLE}.log"
