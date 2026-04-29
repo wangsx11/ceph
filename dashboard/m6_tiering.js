@@ -2,12 +2,12 @@
 // m6_tiering.js — §6 分级存储能力演示（步进模式版本）
 //
 // 设计：
-//   · 后端是 8 步的步进模式剧本；每点一次"下一步"按钮走一步
-//   · 按钮右侧灰字提示下一步会做什么（由后端返回的 next_label）
-//   · [开始演示] → 点完变成 [▶ 下一步]，演示结束后变成 [✓ 已完成]
-//   · [↻ 重置] 任何时候都可点，回到未开始状态
-//   · polling /api/demo6/status 刷新三层柱状图和事件流
-//   · 后端有 hot_keys 保活线程，评审停顿几十秒也不会让 hot 被下沉
+//   · 后端是 8 步的步进模式剧本（方案 X：纯 idle 阈值驱动）
+//   · 每点一次 [下一步]，走剧本中的下一步
+//   · 按钮右侧灰字提示下一步会做什么（后端返回的 next_label）
+//   · 三层柱状图数字完全来自 RPC_TIER_STATS 真实返回，不做任何层语义覆盖
+//   · [↻ 重置] 任何时候都可点，清理 DP 状态回到未开始
+//   · 后端活跃集保活线程（500ms 周期）确保步骤间停顿不将活跃集误下沉
 // ============================================================
 
 const D6_API = (window.API_BASE || location.origin) + '/api/demo6';
@@ -16,12 +16,12 @@ const D6_API = (window.API_BASE || location.origin) + '/api/demo6';
 const D6_STEP_LABELS = [
   '清空旧数据 & 复位统计',
   '批量写入 100 个对象（全进 DRAM）',
-  '高频访问 32 个 hot_keys（20 轮）',
-  '对 40 个 warm_keys 做 2 次轻访问',
-  '阶段 A：migrator 下沉 warm+cold → NVMe',
-  '阶段 B：显式 demote 28 个 cold → HDD',
-  '检查冷层是否达阈值 → 触发快照归档',
-  '访问冷数据 → 观察 HDD→DRAM 自动回迁',
+  '对 60 个活跃对象做高频 GET（打上访问热度）',
+  '等 2.5s：migrator 自动把 40 静默对象 DRAM→NVMe',
+  '访问 12 个 NVMe 对象，DP 自动 promote 回 DRAM',
+  '等 3.5s：migrator 自动把剩余 28 个 NVMe→HDD',
+  '冷层达阈值 → 触发快照 + JSON 归档',
+  '访问 8 个 HDD 对象 → 自动回迁 DRAM',
 ];
 const D6_TOTAL_STEPS = 8;
 
@@ -73,12 +73,12 @@ function renderM6() {
   const curStep = `<div style="font-size:1.05rem;color:${D6.done?'#00e888':'#ffb020'};margin-top:4px">${hintTxt}</div>`;
 
   // 目标规模总览
-  const tt = D6.totals || { total:0, hot:0, warm:0, cold:0 };
+  const tt = D6.totals || { total:0, active:0, idle:0, promote_n:0 };
   const targetH = `<div class="g4" style="margin-top:10px">
     ${metric('演示总对象数', tt.total||0, '',   '#c0d8f0')}
-    ${metric('热对象（高频访问）', tt.hot||0, '', '#ff4050')}
-    ${metric('温对象（轻访问）',  tt.warm||0, '', '#ffb020')}
-    ${metric('冷对象（归档候选）', tt.cold||0, '', '#4488ff')}
+    ${metric('活跃集（持续访问）', tt.active||0, '', '#ff4050')}
+    ${metric('静默集（不访问）',  tt.idle||0, '', '#4488ff')}
+    ${metric('step5 中期激活',      tt.promote_n||0, '', '#ffb020')}
   </div>`;
 
   // 三层柱状图
@@ -90,11 +90,13 @@ function renderM6() {
   </div>`;
 
   // 事件流：过滤掉 snapshot 类条目
+  // （移除了前版的 `latest` 呼吸动画类：polling 每秒重渲染时
+  //   每次都给首行打上 latest 会导致“一直闪个不停”的观感）
   const migEvents = D6.events.filter(e => !e.snap_name);
   const migH = migEvents.length === 0
     ? '<div style="color:#5a7a96;padding:16px;text-align:center">等待演示开始...</div>'
-    : migEvents.slice(0, 40).map((e, i) => `
-        <div class="eitem ${i===0?'latest':''}">
+    : migEvents.slice(0, 40).map((e) => `
+        <div class="eitem">
           <span style="color:#5a7a96">${e.ts}</span>
           <span style="color:${e.color};font-weight:700;min-width:82px;display:inline-block">${e.kind}</span>
           <span style="color:#e4edf6">${esc(e.text)}</span>
@@ -127,11 +129,11 @@ function renderM6() {
          / ${threshold}
        </div>`
     : '';
-  const snapRows = D6.snapList.map((s, i) => {
+  const snapRows = D6.snapList.map((s) => {
     const detail = D6.expanded[s.name] && D6.snapshots[s.name]
       ? d6RenderSnapDetail(D6.snapshots[s.name]) : '';
     return `<div>
-      <div class="eitem ${i===0?'latest':''}" style="cursor:pointer"
+      <div class="eitem" style="cursor:pointer"
            onclick="d6ToggleSnap('${esc(s.name)}')">
         <span style="color:#5a7a96">${s.ts}</span>
         <span style="color:${s.color};font-weight:700;min-width:100px;display:inline-block">SNAPSHOT</span>
@@ -158,7 +160,7 @@ function renderM6() {
   el.innerHTML = `
     <div class="ctrl-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示（8 步步进模式）</div>
+        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示（8 步 / 纯访问驱动）</div>
         <div class="ctrl-status ${statusCls}">
           <div class="dot ${D6.busy?'dot-pulse':''}" style="background:${D6.busy?'#00e888':D6.done?'#00d0f0':'#5a7a96'};width:6px;height:6px"></div>
           ${statusTxt}
@@ -167,9 +169,8 @@ function renderM6() {
       ${stepsH}${curStep}
       ${targetH}
       <div style="font-size:1rem;color:#5a7a96;margin:6px 0 10px">
-        <b style="color:#c0d8f0">步进模式</b>：每次点击 [▶ 下一步] 执行 8 步剧本中的下一步，评审时可以边讲解边点。
-        后端维护 hot_keys 保活线程（500ms 周期 GET），即使步骤之间长时间停顿也不会让 hot_keys 被误下沉。<br>
-        层级计数来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span>；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
+        <b style="color:#c0d8f0">步进模式 + 纯访问驱动</b>：8 步剧本完全由 C++ migrator 的 idle 阈值自动识别冷热（DRAM idle&gt;2s→NVMe，NVMe idle&gt;3s→HDD）。演示全程不用 demote API，观众看到的层级变化完全来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span> 真实返回。<br>
+        后端的活跃集保活线程（500ms 周期）确保步骤间长时间停顿也不会让活跃集被误下沉；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
       </div>
       <div class="ctrl-row" style="align-items:center;gap:12px">
         ${mainBtnHTML}

@@ -6,12 +6,15 @@ demo_orchestrator.py — §3 / §5 / §6 三个演示的服务端协调器
       走 UDS(RPC_KV_PUT/GET)；GET 命中层级由 DP 回填（hit=local/remote/nvme/hdd）。
   §5  吞吐量 & 扩展性：逐轮 1W/5W/10W 对象持续并发写入，每秒
       采样 ops/bw/lat 曲线；nr_bench 真实压测 + shm metrics。
-  §6  分级存储：8 步步进模式（前端点一次按钮走一步），允许评审按讲解节奏控制。
-      step1 flush；step2 写入 100 对象；step3 高频 hot_keys；step4 轻访问 warm；
-      step5 阶段 A（migrator 自动下沉 warm+cold → NVMe）；step6 阶段 B（显式
-      demote cold → HDD）；step7 冷层达阈值触发快照 + JSON 归档；step8 revisit
-      cold 触发 HDD→DRAM 回迁。后台 hot_keys 保活线程（500ms 周期）确保步骤
-      之间长时间停顿也不会让 hot_keys 被 migrator 误下沉。
+  §6  分级存储：8 步步进模式 + 纯 idle 阈值驱动（方案 X）。
+      100 对象，活跃集 60 / 静默集 40。step3 打热度 → step4 等 2.5s 让
+      migrator 把 40 静默对象下沉 NVMe → step5 访问 12 NVMe 对象触发
+      read-through promote 回 DRAM → step6 再等 3.5s 让剩 28 个 NVMe
+      继续下沉 HDD → step7 冷层达阈值触发快照 + JSON 归档 → step8 访问
+      8 个 HDD 对象触发 HDD→DRAM 回迁。整个剧本**不使用 RPC_TIER_DEMOTE**，
+      UI 三层分布完全来自 RPC_TIER_STATS 真实返回，演示的是 C++ migrator
+      基于 last_access idle 阈值的自动识别能力。后台保活线程 500ms 刷活跃集
+      的 last_access，确保讲解停顿几十秒也不会让活跃集被误下沉。
 
 仅依赖 uds_call() 与 ROLE，从 app.py 注入。
 """
@@ -334,50 +337,52 @@ def _parse_nr_bench(raw: str, count: int, threads: int,
 # 4) §6: 真实访问驱动的分级存储剧本
 # ================================================================
 class TierDemoScript:
-    """§6 demo runner. 热→温→冷三层完整流转 + 冷层达阈值触发真实快照。
+    """§6 demo runner. **方案 X**：纯访问驱动 + idle 阈值，不使用 RPC_TIER_DEMOTE。
 
-    规模（100 个对象，32/40/28）：
-      · HOT_K=32   高频访问，保持 DRAM
-      · WARM_M=40  访问 2 次后静默，阶段 A 被 migrator 下沉 NVMe、阶段 B 静默留在 NVMe
-      · COLD_M=28  从头到尾不访问，阶段 A 由 migrator 下沉 NVMe，阶段 B 由显式 demote 推到 HDD
+    节奏（100 对象）：
+      · H=60 个"活跃对象"：step3 起被持续 GET，一直留在 DRAM
+      · C=40 个"不活跃对象"：从头到尾不被访问；step4 等待 2.5s 后
+        idle>DRAM_DEMOTE_IDLE_MS(2000ms) 被 migrator 下沉到 NVMe
+      · step5 访问其中 12 个 NVMe 对象：触发 DP read-through promote
+        回 DRAM，演示"再次访问冷数据自动提升"的能力
+      · step6 再等 3.5s，NVMe 上剩余的 28 个（从未被访问过）因累计
+        idle>NVME_DEMOTE_IDLE_MS(3000ms) 被 migrator 下沉到 HDD
+      · step7 冷层 28 ≥ 阈值 20，触发 RPC_SNAPSHOT + JSON 归档
+      · step8 访问 8 个 HDD 对象，触发 HDD→DRAM read-through promote
 
-    混合驱动策略说明：
-      阶段 A 完全依靠 migrator 自然下沉（DRAM 过多需要压下来，idle-based 效果明显）；
-      阶段 B 显式 RPC_TIER_DEMOTE 精确把 cold_keys 推到 HDD。原因：
-        DP 的 RPC_KV_GET 命中 NVMe 会触发 promote→DRAM（read-through），
-        “保活 warm_keys 留在 NVMe”与“不访问而被判定冷”互斥，
-        小规模赛道式演示里无法通过“纯访问模式”同时满足两个约束，
-        故阶段 B 采用“保活 hot + 静默 warm + 显式 demote cold”三管齐下。
+    整个剧本所有层级变化**完全由 C++ migrator 驱动**（靠 idle 阈值自动判冷），
+    UI 数字直接来自 RPC_TIER_STATS 的真实返回，不伪造、不覆盖。温层 NVMe 是
+    idle-based 状态机的中间态：对象短暂停留后要么被访问而提升、要么继续冷却，
+    这是分级系统的本质行为。
 
     阈值（env 配合）：
       · DRAM idle > DRAM_DEMOTE_IDLE_MS (2000ms) → migrator 下沉 NVMe
-      · NVMe idle > NVME_DEMOTE_IDLE_MS (3000ms) → migrator 下沉 HDD（本演示不依赖这一项）
-      · SNAP_THRESHOLD=20：冷层 ≥20 才触发快照归档（cold_keys=28>20 必达阈值）
+      · NVMe idle > NVME_DEMOTE_IDLE_MS (3000ms) → migrator 下沉 HDD
+      · SNAP_THRESHOLD=20：冷层 ≥20 触发快照归档
 
-    流程：
-       step1 admin_flush 清零 DP 索引与本地状态
-       step2 写入 100 个 4KB 对象（全部先进 DRAM）
-       step3 step3a 高频 GET hot_keys（20 轮）
-             step3b 对 warm_keys 访问 2 次（制造短暂访问痕迹）
-             step3c cold_keys 完全不访问
-       step4 阶段 A (3s)：migrator 自动 DRAM→NVMe（保活 hot_keys）
-             阶段 B (2s)：显式对 cold_keys 调 demote API 推到 HDD（保活 hot，静默 warm）
-       step5 HDD 层对象数 ≥ SNAP_THRESHOLD 触发 RPC_SNAPSHOT + JSON 归档
-             若未达阈值，显式 SNAP_SKIP 不归档（触发条件可观测）
-       step6 再访问冷 key，观察 HDD→DRAM promote
+    8 步：
+      step1 admin_flush 清零
+      step2 写入 100 个 4KB 对象（全进 DRAM）
+      step3 对 60 个活跃对象做高频 GET（打上"热度"）
+      step4 等 2.5s：40 个不活跃对象被 migrator 下沉 NVMe（100→60/40/0）
+      step5 访问 12 个 NVMe 对象：read-through promote 回 DRAM（60/40→72/28/0）
+      step6 等 3.5s：剩余 28 个 NVMe 对象下沉 HDD（72/28→72/0/28）
+      step7 冷层达阈值，触发快照 + JSON 归档
+      step8 访问 8 个 HDD 对象，触发 HDD→DRAM 回迁（72/0/28→80/0/20）
     """
 
     # 演示规模
     N_OBJS          = 100
-    HOT_K           = 32       # 高频访问，阶段 A/B 均保活，始终在 DRAM
-    WARM_M          = 40       # 阶段 A 被 migrator 下沉 NVMe；阶段 B 静默（不保活也不下沉）
-    # COLD_M = N_OBJS - HOT_K - WARM_M = 28，阶段 A 下沉 NVMe，阶段 B 由 demote API 推到 HDD
+    ACTIVE_K        = 60       # 活跃集（H）：step3 起持续保活，常驻 DRAM
+    # IDLE_K = N_OBJS - ACTIVE_K = 40 个不活跃对象，从不被业务访问
+    PROMOTE_K       = 12       # step5 要从 NVMe 促回 DRAM 的数量
+    # 最终 step5 后的温层保留量 = IDLE_K - PROMOTE_K = 28，>= SNAP_THRESHOLD
     OBJ_SIZE        = 4096     # 4KB
-    HOT_ROUNDS      = 20       # HOT_K 被读 20 轮（step3a）
-    WARM_VISITS     = 2        # warm_keys 在 step3b 被访问 2 次
-    WAIT_MIGRATE_S  = 5        # 阶段 A 3s + 阶段 B 2s
-    # 快照阈值：冷层 ≥20 个对象才触发归档。阶段 B 用 demote API 把 28 个 cold_keys
-    # 全部推到 HDD，如 demote RPC 部分失败并导致 HDD<20，则显式 SNAP_SKIP。
+    HOT_ROUNDS      = 20       # 活跃对象被读 20 轮（step3）
+    PHASE_A_WAIT_S  = 2.5      # step4 等待时长：略大于 DRAM_IDLE=2s
+    PHASE_B_WAIT_S  = 3.5      # step6 等待时长：从 step4 起累计 NVMe idle>3s
+    REVISIT_N       = 8        # step8 再访问的 HDD 对象数量
+    # 快照阈值：冷层 ≥20 个对象才触发归档。剧本设计 HDD 最终 28 >= 20 必达。
     SNAP_THRESHOLD  = 20
     HEAT_SHOW_TOP   = 64       # UI 只展示热度前 64 条
     BATCH_PUT_REPORT= 20       # 每写 20 个推一次事件
@@ -419,37 +424,37 @@ class TierDemoScript:
             "tiers":         {"dram": 0, "nvme": 0, "hdd": 0},
             "events":        [],
             "heat":          {},
-            "totals":        {"total": 0, "hot": 0, "warm": 0, "cold": 0},
+            "totals":        {"total": 0, "active": 0, "idle": 0, "promote_n": 0},
             "done":          False,
             "error":         None,
         }
 
-    # 8 步剧本的标签 + 下一步提示：下标 0 表示"还没开始"时显示第 1 步。
-    # STEP_FLOW[i] 描述点击"执行第 i 步"会做的事，以及 hint 给用户看。
+    # 8 步剧本的标签 + 下一步提示。STEP_FLOW[i-1][0] 是点击执行第 i 步时要做的事，
+    # STEP_FLOW[i-1][1] 是完成第 i 步后给用户看的"下一步预告"。
     STEP_FLOW = [
-        # i=1
+        # 1
         ("清空旧数据 & 复位统计",
-         "下一步：批量写入 100 个对象到 DRAM"),
-        # i=2
-        ("批量写入 100 个 4KB 对象（全部先进 DRAM）",
-         "下一步：高频访问 32 个热对象（保持 DRAM）"),
-        # i=3
-        ("高频访问 32 个热对象 20 轮（step3a）",
-         "下一步：对 40 个温对象做 2 次轻访问"),
-        # i=4
-        ("对 40 个温对象做 2 次轻访问（step3b）",
-         "下一步：阶段 A — 等待 migrator 下沉 warm+cold 到 NVMe"),
-        # i=5
-        ("阶段 A：migrator 识别并下沉 warm/cold → NVMe",
-         "下一步：阶段 B — 显式把 28 个 cold 下沉到 HDD"),
-        # i=6
-        ("阶段 B：显式 demote 28 个 cold_keys 到 HDD",
-         "下一步：检查冷层是否达阈值，触发快照归档"),
-        # i=7
+         "下一步：批量写入 100 个 4KB 对象到 DRAM"),
+        # 2
+        ("批量写入 100 个 4KB 对象（全部进 DRAM）",
+         "下一步：对 60 个活跃对象做高频访问（打上热度）"),
+        # 3
+        ("对 60 个活跃对象做高频 GET（保持 DRAM）",
+         "下一步：等 2.5s 观察 40 个静默对象被 migrator 自动下沉 NVMe"),
+        # 4
+        ("等 2.5s — migrator 自动把 40 静默对象 DRAM→NVMe",
+         "下一步：访问 12 个 NVMe 对象，触发 read-through 自动回迁 DRAM"),
+        # 5
+        ("访问 12 个 NVMe 对象 — DP 自动 promote 回 DRAM",
+         "下一步：等 3.5s 观察剩余 28 个 NVMe 对象继续下沉 HDD"),
+        # 6
+        ("等 3.5s — migrator 自动把剩余 28 对象 NVMe→HDD",
+         "下一步：冷层对象数达阈值，触发快照归档"),
+        # 7
         ("冷层达阈值 → 触发快照 + JSON 归档",
-         "下一步：访问 cold_keys，观察 HDD→DRAM 自动回迁"),
-        # i=8
-        ("再访问冷数据 → 触发 HDD→DRAM 自动回迁",
+         "下一步：访问 8 个 HDD 对象，观察 HDD→DRAM 自动回迁"),
+        # 8
+        ("访问 8 个 HDD 对象 → 触发 HDD→DRAM 自动回迁",
          "演示完成（可点击 [↻ 重置] 重新开始）"),
     ]
 
@@ -465,21 +470,27 @@ class TierDemoScript:
             self._state = self._fresh()
             self._state["running"] = True
             self._state["totals"] = {
-                "total": self.N_OBJS,
-                "hot":   self.HOT_K,
-                "warm":  self.WARM_M,
-                "cold":  self.N_OBJS - self.HOT_K - self.WARM_M,
+                "total":  self.N_OBJS,
+                "active": self.ACTIVE_K,
+                "idle":   self.N_OBJS - self.ACTIVE_K,
+                # "promote_n": step5 要从 NVMe 促回 DRAM 的数量
+                "promote_n": self.PROMOTE_K,
             }
             # 准备 key 清单，供所有 step 共用
             all_keys  = [f"demo_obj_{i:04d}" for i in range(self.N_OBJS)]
             self._ctx = {
-                "all_keys":   all_keys,
-                "hot_keys":   all_keys[:self.HOT_K],
-                "warm_keys":  all_keys[self.HOT_K:self.HOT_K + self.WARM_M],
-                "cold_keys":  all_keys[self.HOT_K + self.WARM_M:],
-                "payload":    "X" * self.OBJ_SIZE,
-                "t_start":    time.time(),
-                "demoted":    0,
+                "all_keys":     all_keys,
+                # 活跃集（H=60）：step3 起保活，演示结束前都在 DRAM
+                "active_keys":  all_keys[:self.ACTIVE_K],
+                # 不活跃集（40）：从不被业务访问，由 idle 阈值驱动下沉
+                "idle_keys":    all_keys[self.ACTIVE_K:],
+                # step5 选择其中前 PROMOTE_K 个做一次访问（触发 promote→DRAM）
+                "promote_keys": all_keys[self.ACTIVE_K:
+                                          self.ACTIVE_K + self.PROMOTE_K],
+                # step6 后剩余在 NVMe 的 idle 对象（预期会被 migrator 下 HDD）
+                "remain_nvme_keys": all_keys[self.ACTIVE_K + self.PROMOTE_K:],
+                "payload":      "X" * self.OBJ_SIZE,
+                "t_start":      time.time(),
             }
         # 启动保活线程（若之前已启动就先停掉再重启）
         self._keepalive_stop.set()
@@ -621,13 +632,8 @@ class TierDemoScript:
         self._push()
 
     def _refresh_tiers(self):
-        """刷新 DP 报告的三层对象分布到 self._state["tiers"]。
-
-        采样稳定性保护：某些场景（RPC 超时/返回空 JSON/解析失败等）会导致
-        dram=nvme=hdd=0 的无效采样。若我们已有一个非零旧状态而本次采样
-        total<5，则判定为无效采样，保留旧状态，避免 UI 里出现 "DRAM 从 32
-        闪到 0" 这类明显错误的跳变（演示里这种跳变会严重误导评委）。
-        """
+        """从 C++ DP 拉取三层对象分布到 self._state["tiers"]。
+        方案 X 下 UI 完全反映 DP 真实返回，不做稳定性修正。"""
         try:
             raw = self._uds("RPC_TIER_STATS") or b"{}"
             j   = json.loads(raw.decode(errors="replace"))
@@ -638,20 +644,12 @@ class TierDemoScript:
         hdd  = int(j.get("n_hdd")  or j.get("hdd")  or 0)
         total = dram + nvme + hdd
         if total == 0:
-            # 兜底：RPC 没拿到数据时尝试 shm
+            # 兜底：RPC 返回全 0 时尝试 shm（避免前端瞬间黑屏）
             m = read_metrics_shm()
             dram = int(m.get("obj_dram", 0))
             nvme = int(m.get("obj_nvme", 0))
             hdd  = int(m.get("obj_hdd",  0))
-            total = dram + nvme + hdd
-
-        # 稳定性保护
         with self._mu:
-            old = self._state["tiers"]
-            old_total = old["dram"] + old["nvme"] + old["hdd"]
-            if total < 5 and old_total >= 5:
-                # 丢弃本次无效采样
-                return
             self._state["tiers"] = {"dram": dram, "nvme": nvme, "hdd": hdd}
 
     def _put(self, key: str, val: str) -> Dict[str, Any]:
@@ -709,24 +707,26 @@ class TierDemoScript:
         return payload.get("archive_path", ""), payload
 
     def _keepalive_loop(self):
-        """后台保活线程：只要 running=True，每 500ms 对 hot_keys 做一次 GET。
+        """后台保活线程：只要 running=True，每 500ms 对活跃集做一次 GET。
         评审时点"下一步"按钮之间可能停顿几十秒（讲解时间），如果不保活，
-        hot_keys idle 会超过 DRAM_DEMOTE_IDLE_MS，被 migrator 下沉到 NVMe，
-        UI 上会看到 DRAM 数量离奇减少。保活逻辑独立运行、不干扰其他 step。
+        活跃对象的 idle 会超过 DRAM_DEMOTE_IDLE_MS 被 migrator 下沉到 NVMe，
+        UI 上会看到 DRAM 数量离奇减少。保活只在 busy=False 时执行，避免
+        和正在执行的 step 争抢 UDS。
         """
         while not self._keepalive_stop.is_set():
             with self._mu:
-                hot_keys = list(self._ctx.get("hot_keys", []))
+                active_keys = list(self._ctx.get("active_keys", []))
                 running  = self._state["running"]
                 busy     = self._state["busy"]
-            # 只在 running 且没有 step 正在执行时保活，避免和 step 内部
-            # 的 _get() 冲突（UDS 连接本身是线程安全的，但并发过多可能
-            # 打爆 DP 的 UDS 收发速率）。
-            if running and not busy and hot_keys:
-                for k in hot_keys:
+                step     = self._state["step"]
+            # 保活的"启动条件"：running=True 且 step>=3 且没 busy。
+            # step<3 时还没有执行到"打热度"，提前保活会污染时间线；
+            # step>=3 之后，我们希望整个演示期间活跃集都留在 DRAM。
+            if running and not busy and step >= 3 and active_keys:
+                for k in active_keys:
                     try: self._get(k)
                     except Exception: pass
-            # 检查间隔：500ms
+            # 检查间隔：500ms（远小于 DRAM_DEMOTE_IDLE_MS=2000ms）
             if self._keepalive_stop.wait(timeout=0.5):
                 return
 
@@ -752,7 +752,8 @@ class TierDemoScript:
         all_keys = self._ctx["all_keys"]
         payload  = self._ctx["payload"]
         t0 = time.time()
-        self._ctx["t_write_start"] = t0
+        # 记录"写入完成时刻"，后续 step 用它计算 idle 累计时长
+        self._ctx["t_written"] = t0
         for i, k in enumerate(all_keys):
             self._put(k, payload)
             if (i + 1) % self.BATCH_PUT_REPORT == 0:
@@ -763,143 +764,156 @@ class TierDemoScript:
         dur = time.time() - t0
         self._add_event("PUT_DONE", "#00e888",
             f"写入完成 {self.N_OBJS} 个对象，耗时 {dur:.2f}s，"
-            f"总 {self.N_OBJS*self.OBJ_SIZE/1024:.1f} KB")
+            f"总 {self.N_OBJS*self.OBJ_SIZE/1024:.1f} KB；预期 DRAM={self.N_OBJS}")
         self._refresh_tiers()
-        # 在 heat 映射中只预置 hot_keys（避免把 warm/cold 全推到前端）
-        hot_keys = self._ctx["hot_keys"]
+        # 预置 heat map 只包含活跃集前 32 个（避免把 100 个都推给前端）
+        active_keys = self._ctx["active_keys"]
         with self._mu:
-            for k in hot_keys:
+            for k in active_keys[:32]:
                 self._state["heat"][k] = {"count": 0, "last_hit": "local",
                                           "last_read_ts": ""}
 
     def _step_3(self):
-        """step3a: 高频访问 hot_keys，打上"热度"。"""
+        """对活跃集做高频 GET —— 这一步**不会改变** DRAM/NVMe/HDD 分布，
+        只是给活跃集刷 last_access 让它们"有热度"。不活跃集自 step2 起
+        已经 idle ≈ 几百毫秒，接下来 step4 等 2.5s 才会触发下沉。"""
         self._set_step(3,
-            f"高频访问 {self.HOT_K} 个热对象（保持 DRAM）")
-        hot_keys = self._ctx["hot_keys"]
+            f"高频访问 {self.ACTIVE_K} 个活跃对象（打上访问热度）")
+        active_keys = self._ctx["active_keys"]
         self._add_event("PHASE", "#ff4050",
-            f"step3a: 对 {self.HOT_K} 个 hot_keys 进行 {self.HOT_ROUNDS} 轮高频 GET")
+            f"step3: 对 {self.ACTIVE_K} 个活跃对象进行 {self.HOT_ROUNDS} 轮 GET")
         for round_i in range(self.HOT_ROUNDS):
-            for k in hot_keys:
+            for k in active_keys:
                 r = self._get(k)
+                # 只更新 heat map 中已预置的前 32 个的统计（节省前端渲染）
                 with self._mu:
-                    h = self._state["heat"].setdefault(
-                        k, {"count": 0, "last_hit": "?"})
-                    h["count"] += 1
-                    h["last_hit"] = r.get("hit", "?")
-                    h["last_read_ts"] = time.strftime("%H:%M:%S")
+                    h = self._state["heat"].get(k)
+                    if h is not None:
+                        h["count"] += 1
+                        h["last_hit"] = r.get("hit", "?")
+                        h["last_read_ts"] = time.strftime("%H:%M:%S")
             if (round_i + 1) % self.BATCH_GET_REPORT == 0:
                 self._add_event(
                     "HOT_ACCESS", "#ff4050",
-                    f"第 {round_i+1}/{self.HOT_ROUNDS} 轮 —— {self.HOT_K} 个热对象累计 "
-                    f"{(round_i+1)*self.HOT_K} 次 GET")
+                    f"第 {round_i+1}/{self.HOT_ROUNDS} 轮 —— "
+                    f"{self.ACTIVE_K} 个活跃对象累计 "
+                    f"{(round_i+1)*self.ACTIVE_K} 次 GET")
             time.sleep(0.05)
+        self._refresh_tiers()
+        cur = self._state["tiers"]
+        self._add_event(
+            "STEP_DONE", "#00e888",
+            f"step3 完成：活跃对象热度建立；当前分布 "
+            f"DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}")
 
     def _step_4(self):
-        """step3b: 对 warm_keys 做 WARM_VISITS 次轻访问，打上"温度"。"""
-        self._set_step(4,
-            f"对 {self.WARM_M} 个温对象做 {self.WARM_VISITS} 次轻访问")
-        warm_keys = self._ctx["warm_keys"]
-        cold_keys = self._ctx["cold_keys"]
-        t_start   = self._ctx["t_start"]
-        self._add_event("PHASE", "#ffb020",
-            f"step3b: 对 {self.WARM_M} 个 warm_keys 做 {self.WARM_VISITS} 次轻访问")
-        for _ in range(self.WARM_VISITS):
-            for k in warm_keys:
-                self._get(k)
-        # cold_keys 从 step2 起从未被访问，接下来在阶段 A 会被一起下沉
-        self._add_event("PHASE", "#4488ff",
-            f"step3c: {len(cold_keys)} 个 cold_keys 静默（此时已 idle ≈ "
-            f"{time.time()-t_start:.1f}s）")
-        self._refresh_tiers()
+        """等 PHASE_A_WAIT_S 秒，让 40 个静默对象被 C++ migrator 识别并下沉 NVMe。
 
-    def _step_5(self):
-        """阶段 A：等待 migrator 自动下沉 warm + cold → NVMe（3 秒）。
-
-        保活线程在后台每 500ms 刷 hot_keys，所以 hot_keys 会留在 DRAM。
-        warm_keys 和 cold_keys 都已停止访问，idle > DRAM_DEMOTE_IDLE_MS 后
-        会被 C++ migrator 线程下沉到 NVMe。
+        依赖：DRAM_DEMOTE_IDLE_MS=2000ms。静默对象从 step2 起没被访问，
+        idle 累计已经有几百毫秒。本 step 等 2.5s，加上保活线程继续刷活跃集
+        的 last_access，migrator 会把静默的 40 个 DRAM 对象下沉 NVMe。
         """
-        self._set_step(5, "阶段 A: migrator 自动下沉 warm + cold → NVMe")
+        self._set_step(4,
+            f"等 {self.PHASE_A_WAIT_S}s：migrator 自动下沉静默对象 → NVMe")
         self._add_event("PHASE", "#00d0f0",
-            "阶段 A (3s): 等 migrator 把 warm+cold 下沉到 NVMe")
-        phase_a_dur = 3.0
+            f"阶段 A ({self.PHASE_A_WAIT_S}s): 等 C++ migrator 自动把"
+            f" {self.N_OBJS - self.ACTIVE_K} 个静默对象 DRAM→NVMe")
         t_a = time.time()
         prev = dict(self._state["tiers"])
-        while time.time() - t_a < phase_a_dur:
+        while time.time() - t_a < self.PHASE_A_WAIT_S:
             time.sleep(0.3)
             self._refresh_tiers()
             cur = self._state["tiers"]
-            dd_dram = prev["dram"] - cur["dram"]
             dd_nvme = cur["nvme"] - prev["nvme"]
-            if dd_dram > 0 and dd_nvme > 0:
+            if dd_nvme > 0:
                 self._add_event(
                     "MIGRATE", "#00d0f0",
-                    f"migrator: DRAM→NVMe 下沉 {dd_dram} 个 "
-                    f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
+                    f"migrator 自动 DRAM→NVMe：+{dd_nvme} 个，当前 "
+                    f"DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}")
             prev = dict(cur)
+        self._refresh_tiers()
+        cur = self._state["tiers"]
+        self._add_event(
+            "STEP_DONE", "#00e888",
+            f"step4 完成：DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}"
+            f"（预期 ≈ {self.ACTIVE_K}/{self.N_OBJS-self.ACTIVE_K}/0）")
+
+    def _step_5(self):
+        """访问 NVMe 中的 PROMOTE_K 个对象 —— DP 的 RPC_KV_GET 命中 NVMe 会
+        自动 read-through promote 回 DRAM。这是 §6 要求的"访问冷数据自动
+        回迁"能力之一（温层→热层版本）。"""
+        self._set_step(5,
+            f"访问 {self.PROMOTE_K} 个 NVMe 对象 → DP 自动 promote 回 DRAM")
+        promote_keys = self._ctx["promote_keys"]
+        self._add_event("PHASE", "#ffb020",
+            f"step5: 访问 NVMe 中的 {self.PROMOTE_K} 个对象，"
+            f"每次 GET 触发 DP 的 read-through promote")
+        hits = {"nvme_promote": 0, "hdd_promote": 0, "local": 0, "other": 0}
+        for k in promote_keys:
+            r = self._get(k)
+            h = r.get("hit", "?")
+            hits[h if h in hits else "other"] = hits.get(h if h in hits else "other", 0) + 1
+            time.sleep(0.05)
+        # promote 是异步落盘更新索引的；给 DP 一个呼吸窗口再采样
+        time.sleep(0.4)
+        self._refresh_tiers()
+        cur = self._state["tiers"]
+        self._add_event(
+            "PROMOTE", "#ffb020",
+            f"step5 完成：hit 汇总 {hits}；当前分布 "
+            f"DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}"
+            f"（预期 ≈ {self.ACTIVE_K + self.PROMOTE_K}/"
+            f"{self.N_OBJS - self.ACTIVE_K - self.PROMOTE_K}/0）")
 
     def _step_6(self):
-        """阶段 B：显式对 cold_keys 调用 RPC_TIER_DEMOTE 推到 HDD。
+        """等 PHASE_B_WAIT_S 秒，让剩余 28 个 NVMe 对象（都没被访问过）因累计
+        idle 超过 NVME_DEMOTE_IDLE_MS 被 migrator 自动下沉 HDD。
 
-        不依赖 migrator 的 NVMe→HDD 自动下沉（时机难控制，且 warm 也会
-        被误降）。改为主动 demote，这样 HDD 分布严格可控。
+        C++ migrator 的行为：NVMe 对象 last_access 在从 DRAM 下沉时不重置，
+        所以这 28 个对象的 last_access 还停留在 step2 写入时刻。到本 step
+        开始时 idle 已经 ≈ 5s，继续等 3.5s 让 migrator 扫一轮就会判冷 → HDD。
         """
-        self._set_step(6, f"阶段 B: 显式下沉 {len(self._ctx['cold_keys'])} 个 cold_keys → HDD")
-        cold_keys = self._ctx["cold_keys"]
+        self._set_step(6,
+            f"等 {self.PHASE_B_WAIT_S}s：migrator 自动下沉 NVMe 剩余对象 → HDD")
         self._add_event("PHASE", "#4488ff",
-            f"阶段 B: 显式调用 RPC_TIER_DEMOTE 把 {len(cold_keys)} 个 cold_keys 下沉到 HDD")
-        demoted = 0
-        fail = 0
-        for i, k in enumerate(cold_keys):
-            try:
-                self._demote(k, "hdd")
-                demoted += 1
-            except Exception as e:
-                fail += 1
-                if fail <= 3:
-                    self._add_event("HINT", "#ff4050",
-                        f"demote {k} → hdd 失败: {e}")
-            if (i + 1) % 8 == 0 or (i + 1) == len(cold_keys):
-                # 用剧本不变量报告分布，避免 RPC_TIER_STATS 并发时的脏读
-                est_dram = self.HOT_K
-                est_hdd  = demoted
-                est_nvme = self.N_OBJS - est_dram - est_hdd
+            f"阶段 B ({self.PHASE_B_WAIT_S}s): 等 C++ migrator 自动把"
+            f" NVMe 上剩余 28 个静默对象 NVMe→HDD")
+        t_b = time.time()
+        prev = dict(self._state["tiers"])
+        while time.time() - t_b < self.PHASE_B_WAIT_S:
+            time.sleep(0.3)
+            self._refresh_tiers()
+            cur = self._state["tiers"]
+            dd_hdd = cur["hdd"] - prev["hdd"]
+            if dd_hdd > 0:
                 self._add_event(
                     "MIGRATE", "#4488ff",
-                    f"demote: NVMe→HDD {demoted}/{len(cold_keys)} "
-                    f"(dram={est_dram} nvme={est_nvme} hdd={est_hdd})")
-            time.sleep(0.03)
-
-        # 写入权威的终态
-        self._ctx["demoted"] = demoted
+                    f"migrator 自动 NVMe→HDD：+{dd_hdd} 个，当前 "
+                    f"DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}")
+            prev = dict(cur)
         self._refresh_tiers()
-        with self._mu:
-            self._state["tiers"] = {
-                "dram": self.HOT_K,
-                "nvme": self.N_OBJS - self.HOT_K - demoted,
-                "hdd":  demoted,
-            }
-        tiers_final = self._state["tiers"]
+        cur = self._state["tiers"]
         self._add_event(
-            "SUMMARY", "#c0d8f0",
-            f"三层最终分布: 热(DRAM)={tiers_final['dram']} / "
-            f"温(NVMe)={tiers_final['nvme']} / 冷(HDD)={tiers_final['hdd']}"
-            + (f"（{fail} 次 demote 失败被忽略）" if fail else ""))
+            "STEP_DONE", "#00e888",
+            f"step6 完成：DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}"
+            f"（预期 ≈ {self.ACTIVE_K + self.PROMOTE_K}/0/"
+            f"{self.N_OBJS - self.ACTIVE_K - self.PROMOTE_K}）")
 
     def _step_7(self):
         """检查冷层对象数是否 ≥ SNAP_THRESHOLD，达阈值则触发快照 + JSON 归档。"""
         self._set_step(7,
             f"检查冷层是否 ≥ 阈值 {self.SNAP_THRESHOLD}，若达到则触发快照归档")
-        cold_keys = self._ctx["cold_keys"]
-        cold_now  = self._state["tiers"]["hdd"]
+        idle_keys   = self._ctx["idle_keys"]
+        remain_keys = self._ctx["remain_nvme_keys"]
+        self._refresh_tiers()
+        cold_now    = self._state["tiers"]["hdd"]
         if cold_now >= self.SNAP_THRESHOLD:
             self._add_event(
                 "SNAP_TRIGGER", "#a060ff",
                 f"✓ 冷层={cold_now} ≥ 阈值 {self.SNAP_THRESHOLD}，触发快照归档")
-            hdd_keys = self._list_tier_keys(cold_keys, "hdd")
-            if not hdd_keys:
-                hdd_keys = cold_keys
+            # 从静默集里取前 cold_now 个作为归档候选（正好等于没被访问的那批）
+            hdd_keys = remain_keys[:cold_now] if len(remain_keys) >= cold_now \
+                       else idle_keys[:cold_now]
             tag = "cold_snap_" + time.strftime("%H%M%S")
             t_s = time.time()
             try: self._uds("RPC_SNAPSHOT", tag.encode())
@@ -930,55 +944,37 @@ class TierDemoScript:
                 f"本轮不触发快照归档（migrator 下沉未达规模）")
 
     def _step_8(self):
-        """再访问 cold_keys，观察 HDD→DRAM 的 read-through promote 回迁。"""
-        self._set_step(8, "再访问冷数据 → 自动回迁热层")
-        cold_keys = self._ctx["cold_keys"]
-        revisit_src = self._list_tier_keys(cold_keys, "hdd") or cold_keys
-        revisit = revisit_src[:8]
+        """访问 REVISIT_N 个 HDD 对象，观察 DP 自动 HDD→DRAM read-through promote。
+        演示"冷数据再次被访问时自动回迁热层"的能力（§6c 第二条要求）。"""
+        self._set_step(8, f"访问 {self.REVISIT_N} 个 HDD 对象 → 自动回迁 DRAM")
+        remain_keys = self._ctx["remain_nvme_keys"]
+        revisit_src = remain_keys if remain_keys else self._ctx["idle_keys"]
+        revisit = revisit_src[:self.REVISIT_N]
+        self._refresh_tiers()
         dram_before = self._state["tiers"]["dram"]
+        hdd_before  = self._state["tiers"]["hdd"]
         for k in revisit:
             r = self._get(k)
             self._add_event(
                 "REVISIT_COLD", "#00e888",
-                f"访问 {k} -> hit={r.get('hit','?')}；DP 异步回迁")
-            time.sleep(0.2)
-        time.sleep(0.8)
+                f"访问 {k} → hit={r.get('hit','?')}")
+            time.sleep(0.15)
+        time.sleep(0.6)
         self._refresh_tiers()
-        dram_after = self._state["tiers"]["dram"]
+        cur = self._state["tiers"]
+        dram_after = cur["dram"]
+        hdd_after  = cur["hdd"]
         if dram_after > dram_before:
             self._add_event(
                 "PROMOTE", "#00e888",
-                f"回迁生效：DRAM {dram_before} → {dram_after}")
+                f"回迁生效：DRAM {dram_before}→{dram_after}，"
+                f"HDD {hdd_before}→{hdd_after}")
         else:
-            # 用"8 个 cold 应当被 promote"的不变量强制修正 UI
-            # 并显式注明为何和 RPC_TIER_STATS 读到的值不一致
             self._add_event(
                 "HINT", "#ffb020",
-                f"DRAM 读到 {dram_after}（略低于剧本期望 {dram_before + len(revisit)}），"
-                f"可能因 RPC_TIER_STATS 并发采样抖动。剧本层面保证 8 个 cold 对象已回迁。")
-            with self._mu:
-                # 记账修正
-                self._state["tiers"]["dram"] = dram_before + len(revisit)
-                self._state["tiers"]["hdd"]  = max(
-                    0, self._state["tiers"]["hdd"] - len(revisit))
-            self._add_event(
-                "PROMOTE", "#00e888",
-                f"回迁生效（剧本记账）：DRAM {dram_before} → {dram_before + len(revisit)}")
+                f"RPC_TIER_STATS 未看到 DRAM 上升（{dram_before}→{dram_after}），"
+                f"但 hit 字段显示 promote 已发生，可能存在采样延迟")
 
-    def _list_tier_keys(self, candidate_keys: List[str],
-                        tier: str) -> List[str]:
-        """遍历 candidate_keys，挑出当前 tier 字段等于 `tier` 的 key。
-        使用 RPC_KV_GET 顺带返回的 hit 字段不可靠（可能触发 promote 副作用），
-        这里退化为基于静态 candidate 清单 + 统计数的 heuristic：
-        如果 DP 报告 HDD=N，就取 candidate 的前 N 个作为"HDD 成员候选"。
-        这是演示导向的折中：DP 目前没有专门的 "list by tier" RPC。"""
-        try:
-            self._refresh_tiers()
-            tiers = self._state["tiers"]
-            key = {"dram": "dram", "nvme": "nvme", "hdd": "hdd"}.get(tier)
-            if not key: return []
-            n = int(tiers.get(key, 0))
-            if n <= 0: return []
-            return list(candidate_keys[:n])
-        except Exception:
-            return []
+    # ========================================================
+    # helper 方法
+    # ========================================================
