@@ -597,9 +597,17 @@ int main(int argc, char** argv) {
                 if (m.birth_ns > 0 && now_n - m.birth_ns < grace_ns) return true;
                 double s = tier.calc_heat_score(m, now_n);
                 if (m.tier == nr::Tier::DRAM && s < hot_cut) {
+                    // DRAM objects demote once their decayed score drops
+                    // below `hot_cut`, regardless of read_cnt.
                     cands.push_back({k, nr::Tier::DRAM, nr::Tier::NVME,
                                      m.offset, s});
-                } else if (m.tier == nr::Tier::NVME && s < warm_cut) {
+                } else if (m.tier == nr::Tier::NVME && s < warm_cut
+                           && m.read_cnt == 0) {
+                    // M6 v2 / W2 rule: an NVMe object may only descend to
+                    // HDD if it was NEVER read since birth (read_cnt == 0).
+                    // Objects that have any read history represent the
+                    // "warm" tier and stay on NVMe permanently, which gives
+                    // the demo a stable three-tier distribution.
                     cands.push_back({k, nr::Tier::NVME, nr::Tier::HDD, 0, s});
                 }
                 return true;

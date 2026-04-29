@@ -77,6 +77,7 @@ bool TierEngine::get(std::string_view key, std::string* out) {
     auto it = index_.find(std::string(key));
     if (it == index_.end()) return false;
     bump_score_locked(it->second, now_ns());
+    it->second.read_cnt++;   // M6 v2: distinguish reads from writes
     if (out) out->assign(it->second.size, '\0');
     return true;
 }
@@ -175,6 +176,7 @@ bool TierEngine::get_meta(std::string_view key, uint64_t* offset, uint32_t* size
     if (offset) *offset = it->second.offset;
     if (size)   *size   = it->second.size;
     bump_score_locked(it->second, now_ns());
+    it->second.read_cnt++;   // M6 v2: distinguish reads from writes
     return true;
 }
 
@@ -191,6 +193,7 @@ void TierEngine::on_access(std::string_view key) {
     auto it = index_.find(std::string(key));
     if (it == index_.end()) return;
     bump_score_locked(it->second, now_ns());
+    it->second.read_cnt++;   // M6 v2: distinguish reads from writes
 }
 
 namespace {
@@ -383,6 +386,7 @@ bool TierEngine::promote(std::string_view key, void* dram_slot,
         // in DRAM with a stale low score and could be demoted again on the
         // very next migrator tick.
         bump_score_locked(it->second, now_ns());
+        it->second.read_cnt++;   // promote = user-triggered read
 
         if (from == Tier::NVME) {
             uint64_t cur = nnvme_.load(std::memory_order_relaxed);

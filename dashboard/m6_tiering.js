@@ -1,13 +1,13 @@
 // ============================================================
-// m6_tiering.js — §6 分级存储能力演示（步进模式版本）
+// m6_tiering.js — §6 分级存储能力演示（一键执行 / 方案 W2）
 //
 // 设计：
-//   · 后端是 8 步的步进模式剧本（方案 X：纯 idle 阈值驱动）
-//   · 每点一次 [下一步]，走剧本中的下一步
-//   · 按钮右侧灰字提示下一步会做什么（后端返回的 next_label）
-//   · 三层柱状图数字完全来自 RPC_TIER_STATS 真实返回，不做任何层语义覆盖
-//   · [↻ 重置] 任何时候都可点，清理 DP 状态回到未开始
-//   · 后端活跃集保活线程（500ms 周期）确保步骤间停顿不将活跃集误下沉
+//   · 后端是 8 步剧本，点击 [开始演示] 后后台线程一键走完
+//   · C++ migrator 按 heat_score + read_cnt 自动分层：
+//       DRAM score<0.40 → 降 NVMe
+//       NVMe score<0.05 且 read_cnt==0 → 降 HDD（W2 规则）
+//   · 三层柱状图数字完全来自 RPC_TIER_STATS 真实返回
+//   · [↻ 重置] 清理 DP 状态回到未开始
 // ============================================================
 
 const D6_API = (window.API_BASE || location.origin) + '/api/demo6';
@@ -16,12 +16,12 @@ const D6_API = (window.API_BASE || location.origin) + '/api/demo6';
 const D6_STEP_LABELS = [
   '清空旧数据 & 复位统计',
   '批量写入 100 个对象（全进 DRAM）',
-  '对 60 个活跃对象做高频 GET（打上访问热度）',
-  '等 2.5s：migrator 自动把 40 静默对象 DRAM→NVMe',
-  '访问 12 个 NVMe 对象，DP 自动 promote 回 DRAM',
-  '等 3.5s：migrator 自动把剩余 28 个 NVMe→HDD',
+  '构造访问热度：hot×5 / warm×1 / cold×0',
+  '阶段 A：migrator 按分数自动分层（DRAM→NVMe）',
+  '阶段 B：read_cnt==0 的 cold → HDD，warm 永留 NVMe',
   '冷层达阈值 → 触发快照 + JSON 归档',
-  '访问 8 个 HDD 对象 → 自动回迁 DRAM',
+  '访问 5 个 HDD 对象 → 观察自动回迁 DRAM',
+  '汇总三层分布 & 演示结束',
 ];
 const D6_TOTAL_STEPS = 8;
 
@@ -30,7 +30,7 @@ const D6 = {
   done:       false,
   busy:       false,
   step:       0,            // 已完成步数
-  nextLabel:  '点击 [开始演示] 触发第 1 步',
+  nextLabel:  '点击 [开始演示] 一键走完整剧本',
   tiers:      { dram:0, nvme:0, hdd:0 },
   totals:     { total:0, hot:0, warm:0, cold:0 },
   events:     [],
@@ -73,12 +73,12 @@ function renderM6() {
   const curStep = `<div style="font-size:1.05rem;color:${D6.done?'#00e888':'#ffb020'};margin-top:4px">${hintTxt}</div>`;
 
   // 目标规模总览
-  const tt = D6.totals || { total:0, active:0, idle:0, promote_n:0 };
+  const tt = D6.totals || { total:0, hot:0, warm:0, cold:0 };
   const targetH = `<div class="g4" style="margin-top:10px">
-    ${metric('演示总对象数', tt.total||0, '',   '#c0d8f0')}
-    ${metric('活跃集（持续访问）', tt.active||0, '', '#ff4050')}
-    ${metric('静默集（不访问）',  tt.idle||0, '', '#4488ff')}
-    ${metric('step5 中期激活',      tt.promote_n||0, '', '#ffb020')}
+    ${metric('演示总对象数', tt.total||0, '',  '#c0d8f0')}
+    ${metric('热集 hot (高频访问)', tt.hot||0, '', '#ff4050')}
+    ${metric('温集 warm (轻访问)',  tt.warm||0, '', '#ffb020')}
+    ${metric('冷集 cold (从不访问)', tt.cold||0, '', '#4488ff')}
   </div>`;
 
   // 三层柱状图
@@ -145,22 +145,24 @@ function renderM6() {
     </div>`;
   }).join('');
 
-  // 按钮区：根据 D6 state 决定主按钮文案和是否可点
+  // 按钮区：一键执行模式 — 只有一个“开始演示”按钮；执行中禁用，
+  // 完成后文案变为“演示完成”。不再需要用户点“下一步”。
   let mainBtnHTML;
   if (!D6.running && !D6.done) {
     mainBtnHTML = `<button class="btn btn-primary" onclick="d6Start()">▶ 开始演示</button>`;
   } else if (D6.done) {
     mainBtnHTML = `<button class="btn btn-primary" disabled>✓ 演示完成</button>`;
   } else {
-    mainBtnHTML = `<button class="btn btn-primary" onclick="d6NextStep()" ${D6.busy?'disabled':''}>
-                     ${D6.busy ? `⏳ 正在执行第 ${D6.step + 1} 步 ...` : `▶ 下一步（${D6.step + 1}/${D6_TOTAL_STEPS}）`}
+    // running 中
+    mainBtnHTML = `<button class="btn btn-primary" disabled>
+                     ⏳ 正在执行 (${D6.step}/${D6_TOTAL_STEPS})
                    </button>`;
   }
 
   el.innerHTML = `
     <div class="ctrl-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示（8 步 / 纯访问驱动）</div>
+        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示（一键执行 / W2 规则）</div>
         <div class="ctrl-status ${statusCls}">
           <div class="dot ${D6.busy?'dot-pulse':''}" style="background:${D6.busy?'#00e888':D6.done?'#00d0f0':'#5a7a96'};width:6px;height:6px"></div>
           ${statusTxt}
@@ -169,8 +171,11 @@ function renderM6() {
       ${stepsH}${curStep}
       ${targetH}
       <div style="font-size:1rem;color:#5a7a96;margin:6px 0 10px">
-        <b style="color:#c0d8f0">步进模式 + 纯访问驱动</b>：8 步剧本完全由 C++ migrator 的 idle 阈值自动识别冷热（DRAM idle&gt;2s→NVMe，NVMe idle&gt;3s→HDD）。演示全程不用 demote API，观众看到的层级变化完全来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span> 真实返回。<br>
-        后端的活跃集保活线程（500ms 周期）确保步骤间长时间停顿也不会让活跃集被误下沉；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
+        <b style="color:#c0d8f0">一键执行 + W2 规则</b>：点击 [开始演示] 后后台自动走完 8 步。
+        C++ migrator 按 heat_score + read_cnt 自动分层：
+        DRAM score&lt;0.40 → NVMe；NVMe score&lt;0.05 且 read_cnt==0 → HDD。
+        read_cnt≥1 的 warm 对象永留 NVMe（W2 关键规则）。<br>
+        三层柱状图数字来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span> 真实返回；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
       </div>
       <div class="ctrl-row" style="align-items:center;gap:12px">
         ${mainBtnHTML}
@@ -260,35 +265,9 @@ async function d6Start() {
   }
 }
 
+// 保留该函数作为旧前端兼容兼容入口；一键执行模式下本页不再调用。
 async function d6NextStep() {
-  if (D6.busy) return;
-  D6.busy = true;
-  renderM6();
-  try {
-    // next_step 是阻塞式调用，后端执行完整的该步后才返回，
-    // 可能需要几秒（如 step5 阶段 A 等 3s、step2 写入 ~1s）。
-    const r = await fetch(`${D6_API}/next_step`, { method:'POST' });
-    const j = await r.json();
-    if (!j.ok) {
-      alert('step failed: ' + (j.error||'?'));
-      D6.busy = false;
-      renderM6();
-      return;
-    }
-    if (j.done) {
-      D6.done = true;
-      D6.running = false;
-    }
-    D6.nextLabel = j.next_label || '';
-    D6.busy = false;
-    // 立刻拉一次 status 同步所有层级/事件
-    await d6PollOnce();
-    renderM6();
-  } catch (e) {
-    D6.busy = false;
-    alert('next_step error: ' + e);
-    renderM6();
-  }
+  try { await fetch(`${D6_API}/next_step`, { method:'POST' }); } catch (_) {}
 }
 
 async function d6Reset() {
@@ -298,7 +277,7 @@ async function d6Reset() {
   } catch (_) {}
   Object.assign(D6, {
     running:false, done:false, busy:false, step:0,
-    nextLabel: `点击 [开始演示] 触发第 1 步：${D6_STEP_LABELS[0]}`,
+    nextLabel: '点击 [开始演示] 一键走完整剧本',
     tiers:{dram:0,nvme:0,hdd:0}, events:[], heat:{},
     snapshots:{}, expanded:{}, snapList: [],
   });

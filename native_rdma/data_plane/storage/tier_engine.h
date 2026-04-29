@@ -41,6 +41,11 @@ struct ObjectMeta {
     double   heat_score   = 0.0;   // current decayed activity score
     uint64_t score_ts     = 0;     // last time heat_score was updated (ns)
     uint64_t birth_ns     = 0;     // object first seen (for grace window)
+    // Distinct read counter (PUT does NOT bump it). A NVMe object with
+    // read_cnt == 0 is a "never-read-since-birth" object — it qualifies
+    // as genuinely cold and may continue demoting to HDD. NVMe objects
+    // with read_cnt >= 1 represent the "warm" tier and stop there.
+    uint32_t read_cnt     = 0;
 };
 
 struct MigrationEvent {
