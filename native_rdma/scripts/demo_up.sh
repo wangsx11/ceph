@@ -73,10 +73,13 @@ rm -f /tmp/native_rdma-dp.sock /tmp/native_rdma-metrics.shm
 sleep 1
 
 # 5) 启动 Data Plane（后台 + 日志 tee 到 logs/dp_$ROLE.log）
+# 关键：</dev/null + disown 双保险，防止通过 `ssh host "bash demo_up.sh"` 远程
+# 启动时，SSH 会话退出后把 DP 和 Flask 一起 SIGHUP 杀掉。
 say "启动 native_rdma_dp (role=$ROLE)"
 nohup bash "$ROOT/scripts/start_node.sh" --role="$ROLE" \
-    > "logs/dp_${ROLE}.stdout.log" 2>&1 &
+    </dev/null > "logs/dp_${ROLE}.stdout.log" 2>&1 &
 DP_PID=$!
+disown "$DP_PID" 2>/dev/null || true
 say "  DP pid=$DP_PID"
 
 # ---- 关键：A 与 B 等不同的信号 ----
@@ -139,12 +142,13 @@ say "  peer url = $PEER_URL （将作为反向代理目标注入 Flask）"
 NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
 NR_UDS_PATH=/tmp/native_rdma-dp.sock \
 NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
-NR_DASH_DIR="$ROOT/../dashboard" \
+NR_DASH_DIR="${NR_DASH_DIR:-$ROOT/../../dashboard}" \
 NR_PEER_URL="$PEER_URL" \
     nohup python3 "$ROOT/control_plane/app.py" \
-    > "logs/cp_${ROLE}.stdout.log" 2>&1 &
+    </dev/null > "logs/cp_${ROLE}.stdout.log" 2>&1 &
 CP_PID=$!
-say "  Flask pid=$CP_PID"
+disown "$CP_PID" 2>/dev/null || true
+say "  Flask pid=$CP_PID  dash_dir=${NR_DASH_DIR:-$ROOT/../../dashboard}"
 
 # 等 Flask listen（只要求 HTTP 有响应即可；此时 B 端若还没完成握手，
 # /api/cluster/status 会返回 ok:false + dp_offline，但 HTTP 本身是通的）
