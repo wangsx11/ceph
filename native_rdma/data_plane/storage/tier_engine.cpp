@@ -196,7 +196,11 @@ bool TierEngine::demote(std::string_view key, Tier to,
     } else if (snap.tier == Tier::NVME) {
         int r = io_->sync_read(IoScheduler::Prio::FG, tmp.data(),
                                snap.size, snap.offset);
-        if (r < 0 || (size_t)r != snap.size) return false;
+        if (r < 0 || (size_t)r != snap.size) {
+            NR_WARN("demote read NVMe failed key=%s off=%lu sz=%u r=%d",
+                    skey.c_str(), (unsigned long)snap.offset, snap.size, r);
+            return false;
+        }
     } else {
         // HDD source: read compressed_size bytes then decompress.
         uint32_t on_disk = snap.compressed_size ? snap.compressed_size : snap.size;
@@ -251,7 +255,12 @@ bool TierEngine::demote(std::string_view key, Tier to,
         return false;
     }
     int w = io_->sync_write(prio, write_ptr, on_disk_size, target_off);
-    if (w < 0 || (size_t)w != on_disk_size) return false;
+    if (w < 0 || (size_t)w != on_disk_size) {
+        NR_WARN("demote write %s failed key=%s off=%lu sz=%u w=%d",
+                to == Tier::HDD ? "HDD" : "NVMe",
+                skey.c_str(), (unsigned long)target_off, on_disk_size, w);
+        return false;
+    }
 
     // Commit index.
     {

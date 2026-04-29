@@ -539,7 +539,17 @@ class TierDemoScript:
 
     def _demote(self, key: str, tier: str):
         body = (key + "\x00" + tier).encode()
-        self._uds("RPC_TIER_DEMOTE", body)
+        raw = self._uds("RPC_TIER_DEMOTE", body) or b"{}"
+        try:
+            j = json.loads(raw.decode(errors="replace"))
+        except Exception:
+            j = {}
+        # DP 的 demote() 在 NVMe→HDD 路径有诸多静默失败点（sync_read/write、
+        # 索引 commit 等）。若 ok=false 就向上抛，避免 Python 侧以为成功却
+        # 在统计里看不到 HDD 增长。
+        if not j.get("ok", False):
+            raise RuntimeError(f"RPC_TIER_DEMOTE failed: "
+                               f"key={key} to={tier} err={j.get('err','?')}")
 
     def _archive_snapshot(self, tag: str,
                           cold_keys: List[str], dur_ms: float) -> str:

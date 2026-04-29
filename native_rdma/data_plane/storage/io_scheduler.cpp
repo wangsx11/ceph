@@ -49,7 +49,20 @@ struct IoSchedulerImpl {
 
 static IoSchedulerImpl* g_impl = nullptr;
 
-static int open_backing_file(const std::string& path, off_t pre_size) {
+static int open_backing_file(const std::string& raw_path, off_t pre_size) {
+    // 兼容性：部署脚本（demo_up.sh）可能把 NVME_PATH/HDD_PATH 作为"冷热层
+    // 目录"预先 mkdir 了出来。历史 DP 代码直接 open(path, O_RDWR|O_CREAT)，
+    // 若 path 指向已存在目录会 fail errno=EISDIR，tier I/O 全部退化为 -EBADF。
+    // 这里检测：如果 path 是目录，就在里面追加文件名 "tier.bin" 作为真正的
+    // backing file；否则沿用原 path 语义。
+    std::string path = raw_path;
+    struct stat dst{};
+    if (::stat(raw_path.c_str(), &dst) == 0 && S_ISDIR(dst.st_mode)) {
+        if (!path.empty() && path.back() != '/') path.push_back('/');
+        path += "tier.bin";
+        NR_INFO("io_scheduler: %s is a directory, using backing file %s",
+                raw_path.c_str(), path.c_str());
+    }
     int fd = ::open(path.c_str(), O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
         NR_WARN("io_scheduler: open(%s) failed errno=%d (%s)",
@@ -64,6 +77,8 @@ static int open_backing_file(const std::string& path, off_t pre_size) {
                     path.c_str(), (long)pre_size, errno);
         }
     }
+    NR_INFO("io_scheduler: backing file %s ready (fd=%d size>=%lld)",
+            path.c_str(), fd, (long long)pre_size);
     return fd;
 }
 
