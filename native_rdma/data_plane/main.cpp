@@ -265,6 +265,13 @@ int main(int argc, char** argv) {
     tcfg.migrate_interval_ms  = args.migrate_interval_ms;
     tcfg.dram_demote_idle_ns  = args.dram_demote_idle_ms * 1000000ULL;
     tcfg.nvme_demote_idle_ns  = args.nvme_demote_idle_ms * 1000000ULL;
+    // NVMe/HDD 上每个对象占用的槽位大小。默认 1KB 对小对象够用，但演示 §6
+    // 使用 4KB 对象，如果 tier_slot_size 仍然是 1KB，bump-pointer 每次只
+    // 前进 1KB 而写入 4KB，就会发生对象之间相互覆盖、NVMe→HDD 二次下沉时
+    // 读到错乱数据。解法：让 tier_slot_size 对齐到 slab_slot_size 的大小，
+    // 这样 DRAM / NVMe / HDD 三层都使用同一槽位粒度。
+    tcfg.tier_slot_size = args.slab_slot_size > tcfg.tier_slot_size
+                        ? args.slab_slot_size : tcfg.tier_slot_size;
     tier.init(tcfg);
 
     // Prefetcher (W4 M1-3): stride + Markov-1 prediction over GET accesses.

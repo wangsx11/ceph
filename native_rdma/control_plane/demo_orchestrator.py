@@ -356,7 +356,7 @@ class TierDemoScript:
     # COLD_M = N_OBJS - HOT_K - WARM_M = 668
     OBJ_SIZE        = 4096     # 4KB
     HOT_ROUNDS      = 20       # HOT_K 被读 20 轮
-    WAIT_MIGRATE_S  = 14       # 阶段 A 6s + 阶段 B 8s = 14s (和 env 配合)
+    WAIT_MIGRATE_S  = 15       # 阶段 A 8s + 阶段 B 7s = 15s (和 env 配合)
     SNAP_THRESHOLD  = 50       # 冷层 >=50 个即归档
     HEAT_SHOW_TOP   = 64       # UI 只展示热度前 64 条
     BATCH_PUT_REPORT= 100      # 每写 100 个推一次事件
@@ -592,14 +592,23 @@ class TierDemoScript:
             self._set_step(4,
                 f"等后台 migrator 分两阶段识别：① DRAM→NVMe ② NVMe→HDD")
             # 阶段 A: DRAM → NVMe
-            # DRAM_DEMOTE_IDLE_MS=500ms, MIGRATE_INTERVAL_MS=300ms
-            # 等 6s 让 migrator 扫 ~20 次，足以把 968 个 warm/cold 全部下沉。
+            # 配合 DRAM_DEMOTE_IDLE_MS=4000ms、MIGRATE_INTERVAL_MS=300ms。
+            # 必须在等待期间持续 GET hot_keys 以刷新它们的 last_access，
+            # 否则 hot_keys 也会因 idle>4s 被 migrator 下沉到 NVMe（之前演示
+            # DRAM=0 就是这个原因）。保活频率 500ms 远小于 4s 阈值，安全。
+            # 等 8s（4s 阈值 + 4s 扫描+下沉窗口）保证 968 个 warm/cold 全下沉。
             self._add_event("PHASE", "#00d0f0",
-                "阶段 A: 等 DRAM→NVMe 下沉（6s）")
+                "阶段 A: 等 DRAM→NVMe 下沉（8s，持续保活 hot_keys）")
             t0 = time.time()
             prev = self._state["tiers"].copy()
-            while time.time() - t0 < 6.0:
-                time.sleep(0.4)
+            last_keepalive = 0.0
+            while time.time() - t0 < 8.0:
+                # 每 500ms 对 hot_keys 做一次 GET 保活（远小于 4s IDLE 阈值）
+                if time.time() - last_keepalive > 0.5:
+                    for k in hot_keys:
+                        self._get(k)
+                    last_keepalive = time.time()
+                time.sleep(0.3)
                 self._refresh_tiers()
                 cur = self._state["tiers"]
                 dd_dram = prev["dram"] - cur["dram"]
@@ -614,13 +623,19 @@ class TierDemoScript:
                 prev = dict(cur)
 
             # 阶段 B: NVMe → HDD
-            # NVME_DEMOTE_IDLE_MS=1500ms + 扫描间隔 300ms
-            # 等 8s 保证所有 cold_keys 都能进入冷层。
+            # NVME_DEMOTE_IDLE_MS=2000ms + 扫描间隔 300ms
+            # 等 7s（2s 阈值 + 5s 扫描+下沉窗口）保证所有 cold_keys 下沉冷层。
+            # 此阶段继续保活 hot_keys，防止阶段 A 进入 DRAM 的 hot 对象又被降级。
             self._add_event("PHASE", "#4488ff",
-                "阶段 B: 等 NVMe→HDD 下沉（8s）")
+                "阶段 B: 等 NVMe→HDD 下沉（7s，持续保活 hot_keys）")
             t0 = time.time()
-            while time.time() - t0 < 8.0:
-                time.sleep(0.4)
+            last_keepalive = 0.0
+            while time.time() - t0 < 7.0:
+                if time.time() - last_keepalive > 0.5:
+                    for k in hot_keys:
+                        self._get(k)
+                    last_keepalive = time.time()
+                time.sleep(0.3)
                 self._refresh_tiers()
                 cur = self._state["tiers"]
                 dd_nvme = prev["nvme"] - cur["nvme"]
