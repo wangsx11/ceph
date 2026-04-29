@@ -415,6 +415,7 @@ def demo3_modify():
 @app.route("/api/demo3/read")
 def demo3_read():
     name = request.args.get("name", "").strip()
+    no_fallback = request.args.get("no_fallback", "") == "1"
     if not name:
         return jsonify({"ok": False, "error": "name required"}), 400
     t0  = time.time_ns()
@@ -422,22 +423,45 @@ def demo3_read():
     lat = _lat_us(t0)
     try:    r = json.loads(raw)
     except Exception: r = {"ok": False, "err": raw[:200]}
-    if not r.get("ok"):
-        return jsonify({"ok": False, "error": r.get("err", "not found"),
-                        "latency_us": lat, "node": ROLE}), 404
-    hit = r.get("hit", "?")
-    _obj_view.touch(name, hit, lat)
-    return jsonify({
-        "ok":         True,
-        "op":         "read",
-        "name":       name,
-        "data":       r.get("val", ""),
-        "hit":        hit,                    # local / remote / nvme / hdd
-        "size":       r.get("size", 0),
-        "latency_us": lat,
-        "node":       ROLE,
-        "ts":         time.strftime("%H:%M:%S"),
-    })
+
+    if r.get("ok"):
+        hit = r.get("hit", "?")
+        _obj_view.touch(name, hit, lat)
+        return jsonify({
+            "ok":         True,
+            "op":         "read",
+            "name":       name,
+            "data":       r.get("val", ""),
+            "hit":        hit,                    # local / remote / nvme / hdd
+            "size":       r.get("size", 0),
+            "latency_us": lat,
+            "node":       ROLE,
+            "ts":         time.strftime("%H:%M:%S"),
+        })
+
+    # 本端 DP 说 not found；这通常是因为该对象的 primary 在对端
+    # —— ObjectRouter 一致性哈希把这个 key 路由到了 peer，所以 peer
+    # 才是写入源头。对端 DP 的 KV index 有记录，我们 HTTP 去问一下。
+    if not no_fallback and PEER_URL:
+        body, status, _ct = _peer_get(
+            "/api/demo3/read?name=" + name + "&no_fallback=1")
+        if status == 200:
+            try:    pj = json.loads(body.decode())
+            except Exception: pj = {}
+            if pj.get("ok"):
+                # 我们本端也把对象加入视图，方便后续 UI 展示
+                _obj_view.upsert(name, pj.get("data", ""), via="remote_read",
+                                 extra={"synced": True,
+                                        "src_node": pj.get("node")})
+                pj["fallback"] = True
+                pj["primary_node"] = pj.get("node", "?")
+                pj["node"] = ROLE
+                pj["latency_us"] = int(pj.get("latency_us", 0)) + lat
+                pj["hit"] = "remote:" + str(pj.get("hit", "?"))
+                return jsonify(pj)
+
+    return jsonify({"ok": False, "error": r.get("err", "not found"),
+                    "latency_us": lat, "node": ROLE}), 404
 
 
 @app.route("/api/demo3/delete", methods=["POST"])

@@ -47,9 +47,9 @@ function renderM5() {
         </div>
       </div>
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:6px">
-        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 以逐轮递增的 keyspace (1万/5万/10万 1KB 对象) 持续 12 秒并发 PUT<br>
-        · 数据平面通过 RDMA WRITE 将每条写入跨节点复制；UI 每秒采样 shm metrics 绘制曲线<br>
-        · <span style="color:#ffb020">对端指标实时呈现</span>：展示 peer 的 shm 读数，验证"真实跨节点"而非本地模拟
+        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 以逐轮递增的 keyspace (1万/5万/10万 1KB 对象) 并发 PUT；每轮 8/12/16 秒<br>
+        · 数据平面通过 RDMA WRITE 将每条写入跨节点复制；UI 每 250ms 采样一次 shm metrics 绘制曲线<br>
+        · 线程数固定 16，让"规模扩大"真实反映到 IOPS 下降 / P99 上升（扩展性曲线）
       </div>
       <div class="ctrl-row">
         <button class="btn btn-round-1 btn-sm" onclick="d5Start(1)" ${d5BtnDisabled(1)}>▶ 第一轮 1万</button>
@@ -58,11 +58,6 @@ function renderM5() {
         <div style="flex:1"></div>
         <button class="btn btn-outline btn-sm" onclick="d5Reset()">↻ 重置</button>
       </div>
-    </div>
-
-    <div class="g2" style="margin-top:12px">
-      ${d5MetricsCard('本端 (节点 A) 实时指标', D5.selfMetrics, '#00e888')}
-      ${d5MetricsCard('对端 (节点 B) 实时指标', D5.peerMetrics, '#00d0f0')}
     </div>
 
     <div class="g2" style="margin-top:12px">

@@ -27,28 +27,20 @@ const D3_STATE = {
 function d3ApiFor(node) { return node === 'A' ? D3_API_SELF : D3_API_PEER; }
 
 // ------------------------------------------------------------
-// 页面主渲染
+// 页面主渲染（只建骨架；后续更新走 d3UpdateXxx 小函数，保证事件列表的 DOM 稳定）
 // ------------------------------------------------------------
 function renderM3() {
   const el = document.getElementById('pg-m3');
   if (!el) return;
 
   const cA = D3_STATE.cluster.A, cB = D3_STATE.cluster.B;
-  const peerBadge = (c) => {
-    if (!c)           return tag('离线', '#ff4050');
-    if (!c.dp_online) return tag('DP 离线', '#ff4050');
-    if (!c.rdma_connected) return tag('RDMA 未连接', '#ffb020');
-    return tag('RDMA ✓', '#00e888');
-  };
-  const lagNum = (c) => c ? F(c.replica_lag_us || 0, 1) : '-';
 
   el.innerHTML = `
     <div class="ctrl-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">③ 跨节点对象读写 & 数据同步（RDMA）</div>
-        <div class="ctrl-status ${cA && cA.rdma_connected ? 'running' : 'idle'}">
-          <div class="dot dot-pulse" style="background:${cA && cA.rdma_connected ? '#00e888' : '#ff4050'};width:6px;height:6px"></div>
-          ${cA && cA.rdma_connected ? '双节点在线' : '等待节点就绪'}
+        <div id="d3-status" class="ctrl-status idle">
+          <div class="dot" style="background:#5a7a96;width:6px;height:6px"></div>等待就绪
         </div>
       </div>
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:8px">
@@ -56,8 +48,8 @@ function renderM3() {
         ◆ 每次操作展示：<span style="color:#c0d8f0">延迟(μs)</span> · <span style="color:#c0d8f0">命中层级</span>(local/remote/nvme/hdd) · <span style="color:#c0d8f0">replica_lag</span>
       </div>
       <div class="g2" style="gap:10px">
-        ${d3RenderNodeStatCard('A', cA)}
-        ${d3RenderNodeStatCard('B', cB)}
+        <div id="d3-node-A">${d3RenderNodeStatCard('A', cA)}</div>
+        <div id="d3-node-B">${d3RenderNodeStatCard('B', cB)}</div>
       </div>
     </div>
 
@@ -71,16 +63,16 @@ function renderM3() {
       </div>
       <div class="ctrl-row" style="margin-top:8px">
         <span class="ctrl-label" style="color:#00e888">节点 A</span>
-        <button class="btn btn-success btn-sm" onclick="d3Op('A','write')"  ${D3_STATE.busy?'disabled':''}>写入</button>
-        <button class="btn btn-warning btn-sm" onclick="d3Op('A','modify')" ${D3_STATE.busy?'disabled':''}>修改</button>
-        <button class="btn btn-outline btn-sm" onclick="d3Op('A','read')"   ${D3_STATE.busy?'disabled':''}>读取</button>
-        <button class="btn btn-danger  btn-sm" onclick="d3Op('A','delete')" ${D3_STATE.busy?'disabled':''}>删除</button>
+        <button class="btn btn-success btn-sm" onclick="d3Op('A','write')">写入</button>
+        <button class="btn btn-warning btn-sm" onclick="d3Op('A','modify')">修改</button>
+        <button class="btn btn-outline btn-sm" onclick="d3Op('A','read')">读取</button>
+        <button class="btn btn-danger  btn-sm" onclick="d3Op('A','delete')">删除</button>
         <span style="width:18px"></span>
         <span class="ctrl-label" style="color:#00d0f0">节点 B</span>
-        <button class="btn btn-success btn-sm" onclick="d3Op('B','write')"  ${D3_STATE.busy?'disabled':''}>写入</button>
-        <button class="btn btn-warning btn-sm" onclick="d3Op('B','modify')" ${D3_STATE.busy?'disabled':''}>修改</button>
-        <button class="btn btn-outline btn-sm" onclick="d3Op('B','read')"   ${D3_STATE.busy?'disabled':''}>读取</button>
-        <button class="btn btn-danger  btn-sm" onclick="d3Op('B','delete')" ${D3_STATE.busy?'disabled':''}>删除</button>
+        <button class="btn btn-success btn-sm" onclick="d3Op('B','write')">写入</button>
+        <button class="btn btn-warning btn-sm" onclick="d3Op('B','modify')">修改</button>
+        <button class="btn btn-outline btn-sm" onclick="d3Op('B','read')">读取</button>
+        <button class="btn btn-danger  btn-sm" onclick="d3Op('B','delete')">删除</button>
         <div style="flex:1"></div>
         <button class="btn btn-outline btn-sm" onclick="d3FlushAll()">↻ 清空两端</button>
       </div>
@@ -90,19 +82,39 @@ function renderM3() {
     </div>
 
     <div class="g2" style="margin-top:14px">
-      <div class="card">${chead('节点 A 对象列表', '🅰', '#00e888',
-        tag(`${D3_STATE.objects.A.length} 对象`, '#00e888'))}
-        <div class="card-body">${d3RenderObjTable('A')}</div>
+      <div class="card"><div id="d3-head-A">${chead('节点 A 对象列表', '🅰', '#00e888', tag(`0 对象`, '#00e888'))}</div>
+        <div class="card-body"><div id="d3-list-A">${d3RenderObjTable('A')}</div></div>
       </div>
-      <div class="card">${chead('节点 B 对象列表', '🅱', '#00d0f0',
-        tag(`${D3_STATE.objects.B.length} 对象`, '#00d0f0'))}
-        <div class="card-body">${d3RenderObjTable('B')}</div>
+      <div class="card"><div id="d3-head-B">${chead('节点 B 对象列表', '🅱', '#00d0f0', tag(`0 对象`, '#00d0f0'))}</div>
+        <div class="card-body"><div id="d3-list-B">${d3RenderObjTable('B')}</div></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:14px">${chead('同步事件时间线', '📜', '#a060ff', tag('LIVE', '#00e888'))}
-      <div class="card-body"><div class="elog" style="max-height:300px">${d3RenderEvents()}</div></div>
+      <div class="card-body"><div id="d3-events" class="elog" style="max-height:300px">${d3RenderEventsInitial()}</div></div>
     </div>`;
+}
+
+// 首次进入页面时列出已有事件（通常为空）
+function d3RenderEventsInitial() {
+  if (D3_STATE.events.length === 0) {
+    return `<div id="d3-events-empty" style="color:#5a7a96;text-align:center;padding:20px;font-size:1.1rem">
+      尚无操作；请在上方发起写/改/读/删触发实时事件</div>`;
+  }
+  return D3_STATE.events.map(e => d3EventHTML(e, false)).join('');
+}
+
+function d3EventHTML(e, withLatest) {
+  return `<div class="eitem${withLatest?' latest':''}" data-uid="${e.uid}">
+    <span style="color:#5a7a96">${e.ts}</span>
+    <span style="color:${e.color};font-weight:700;min-width:60px;display:inline-block">${e.op}</span>
+    <span style="color:${e.nodeColor}">${e.node}</span>
+    <span style="color:#e4edf6">${esc(e.name)}</span>
+    <span style="color:#5a7a96">${e.detail || ''}</span>
+    ${e.lat!=null ? `<span style="color:#ffb020">延迟 ${e.lat}μs</span>` : ''}
+    ${e.hit ? `<span style="color:#00d0f0">hit=${e.hit}</span>` : ''}
+    ${e.err ? `<span style="color:#ff4050">err: ${esc(e.err)}</span>` : ''}
+  </div>`;
 }
 
 function d3RenderNodeStatCard(node, c) {
@@ -196,7 +208,7 @@ async function d3Op(node, op) {
   const name = (nameEl && nameEl.value || '').trim() || 'demo_obj';
   const data = (dataEl && dataEl.value) || '';
   D3_STATE.form = { name, data };
-  D3_STATE.busy = true; renderM3();
+  D3_STATE.busy = true;
 
   const api = d3ApiFor(node);
   const nodeColor = node === 'A' ? '#00e888' : '#00d0f0';
@@ -243,7 +255,7 @@ async function d3Op(node, op) {
 
 async function d3FlushAll() {
   if (!confirm('确定清空两端的所有对象吗？（会调用 RPC_ADMIN_FLUSH）')) return;
-  D3_STATE.busy = true; renderM3();
+  D3_STATE.busy = true;
   try {
     await Promise.all([
       fetch(`${D3_API_SELF}/flush`, { method:'POST' }),
@@ -272,6 +284,23 @@ function d3PushEvent(ev) {
   D3_STATE.latestUid = ev.uid;
   D3_STATE.events.unshift(ev);
   if (D3_STATE.events.length > 50) D3_STATE.events.pop();
+
+  // 直接对 DOM 操作：移除旧的 .latest 类、prepend 新节点
+  const box = document.getElementById('d3-events');
+  if (!box) return;    // 页面还没渲染完，d3Refresh 会在下一轮兜底
+  // 移除 "暂无操作" 占位
+  const emptyTip = document.getElementById('d3-events-empty');
+  if (emptyTip) emptyTip.remove();
+  // 清掉上一条的 latest 类（避免多个在闪）
+  box.querySelectorAll('.eitem.latest')
+     .forEach(el => el.classList.remove('latest'));
+  // 新建元素并 prepend
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = d3EventHTML(ev, true);
+  const node = wrapper.firstChild;
+  box.insertBefore(node, box.firstChild);
+  // 控制条数
+  while (box.children.length > 50) box.removeChild(box.lastChild);
 }
 
 // ------------------------------------------------------------
@@ -292,7 +321,40 @@ async function d3Refresh() {
   } catch (e) {
     console.warn('[demo3] refresh error', e);
   }
-  renderM3();
+  // 骨架已建好 → 增量更新子区域；否则（首次或被切走过）完整 renderM3
+  if (document.getElementById('d3-node-A')) {
+    d3UpdatePartial();
+  } else {
+    renderM3();
+  }
+}
+
+function d3UpdatePartial() {
+  const cA = D3_STATE.cluster.A, cB = D3_STATE.cluster.B;
+  // 顶栏 status
+  const st = document.getElementById('d3-status');
+  if (st) {
+    const ok = cA && cA.rdma_connected;
+    st.className = 'ctrl-status ' + (ok ? 'running' : 'idle');
+    st.innerHTML = `<div class="dot ${ok?'dot-pulse':''}" style="background:${ok?'#00e888':'#ff4050'};width:6px;height:6px"></div>` +
+                   (ok ? '双节点在线' : '等待节点就绪');
+  }
+  // 节点卡
+  const na = document.getElementById('d3-node-A');
+  if (na) na.innerHTML = d3RenderNodeStatCard('A', cA);
+  const nb = document.getElementById('d3-node-B');
+  if (nb) nb.innerHTML = d3RenderNodeStatCard('B', cB);
+  // 对象列表 + 计数 tag（重建 card 头部里的 tag 比较麻烦，直接替换整个 head）
+  const ha = document.getElementById('d3-head-A');
+  if (ha) ha.innerHTML = chead('节点 A 对象列表', '🅰', '#00e888',
+            tag(`${D3_STATE.objects.A.length} 对象`, '#00e888'));
+  const hb = document.getElementById('d3-head-B');
+  if (hb) hb.innerHTML = chead('节点 B 对象列表', '🅱', '#00d0f0',
+            tag(`${D3_STATE.objects.B.length} 对象`, '#00d0f0'));
+  const la = document.getElementById('d3-list-A');
+  if (la) la.innerHTML = d3RenderObjTable('A');
+  const lb = document.getElementById('d3-list-B');
+  if (lb) lb.innerHTML = d3RenderObjTable('B');
 }
 
 function d3StartPoll() {

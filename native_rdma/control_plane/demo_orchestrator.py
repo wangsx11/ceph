@@ -210,10 +210,14 @@ class PerfRoundRunner:
 
         stop = threading.Event()
         samples: List[Dict[str, Any]] = []
+        SAMPLE_DT = 0.25                       # 250ms 采样，让曲线更光滑
 
         def sampler():
+            # 给 nr_bench 0.3s 初始化时间，避免第一个点采到"启动瞬时"
+            time.sleep(0.3)
             prev_ops, prev_ts = None, None
             t0 = time.time()
+            first_skipped = False
             while not stop.is_set():
                 m   = read_metrics_shm()
                 now = time.time()
@@ -222,13 +226,26 @@ class PerfRoundRunner:
                 lat_avg = float(m.get("lat_avg_us", 0.0))
                 lat_p99 = float(m.get("lat_p99_us", 0.0))
                 util    = float(m.get("rdma_util_pct", 0.0))
+                # shm 里 DP agent 已经计算好的瞬时 ops/s（更平滑）
+                ops_per_sec_shm = float(m.get("ops_per_sec", 0.0) or 0.0)
 
-                if prev_ts is not None and now > prev_ts:
-                    dt = now - prev_ts
-                    iops = max(0, (ops_cum - prev_ops) / dt) if dt > 0 else 0.0
+                if prev_ts is None:
+                    # 第一次采样只记录基线，不入 samples
+                    prev_ops, prev_ts = ops_cum, now
+                    time.sleep(SAMPLE_DT); continue
+
+                # 优先用 DP agent 算好的值；否则自己差分
+                dt = now - prev_ts
+                if ops_per_sec_shm > 0:
+                    iops = ops_per_sec_shm
                 else:
-                    iops = 0.0
+                    iops = max(0, (ops_cum - prev_ops) / dt) if dt > 0 else 0.0
                 prev_ops, prev_ts = ops_cum, now
+
+                # 丢掉第二个点（通常是 bench 刚刚稳态，数据可靠后从第三点开始）
+                if not first_skipped:
+                    first_skipped = True
+                    time.sleep(SAMPLE_DT); continue
 
                 tp_mbps = bw_tx * 1000.0 / 8.0
                 pt = {
@@ -242,7 +259,7 @@ class PerfRoundRunner:
                 samples.append(pt)
                 with self._mu:
                     self._rounds[round_id]["samples"] = list(samples)
-                time.sleep(1.0)
+                time.sleep(SAMPLE_DT)
 
         s = threading.Thread(target=sampler, daemon=True); s.start()
 
@@ -560,13 +577,16 @@ class TierDemoScript:
                 time.sleep(0.1)
             self._refresh_tiers(); self._push()
 
-            # ---- step 4: 等 migrator 识别冷数据 ----
+            # ---- step 4: 两阶段等待 migrator 识别冷数据 ----
             self._set_step(4,
-                f"等后台 migrator {self.WAIT_MIGRATE_S}s 识别冷数据并自动下沉")
+                f"等后台 migrator 分两阶段识别：① DRAM→NVMe ② NVMe→HDD")
+            # 阶段 A: DRAM → NVMe (DRAM_DEMOTE_IDLE_MS=1000ms, 等 3.5s 足够)
+            self._add_event("PHASE", "#00d0f0",
+                "阶段 A: 等 DRAM→NVMe 下沉（3.5s）")
             t0 = time.time()
             prev = self._state["tiers"].copy()
-            while time.time() - t0 < self.WAIT_MIGRATE_S:
-                time.sleep(0.5)
+            while time.time() - t0 < 3.5:
+                time.sleep(0.4)
                 self._refresh_tiers()
                 cur = self._state["tiers"]
                 dd_dram = prev["dram"] - cur["dram"]
@@ -580,26 +600,56 @@ class TierDemoScript:
                         f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
                 prev = dict(cur)
 
-            # 兜底：如果 migrator 没有生效（取决于 deploy env 里 idle_ms 设置），
-            # 用 RPC_TIER_DEMOTE **仅作用于 warm/cold**，绝不碰 hot_keys
+            # 阶段 B: NVMe → HDD (NVMe_DEMOTE_IDLE_MS=3000ms, 等 5.5s 足够)
+            self._add_event("PHASE", "#4488ff",
+                "阶段 B: 等 NVMe→HDD 下沉（5.5s）")
+            t0 = time.time()
+            while time.time() - t0 < 5.5:
+                time.sleep(0.4)
+                self._refresh_tiers()
+                cur = self._state["tiers"]
+                dd_nvme = prev["nvme"] - cur["nvme"]
+                dd_hdd  = cur["hdd"]  - prev["hdd"]
+                if dd_nvme > 0 and dd_hdd > 0:
+                    self._add_event(
+                        "MIGRATE", "#4488ff",
+                        f"migrator: NVMe→HDD 下沉 {dd_hdd} 个 "
+                        f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
+                prev = dict(cur)
+
+            # 兜底 1: 若温层完全没形成（DRAM 还在 >95%），对 warm_keys 做 demote→NVMe
             tiers_now = self._state["tiers"]
-            if tiers_now["nvme"] + tiers_now["hdd"] < (self.WARM_M + (self.N_OBJS - self.HOT_K - self.WARM_M)) * 0.5:
+            if tiers_now["nvme"] + tiers_now["hdd"] < self.WARM_M * 0.7:
                 self._add_event(
                     "HINT", "#ffb020",
-                    "migrator 未完全生效，改用 demote API 加速识别（仅作用于静默对象）")
-                # 温层
+                    f"阶段 A 未完全生效 (dram={tiers_now['dram']} nvme={tiers_now['nvme']} hdd={tiers_now['hdd']})，"
+                    f"改用 demote API 把 warm_keys 精确推到 NVMe")
                 for i, k in enumerate(warm_keys):
                     self._demote(k, "nvme")
                     if (i + 1) % 50 == 0:
                         self._add_event("MIGRATE", "#00d0f0",
                             f"demote: DRAM → NVMe  {i+1}/{self.WARM_M}")
-                # 冷层
+                time.sleep(0.5); self._refresh_tiers()
+
+            # 兜底 2: 无论前面如何，如果冷层还没达归档阈值，对 cold_keys 强制
+            # demote 到 HDD。这是演示刚性要求 —— 必须看到冷层和归档。
+            tiers_now = self._state["tiers"]
+            if tiers_now["hdd"] < self.SNAP_THRESHOLD:
+                self._add_event(
+                    "HINT", "#ffb020",
+                    f"阶段 B 下沉不足 (hdd={tiers_now['hdd']} < {self.SNAP_THRESHOLD})，"
+                    f"改用 demote API 把 cold_keys 精确推到 HDD")
                 for i, k in enumerate(cold_keys):
                     self._demote(k, "hdd")
                     if (i + 1) % 100 == 0:
-                        self._add_event("MIGRATE", "#00d0f0",
-                            f"demote: DRAM → HDD  {i+1}/{len(cold_keys)}")
-                time.sleep(0.5); self._refresh_tiers()
+                        self._add_event("MIGRATE", "#4488ff",
+                            f"demote: NVMe → HDD  {i+1}/{len(cold_keys)}")
+                time.sleep(0.8); self._refresh_tiers()
+
+            tiers_final = self._state["tiers"]
+            self._add_event(
+                "SUMMARY", "#c0d8f0",
+                f"三层最终分布: 热(DRAM)={tiers_final['dram']} / 温(NVMe)={tiers_final['nvme']} / 冷(HDD)={tiers_final['hdd']}")
 
             # ---- step 5: 冷层归档 ----
             self._set_step(5, "冷层达阈值 → 触发快照 + 归档到 JSON")
