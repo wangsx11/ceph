@@ -63,7 +63,7 @@ function renderM5() {
     <div class="g2" style="margin-top:12px">
       <div class="card">${chead('IOPS 曲线 (ops/s)',      '⚡', '#ff6090')}<div class="card-body"><div style="height:170px">${d5Chart('iops')}</div></div></div>
       <div class="card">${chead('吞吐量曲线 (MB/s)',       '🚀', '#00d0f0')}<div class="card-body"><div style="height:170px">${d5Chart('tp')}</div></div></div>
-      <div class="card">${chead('平均延迟曲线 (μs)',       '⏳', '#ffb020')}<div class="card-body"><div style="height:170px">${d5Chart('lat')}</div></div></div>
+      <div class="card">${chead('复制延迟曲线 (μs)',       '⏳', '#ffb020', tag('RDMA WRITE 瞬时', '#ffb020'))}<div class="card-body"><div style="height:170px">${d5Chart('repl')}</div></div></div>
       <div class="card">${chead('P99 延迟曲线 (μs)',        '📈', '#a060ff')}<div class="card-body"><div style="height:170px">${d5Chart('p99')}</div></div></div>
     </div>
 
@@ -122,9 +122,25 @@ function d5Chart(type) {
     svg += `<text x="${w/2}" y="${h/2}" fill="#5a7a96" font-size="11" text-anchor="middle" font-family="Share Tech Mono">等待数据...</text>`;
     return svg + '</svg>';
   }
-  const mx = Math.max(...all) || 1;
-  const mn = Math.max(0, Math.min(...all) * 0.9);
-  const rng = mx - mn || 1;
+  // 根据曲线类型决定 y 轴 padding：
+  //   · 延迟类 (lat / p99 / repl) 抖动幅度通常很小（RDMA 稳定在 3~10μs），
+  //     需要在上下各留 20% 空间，让曲线的小抖动在视觉上明显可见
+  //   · 吞吐类 (iops / tp) 从 0 起步更符合直觉，下界压到 0
+  const isLat = (type === 'lat' || type === 'p99' || type === 'repl');
+  let rawMax = Math.max(...all);
+  let rawMin = Math.min(...all);
+  let mx, mn;
+  if (isLat) {
+    const span = Math.max(rawMax - rawMin, rawMax * 0.2, 1);  // 最少 20% 或 1μs
+    mx = rawMax + span * 0.25;
+    mn = Math.max(0, rawMin - span * 0.25);
+  } else {
+    // IOPS / 吞吐：若数据都集中在高位（min > 30% * max），下界抬到 min*0.7
+    // 让曲线抖动可见；否则保留 0 起点符合直觉。
+    mx = rawMax * 1.1 || 1;
+    mn = (rawMin > rawMax * 0.3) ? Math.max(0, rawMin * 0.7) : 0;
+  }
+  const rng = (mx - mn) || 1;
   const xMax = Math.max(maxT, 8);
 
   // 横轴

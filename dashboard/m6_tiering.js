@@ -27,6 +27,7 @@ const D6 = {
   events:   [],
   heat:     {},
   snapshots: {},     // name -> detail  (lazy loaded on click)
+  snapList: [],      // 已观察到的快照条目（按时间倒序）；包含自动/手动触发
   sse:      null,
   poll:     null,
   expanded: {},      // snapshot name -> bool
@@ -68,39 +69,59 @@ function renderM6() {
     ${d6Tier('❄ 冷层 (HDD)',  D6.tiers.hdd,  total, '#4488ff', '长期无访问·归档')}
   </div>`;
 
-  // 热度条（对 hot_keys 显示累计 GET 次数；后端只推 hot_keys 给前端）
-  const heatKeys = Object.keys(D6.heat).sort();
-  const heatH = heatKeys.length === 0
-    ? '<div style="color:#5a7a96;padding:14px;text-align:center">尚未开始演示</div>'
-    : '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px">' +
-      heatKeys.slice(0, 32).map(k => {
-        const h = D6.heat[k];
-        const cnt = h.count || 0;
-        const hot = cnt >= 4 ? '#ff4050' : cnt >= 1 ? '#ffb020' : '#5a7a96';
-        return `<div style="padding:6px;background:#1b2a3d;border-radius:4px;border:1px solid ${hot}30">
-          <div class="mono" style="font-size:0.9rem;color:#e4edf6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div>
-          <div class="mono" style="font-size:1.1rem;color:${hot};font-weight:700">${cnt}</div>
-          <div style="font-size:0.85rem;color:#5a7a96">hit=${h.last_hit||'-'}</div>
-        </div>`;
-      }).join('') + '</div>';
-
-  // 事件时间线（区分 snapshot / migrate / step / hint）
-  const evH = D6.events.length === 0
+  // 事件流：过滤掉 snapshot 类条目，snapshot 条目单独走"快照生成"卡片
+  const migEvents = D6.events.filter(e => !e.snap_name);
+  const migH = migEvents.length === 0
     ? '<div style="color:#5a7a96;padding:16px;text-align:center">等待演示开始...</div>'
-    : D6.events.map((e, i) => {
-        const main = `<div class="eitem ${i===0?'latest':''}" style="cursor:${e.snap_name?'pointer':'default'}"
-                 ${e.snap_name ? `onclick="d6ToggleSnap('${esc(e.snap_name)}')"` : ''}>
+    : migEvents.slice(0, 40).map((e, i) => `
+        <div class="eitem ${i===0?'latest':''}">
           <span style="color:#5a7a96">${e.ts}</span>
           <span style="color:${e.color};font-weight:700;min-width:82px;display:inline-block">${e.kind}</span>
           <span style="color:#e4edf6">${esc(e.text)}</span>
-          ${e.snap_name ? '<span style="color:#a060ff;margin-left:8px">▶ 点击查看对象清单</span>':''}
-        </div>`;
-        let detail = '';
-        if (e.snap_name && D6.expanded[e.snap_name] && D6.snapshots[e.snap_name]) {
-          detail = d6RenderSnapDetail(D6.snapshots[e.snap_name]);
-        }
-        return main + detail;
-      }).join('');
+        </div>`).join('');
+
+  // 快照生成区：从事件流里拉 snap_name 条目，叠加 D6.snapList（手动触发）
+  const snapEventItems = D6.events.filter(e => e.snap_name);
+  const seenNames = new Set(D6.snapList.map(s => s.name));
+  snapEventItems.forEach(e => {
+    if (!seenNames.has(e.snap_name)) {
+      D6.snapList.unshift({
+        name:  e.snap_name,
+        ts:    e.ts,
+        text:  e.text,
+        color: e.color || '#a060ff',
+        src:   'auto',
+      });
+      seenNames.add(e.snap_name);
+    }
+  });
+  if (D6.snapList.length > 32) D6.snapList.length = 32;
+
+  const coldNow = D6.tiers.hdd;
+  const threshold = 50;  // 与后端 SNAP_THRESHOLD 保持一致
+  const archDir = '${NR_SNAPSHOT_DIR:-/tmp/nr_snapshots}';
+  const snapHint = D6.snapList.length === 0
+    ? `<div style="color:#5a7a96;padding:14px;text-align:center;font-size:1rem">
+         尚无快照 — 冷层对象数达阈值 <b style="color:#ffb020">${threshold}</b> 时自动触发归档；
+         当前冷层 <b style="color:${coldNow>=threshold?'#00e888':'#ff4050'}">${coldNow}</b>
+         / ${threshold}
+       </div>`
+    : '';
+  const snapRows = D6.snapList.map((s, i) => {
+    const detail = D6.expanded[s.name] && D6.snapshots[s.name]
+      ? d6RenderSnapDetail(D6.snapshots[s.name]) : '';
+    return `<div>
+      <div class="eitem ${i===0?'latest':''}" style="cursor:pointer"
+           onclick="d6ToggleSnap('${esc(s.name)}')">
+        <span style="color:#5a7a96">${s.ts}</span>
+        <span style="color:${s.color};font-weight:700;min-width:100px;display:inline-block">SNAPSHOT</span>
+        <span class="mono" style="color:#e4edf6">${esc(s.name)}</span>
+        <span style="color:#5a7a96;margin-left:6px">${esc(s.text || '').slice(0, 80)}</span>
+        <span style="color:#a060ff;margin-left:8px">▶ 点击查看对象清单</span>
+      </div>
+      ${detail}
+    </div>`;
+  }).join('');
 
   el.innerHTML = `
     <div class="ctrl-panel">
@@ -114,8 +135,8 @@ function renderM6() {
       ${stepsH}${curStep}
       ${targetH}
       <div style="font-size:1rem;color:#5a7a96;margin:6px 0 10px">
-        <b style="color:#c0d8f0">真实访问驱动</b>：写入 <b>1000 个 4KB</b> 对象 → 持续高频访问其中 <b>32 个</b>（热）→ migrator 后台识别剩余静默对象下沉 NVMe / HDD → 冷层 ≥ 50 个时触发快照并自动归档 JSON → 再访问冷对象自动回迁热层。<br>
-        层级计数来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span>；快照归档目录：<span class="mono" style="color:#c0d8f0">${'${NR_SNAPSHOT_DIR:-/tmp/nr_snapshots}'}</span>
+        <b style="color:#c0d8f0">真实访问驱动</b>：写入 <b>1000 个 4KB</b> 对象 → 持续高频访问其中 <b>32 个</b>（热）→ migrator 后台识别剩余静默对象下沉 NVMe / HDD → 冷层 ≥ ${threshold} 个时触发快照并自动归档 JSON → 再访问冷对象自动回迁热层。<br>
+        层级计数来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span>；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
       </div>
       <div class="ctrl-row">
         <button class="btn btn-primary" onclick="d6Start()" ${D6.running?'disabled':''}>▶ 开始演示</button>
@@ -123,15 +144,22 @@ function renderM6() {
       </div>
     </div>
 
-    <div class="g2" style="margin-top:12px">
-      <div class="card span2">${chead('三层存储分布（来自 RPC_TIER_STATS）', '🏗')}
-        <div class="card-body">${tiersH}</div>
-      </div>
-      <div class="card">${chead('对象热度（GET 累计次数）', '🌡', '#ff6090')}
-        <div class="card-body">${heatH}</div>
-      </div>
-      <div class="card">${chead('迁移 / 快照 / 访问事件流', '📜', '#00d0f0', tag('LIVE', '#00e888'))}
-        <div class="card-body"><div class="elog" style="max-height:420px">${evH}</div></div>
+    <div class="card" style="margin-top:12px">
+      ${chead('三层存储分布（来自 RPC_TIER_STATS）', '🏗')}
+      <div class="card-body">${tiersH}</div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      ${chead('迁移 / 访问 事件流', '📜', '#00d0f0', tag('LIVE', '#00e888'))}
+      <div class="card-body"><div class="elog" style="max-height:300px">${migH}</div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      ${chead('快照生成 (snapshot & archive)', '📸', '#a060ff',
+              tag(`${D6.snapList.length} 条`, '#a060ff'))}
+      <div class="card-body">
+        ${snapHint}
+        <div class="elog" style="max-height:360px">${snapRows}</div>
       </div>
     </div>`;
 }
@@ -195,7 +223,7 @@ async function d6Reset() {
   await fetch(`${D6_API}/reset`, { method:'POST' });
   Object.assign(D6, { running:false, done:false, step:0,
     tiers:{dram:0,nvme:0,hdd:0}, events:[], heat:{},
-    snapshots:{}, expanded:{} });
+    snapshots:{}, expanded:{}, snapList: [] });
   renderM6();
 }
 

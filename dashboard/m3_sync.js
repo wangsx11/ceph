@@ -18,7 +18,11 @@ const D3_STATE = {
   latestUid: null,       // 仅本轮新增事件的 uid；轮询 refresh 不变
   uidSeq:  0,            // 事件 uid 自增
   poll:    null,         // setInterval id
-  form:    { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
+  // A/B 各自一套对话框状态（共享同一 key 空间，都能对同一对象增删改查）
+  forms: {
+    A: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
+    B: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
+  },
   selected: null,        // 被选中查看详情的对象 name
   mode:    'panels',     // 'panels' | 'detail'
   busy:    false,
@@ -54,30 +58,17 @@ function renderM3() {
     </div>
 
     <div class="ctrl-panel" style="margin-top:12px">
-      <div style="font-size:1.2rem;font-weight:700;color:#c0d8f0;margin-bottom:8px">共享对象操作</div>
-      <div class="ctrl-row">
-        <span class="ctrl-label">对象名</span>
-        <input id="d3-name" class="ctrl-input" style="width:200px" value="${escAttr(D3_STATE.form.name)}">
-        <span class="ctrl-label">数据</span>
-        <input id="d3-data" class="ctrl-input" style="width:420px" value="${escAttr(D3_STATE.form.data)}">
+      <div style="font-size:1.2rem;font-weight:700;color:#c0d8f0;margin-bottom:8px">共享对象操作（节点 A / B 独立对话框，同一 key 空间）</div>
+      <div class="g2" style="gap:10px">
+        ${d3RenderOpPanel('A')}
+        ${d3RenderOpPanel('B')}
       </div>
-      <div class="ctrl-row" style="margin-top:8px">
-        <span class="ctrl-label" style="color:#00e888">节点 A</span>
-        <button class="btn btn-success btn-sm" onclick="d3Op('A','write')">写入</button>
-        <button class="btn btn-warning btn-sm" onclick="d3Op('A','modify')">修改</button>
-        <button class="btn btn-outline btn-sm" onclick="d3Op('A','read')">读取</button>
-        <button class="btn btn-danger  btn-sm" onclick="d3Op('A','delete')">删除</button>
-        <span style="width:18px"></span>
-        <span class="ctrl-label" style="color:#00d0f0">节点 B</span>
-        <button class="btn btn-success btn-sm" onclick="d3Op('B','write')">写入</button>
-        <button class="btn btn-warning btn-sm" onclick="d3Op('B','modify')">修改</button>
-        <button class="btn btn-outline btn-sm" onclick="d3Op('B','read')">读取</button>
-        <button class="btn btn-danger  btn-sm" onclick="d3Op('B','delete')">删除</button>
-        <div style="flex:1"></div>
+      <div style="display:flex;align-items:center;margin-top:8px;gap:12px">
+        <div style="font-size:1rem;color:#5a7a96;flex:1">
+          提示：两个节点对话框的 <b>对象名</b> 相同即指向同一对象 — A 写入后在 B 侧用相同 name 即可读/改/删；命中层级 <span class="mono" style="color:#00e888">local</span>=RDMA 已同步，<span class="mono" style="color:#ffb020">remote</span>=需回源。
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="d3SyncName()">↔ 把 A 的对象名同步到 B</button>
         <button class="btn btn-outline btn-sm" onclick="d3FlushAll()">↻ 清空两端</button>
-      </div>
-      <div style="font-size:1rem;color:#5a7a96;margin-top:6px">
-        提示：先在节点 A 写入，观察 B 面板自动同步出现同一对象；在 B 读取命中层级应为 <span class="mono" style="color:#00e888">local</span>（RDMA 复制已到）。
       </div>
     </div>
 
@@ -115,6 +106,49 @@ function d3EventHTML(e, withLatest) {
     ${e.hit ? `<span style="color:#00d0f0">hit=${e.hit}</span>` : ''}
     ${e.err ? `<span style="color:#ff4050">err: ${esc(e.err)}</span>` : ''}
   </div>`;
+}
+
+// ------------------------------------------------------------
+// A/B 各自的操作对话框
+// ------------------------------------------------------------
+function d3RenderOpPanel(node) {
+  const color     = node === 'A' ? '#00e888' : '#00d0f0';
+  const peerColor = node === 'A' ? '#00d0f0' : '#00e888';
+  const f         = D3_STATE.forms[node];
+  return `<div style="padding:12px;background:#1b2a3d;border-radius:6px;border:1px solid ${color}40">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color}88"></span>
+      <div style="font-size:1.2rem;font-weight:700;color:${color}">节点 ${node} 对话框</div>
+      <div style="color:#5a7a96;font-size:0.95rem">（所有操作下发到节点 ${node} 的数据平面，经 RDMA 同步到 ${node==='A'?'B':'A'}）</div>
+    </div>
+    <div class="ctrl-row" style="margin-bottom:6px">
+      <span class="ctrl-label" style="min-width:48px">对象名</span>
+      <input id="d3-name-${node}" class="ctrl-input" style="flex:1;min-width:0"
+             value="${escAttr(f.name)}"
+             oninput="D3_STATE.forms['${node}'].name=this.value">
+    </div>
+    <div class="ctrl-row" style="margin-bottom:8px">
+      <span class="ctrl-label" style="min-width:48px">数据</span>
+      <input id="d3-data-${node}" class="ctrl-input" style="flex:1;min-width:0"
+             value="${escAttr(f.data)}"
+             oninput="D3_STATE.forms['${node}'].data=this.value">
+    </div>
+    <div class="ctrl-row" style="gap:6px">
+      <button class="btn btn-success btn-sm" onclick="d3Op('${node}','write')">写入</button>
+      <button class="btn btn-warning btn-sm" onclick="d3Op('${node}','modify')">修改</button>
+      <button class="btn btn-outline btn-sm" onclick="d3Op('${node}','read')">读取</button>
+      <button class="btn btn-danger  btn-sm" onclick="d3Op('${node}','delete')">删除</button>
+    </div>
+  </div>`;
+}
+
+// 把 A 侧（或 B 侧）对话框里的对象名同步到另一侧，方便"在两端对同一对象操作"
+function d3SyncName() {
+  const a = document.getElementById('d3-name-A');
+  const b = document.getElementById('d3-name-B');
+  if (!a || !b) return;
+  b.value = a.value;
+  D3_STATE.forms.B.name = a.value;
 }
 
 function d3RenderNodeStatCard(node, c) {
@@ -203,11 +237,11 @@ function d3RenderEvents() {
 // 操作
 // ------------------------------------------------------------
 async function d3Op(node, op) {
-  const nameEl = document.getElementById('d3-name');
-  const dataEl = document.getElementById('d3-data');
+  const nameEl = document.getElementById('d3-name-' + node);
+  const dataEl = document.getElementById('d3-data-' + node);
   const name = (nameEl && nameEl.value || '').trim() || 'demo_obj';
   const data = (dataEl && dataEl.value) || '';
-  D3_STATE.form = { name, data };
+  D3_STATE.forms[node] = { name, data };
   D3_STATE.busy = true;
 
   const api = d3ApiFor(node);
@@ -275,7 +309,11 @@ async function d3FlushAll() {
 
 function d3ShowDetail(node, name) {
   D3_STATE.selected = { node, name };
-  // 触发一次读取以刷新 last_hit，再提示
+  // 把被点的 name 写入该节点的输入框，让 d3Op('read') 拉到正确 key
+  D3_STATE.forms[node].name = name;
+  const el = document.getElementById('d3-name-' + node);
+  if (el) el.value = name;
+  // 触发一次读取以刷新 last_hit
   d3Op(node, 'read');
 }
 

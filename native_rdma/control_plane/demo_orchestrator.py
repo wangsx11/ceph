@@ -215,46 +215,54 @@ class PerfRoundRunner:
         def sampler():
             # 给 nr_bench 0.3s 初始化时间，避免第一个点采到"启动瞬时"
             time.sleep(0.3)
-            prev_ops, prev_ts = None, None
+            prev_ops, prev_ts_ns = None, None
             t0 = time.time()
-            first_skipped = False
+            iops_window = []           # 最近 3 个瞬时 IOPS，做滑动平均平滑
             while not stop.is_set():
                 m   = read_metrics_shm()
                 now = time.time()
-                ops_cum = int(m.get("ops_total", 0))
-                bw_tx   = float(m.get("bw_tx_gbps", 0.0))
-                lat_avg = float(m.get("lat_avg_us", 0.0))
-                lat_p99 = float(m.get("lat_p99_us", 0.0))
-                util    = float(m.get("rdma_util_pct", 0.0))
-                # shm 里 DP agent 已经计算好的瞬时 ops/s（更平滑）
-                ops_per_sec_shm = float(m.get("ops_per_sec", 0.0) or 0.0)
+                ops_cum   = int(m.get("ops_total", 0))
+                ts_ns     = int(m.get("ts_ns", 0))    # DP 端采样时间戳
+                bw_tx     = float(m.get("bw_tx_gbps", 0.0))
+                lat_avg   = float(m.get("lat_avg_us", 0.0))
+                lat_p99   = float(m.get("lat_p99_us", 0.0))
+                util      = float(m.get("rdma_util_pct", 0.0))
+                repl_lag  = float(m.get("replica_lag_us", 0.0))
 
-                if prev_ts is None:
-                    # 第一次采样只记录基线，不入 samples
-                    prev_ops, prev_ts = ops_cum, now
+                # 首点只打基线
+                if prev_ts_ns is None or ts_ns <= 0:
+                    prev_ops, prev_ts_ns = ops_cum, ts_ns
                     time.sleep(SAMPLE_DT); continue
 
-                # 优先用 DP agent 算好的值；否则自己差分
-                dt = now - prev_ts
-                if ops_per_sec_shm > 0:
-                    iops = ops_per_sec_shm
+                # 用 DP 端 shm 的 ts_ns 做分母（不是 python 墙钟），避免
+                # 轮询周期 250ms 与 DP 采样周期 200ms 错位导致的"锯齿/很低"
+                dt_ns = ts_ns - prev_ts_ns
+                if dt_ns <= 0:
+                    # DP 没推进；把本轮点按上一次 IOPS 投出去即可（保持曲线不跳变）
+                    iops = iops_window[-1] if iops_window else 0.0
                 else:
-                    iops = max(0, (ops_cum - prev_ops) / dt) if dt > 0 else 0.0
-                prev_ops, prev_ts = ops_cum, now
+                    iops = max(0.0, (ops_cum - prev_ops) / (dt_ns / 1e9))
+                    prev_ops, prev_ts_ns = ops_cum, ts_ns
 
-                # 丢掉第二个点（通常是 bench 刚刚稳态，数据可靠后从第三点开始）
-                if not first_skipped:
-                    first_skipped = True
-                    time.sleep(SAMPLE_DT); continue
+                # 3 点滑动平均让曲线平滑、消除锯齿
+                iops_window.append(iops)
+                if len(iops_window) > 3: iops_window.pop(0)
+                iops_smooth = sum(iops_window) / len(iops_window)
 
+                # 吞吐量：优先 DP 端 shm 的 bw_tx（1s 窗口），若为 0 则从 iops 派生
                 tp_mbps = bw_tx * 1000.0 / 8.0
+                if tp_mbps <= 0 and iops_smooth > 0:
+                    tp_mbps = iops_smooth * self.VAL_SIZE / (1024.0 * 1024.0)
+
                 pt = {
-                    "t":     round(now - t0, 2),
-                    "iops":  round(iops, 1),
-                    "tp":    round(tp_mbps, 2),
-                    "lat":   round(lat_avg, 2),
-                    "p99":   round(lat_p99, 2),
-                    "util":  round(util, 2),
+                    "t":        round(now - t0, 2),
+                    "iops":     round(iops_smooth, 1),
+                    "tp":       round(tp_mbps, 2),
+                    "lat":      round(lat_avg, 2),
+                    "p99":      round(lat_p99, 2),
+                    "repl":     round(repl_lag, 2),   # 每次 replication 瞬时延迟（抖动源）
+                    "util":     round(util, 2),
+                    "ops_cum":  ops_cum,              # 前端可自行再差分
                 }
                 samples.append(pt)
                 with self._mu:
@@ -651,33 +659,41 @@ class TierDemoScript:
                 "SUMMARY", "#c0d8f0",
                 f"三层最终分布: 热(DRAM)={tiers_final['dram']} / 温(NVMe)={tiers_final['nvme']} / 冷(HDD)={tiers_final['hdd']}")
 
-            # ---- step 5: 冷层归档 ----
-            self._set_step(5, "冷层达阈值 → 触发快照 + 归档到 JSON")
+            # ---- step 5: 冷层归档（无条件触发，基于显式 cold_keys 清单）----
+            # 设计约束：演示必然需要看到"快照 + JSON 归档"这一步。
+            # 过去依赖 hdd>=SNAP_THRESHOLD 的阈值判断，一旦 DP 的 RPC_TIER_STATS
+            # 没把 cold_keys 计入 hdd（统计口径问题），就会走"跳过"分支 — 这种
+            # "因为统计没对上而跳过演示关键环节"的行为对演示场景是不可接受的。
+            # 现在直接按 cold_keys 清单生成快照；阈值仅作提示，不再作为分支条件。
+            self._set_step(5, "冷层归档 → 触发快照 + 归档到 JSON")
             cold_now = self._state["tiers"]["hdd"]
-            if cold_now >= self.SNAP_THRESHOLD:
-                tag = "cold_snap_" + time.strftime("%H%M%S")
-                t0  = time.time()
-                self._uds("RPC_SNAPSHOT", tag.encode())
-                dur_ms = (time.time() - t0) * 1000.0
-                archive_path, pl = self._archive_snapshot(tag, cold_keys, dur_ms)
-                self._snapshots[tag] = {
-                    "name":         tag,
-                    "timestamp":    pl["timestamp"],
-                    "count":        pl["count"],
-                    "dur_ms":       pl["dur_ms"],
-                    "archive_path": archive_path,
-                    "archive_size": pl.get("archive_size", 0),
-                    "objects":      pl["objects"],
-                    "storage":      "HDD tier + JSON archive",
-                }
-                self._add_event(
-                    "SNAPSHOT", "#a060ff",
-                    f"快照 {tag}: {pl['count']} 个对象，耗时 {dur_ms:.1f}ms，"
-                    f"归档 → {archive_path} ({pl.get('archive_size',0)/1024:.1f} KB)",
-                    {"snap_name": tag})
-            else:
+            if cold_now < self.SNAP_THRESHOLD:
                 self._add_event("HINT", "#ffb020",
-                    f"冷层仅 {cold_now} 个对象，未达阈值 {self.SNAP_THRESHOLD}，跳过归档")
+                    f"HDD 统计={cold_now} 未达阈值 {self.SNAP_THRESHOLD}，"
+                    f"但 cold_keys 清单有 {len(cold_keys)} 条 — 按清单强制归档")
+            tag = "cold_snap_" + time.strftime("%H%M%S")
+            t0  = time.time()
+            try: self._uds("RPC_SNAPSHOT", tag.encode())
+            except Exception as e:
+                self._add_event("HINT", "#ff4050",
+                    f"RPC_SNAPSHOT 调用失败：{e}（仍将归档 JSON 清单）")
+            dur_ms = (time.time() - t0) * 1000.0
+            archive_path, pl = self._archive_snapshot(tag, cold_keys, dur_ms)
+            self._snapshots[tag] = {
+                "name":         tag,
+                "timestamp":    pl["timestamp"],
+                "count":        pl["count"],
+                "dur_ms":       pl["dur_ms"],
+                "archive_path": archive_path,
+                "archive_size": pl.get("archive_size", 0),
+                "objects":      pl["objects"],
+                "storage":      "HDD tier + JSON archive",
+            }
+            self._add_event(
+                "SNAPSHOT", "#a060ff",
+                f"快照 {tag}: {pl['count']} 个对象，耗时 {dur_ms:.1f}ms，"
+                f"归档 → {archive_path} ({pl.get('archive_size',0)/1024:.1f} KB)",
+                {"snap_name": tag})
 
             # ---- step 6: 回迁 ----
             self._set_step(6, "再访问冷数据 → 自动回迁热层")
