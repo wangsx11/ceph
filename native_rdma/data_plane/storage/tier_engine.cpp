@@ -181,7 +181,9 @@ bool TierEngine::demote(std::string_view key, Tier to,
         std::lock_guard<std::mutex> lk(mu_);
         auto it = index_.find(skey);
         if (it == index_.end()) return false;
-        if (it->second.tier == to) return false;
+        // 语义：到目标层已是幂等成功，而非失败。避免 migrator 后台先完成
+        // 同一迁移时，调用方的显式 demote 看到"对象已在目标层"而误报失败。
+        if (it->second.tier == to) return true;
         snap = it->second;
     }
     if (snap.size == 0 || snap.size > slab_len) return false;
