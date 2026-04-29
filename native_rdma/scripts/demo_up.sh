@@ -139,16 +139,20 @@ PEER_FLASK_PORT=$([ "$ROLE" = "A" ] && echo 5001 || echo 5000)
 PEER_URL="http://${PEER_IP}:${PEER_FLASK_PORT}"
 say "  peer url = $PEER_URL （将作为反向代理目标注入 Flask）"
 
+# $ROOT 已经是 <repo>/native_rdma，所以回溯一层到 <repo>/dashboard 即可。
+# （之前错写成 ../../dashboard 会跑到 $HOME/dashboard，导致 Flask 加载错面板。）
+NR_DASH_DIR_RESOLVED="${NR_DASH_DIR:-$(cd "$ROOT/.." && pwd)/dashboard}"
+
 NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
 NR_UDS_PATH=/tmp/native_rdma-dp.sock \
 NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
-NR_DASH_DIR="${NR_DASH_DIR:-$ROOT/../../dashboard}" \
+NR_DASH_DIR="$NR_DASH_DIR_RESOLVED" \
 NR_PEER_URL="$PEER_URL" \
     nohup python3 "$ROOT/control_plane/app.py" \
     </dev/null > "logs/cp_${ROLE}.stdout.log" 2>&1 &
 CP_PID=$!
 disown "$CP_PID" 2>/dev/null || true
-say "  Flask pid=$CP_PID  dash_dir=${NR_DASH_DIR:-$ROOT/../../dashboard}"
+say "  Flask pid=$CP_PID  dash_dir=$NR_DASH_DIR_RESOLVED"
 
 # 等 Flask listen（只要求 HTTP 有响应即可；此时 B 端若还没完成握手，
 # /api/cluster/status 会返回 ok:false + dp_offline，但 HTTP 本身是通的）
