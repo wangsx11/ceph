@@ -27,7 +27,13 @@ UDS_PATH    = os.environ.get("NR_UDS_PATH",    "/tmp/native_rdma-dp.sock")
 METRICS_SHM = os.environ.get("NR_METRICS_SHM", "/tmp/native_rdma-metrics.shm")
 ROLE        = os.environ.get("NR_ROLE",        "A")
 CTRL_PORT   = int(os.environ.get("NR_CTRL_PORT", "5000"))
-DASH_DIR    = os.environ.get("NR_DASH_DIR", os.path.join(os.path.dirname(__file__), "..", "dashboard"))
+# DASH_DIR 指向 *六模块* 仪表盘（M1~M6）的根目录。
+# 仓库布局：<repo>/dashboard/ 是新面板，<repo>/native_rdma/dashboard/ 是旧单页面板。
+# 默认相对路径 ../../dashboard 解析到仓库根下的 dashboard/。
+# 如果你的部署布局不同，请用 NR_DASH_DIR 环境变量显式覆盖。
+DASH_DIR    = os.environ.get(
+    "NR_DASH_DIR",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dashboard")))
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
@@ -775,5 +781,9 @@ def dashboard_asset(p):
     return send_from_directory(DASH_DIR, p)
 
 if __name__ == "__main__":
+    _dash_abs = os.path.abspath(DASH_DIR)
+    _has_new  = os.path.exists(os.path.join(_dash_abs, "m5_perf.js"))
     print(f"[control_plane] starting on :{CTRL_PORT}  role={ROLE}  uds={UDS_PATH}")
+    print(f"[control_plane] DASH_DIR = {_dash_abs}  "
+          f"(new-dashboard={'YES' if _has_new else 'NO — 旧面板或路径错误'})")
     app.run(host="0.0.0.0", port=CTRL_PORT, threaded=True)
