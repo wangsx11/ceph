@@ -51,6 +51,15 @@ function renderM6() {
     ? `<div style="font-size:1.05rem;color:#00e888;margin-top:4px">▸ ${D6_STEP_LABELS[D6.step-1]}</div>`
     : '';
 
+  // 目标规模总览
+  const tt = D6.totals || { total:0, hot:0, warm:0, cold:0 };
+  const targetH = `<div class="g4" style="margin-top:10px">
+    ${metric('演示总对象数', tt.total||0, '',   '#c0d8f0')}
+    ${metric('热对象（高频访问）', tt.hot||0, '', '#ff4050')}
+    ${metric('温对象（静默）',  tt.warm||0, '', '#ffb020')}
+    ${metric('冷对象（归档候选）', tt.cold||0, '', '#4488ff')}
+  </div>`;
+
   // 三层柱状图
   const total = Math.max(1, D6.tiers.dram + D6.tiers.nvme + D6.tiers.hdd);
   const tiersH = `<div class="g3">
@@ -59,19 +68,19 @@ function renderM6() {
     ${d6Tier('❄ 冷层 (HDD)',  D6.tiers.hdd,  total, '#4488ff', '长期无访问·归档')}
   </div>`;
 
-  // 热度条（对前若干个对象显示累计 GET 次数）
+  // 热度条（对 hot_keys 显示累计 GET 次数；后端只推 hot_keys 给前端）
   const heatKeys = Object.keys(D6.heat).sort();
   const heatH = heatKeys.length === 0
     ? '<div style="color:#5a7a96;padding:14px;text-align:center">尚未开始演示</div>'
-    : '<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">' +
-      heatKeys.map(k => {
+    : '<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px">' +
+      heatKeys.slice(0, 32).map(k => {
         const h = D6.heat[k];
         const cnt = h.count || 0;
         const hot = cnt >= 4 ? '#ff4050' : cnt >= 1 ? '#ffb020' : '#5a7a96';
         return `<div style="padding:6px;background:#1b2a3d;border-radius:4px;border:1px solid ${hot}30">
-          <div class="mono" style="font-size:0.95rem;color:#e4edf6">${esc(k)}</div>
-          <div class="mono" style="font-size:1.1rem;color:${hot};font-weight:700">${cnt} GET</div>
-          <div style="font-size:0.9rem;color:#5a7a96">hit=${h.last_hit||'-'}</div>
+          <div class="mono" style="font-size:0.9rem;color:#e4edf6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div>
+          <div class="mono" style="font-size:1.1rem;color:${hot};font-weight:700">${cnt}</div>
+          <div style="font-size:0.85rem;color:#5a7a96">hit=${h.last_hit||'-'}</div>
         </div>`;
       }).join('') + '</div>';
 
@@ -103,9 +112,10 @@ function renderM6() {
         </div>
       </div>
       ${stepsH}${curStep}
+      ${targetH}
       <div style="font-size:1rem;color:#5a7a96;margin:6px 0 10px">
-        <b style="color:#c0d8f0">真实访问驱动</b>：写入 24 个 4KB 对象 → 高频访问其中 4 个 → migrator 后台识别长时间未访问的对象下沉 NVMe/HDD → 冷层达阈值自动快照 → 再访问冷对象自动回迁。<br>
-        不依赖任何脚本化模拟迁移，层级计数来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span>。
+        <b style="color:#c0d8f0">真实访问驱动</b>：写入 <b>1000 个 4KB</b> 对象 → 持续高频访问其中 <b>32 个</b>（热）→ migrator 后台识别剩余静默对象下沉 NVMe / HDD → 冷层 ≥ 50 个时触发快照并自动归档 JSON → 再访问冷对象自动回迁热层。<br>
+        层级计数来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span>；快照归档目录：<span class="mono" style="color:#c0d8f0">${'${NR_SNAPSHOT_DIR:-/tmp/nr_snapshots}'}</span>
       </div>
       <div class="ctrl-row">
         <button class="btn btn-primary" onclick="d6Start()" ${D6.running?'disabled':''}>▶ 开始演示</button>
@@ -140,19 +150,30 @@ function d6Tier(title, n, total, color, desc) {
 }
 
 function d6RenderSnapDetail(s) {
-  const rows = (s.objects || []).slice(0, 30).map((o, i) =>
+  const rows = (s.objects || []).slice(0, 50).map((o, i) =>
     `<tr><td style="color:#5a7a96">${i+1}</td>
      <td class="mono" style="color:#e4edf6">${esc(o.name)}</td>
      <td class="mono" style="color:#ffb020">${o.size} B</td>
      <td class="mono" style="color:#5a7a96">${o.hash}</td></tr>`
   ).join('');
+  const more = (s.objects || []).length > 50
+    ? `<tr><td colspan="4" style="color:#5a7a96;text-align:center">… 共 ${s.objects.length} 个对象，UI 仅展示前 50 条</td></tr>`
+    : '';
+  const archiveInfo = s.archive_path
+    ? `<div style="display:flex;gap:18px;margin-top:4px;font-size:1rem">
+        <span style="color:#00e888">📦 归档文件</span>
+        <span class="mono" style="color:#e4edf6">${esc(s.archive_path)}</span>
+        <span style="color:#ffb020">${F((s.archive_size||0)/1024, 1)} KB</span>
+      </div>` : '';
+  const dur = s.dur_ms != null ? F(s.dur_ms, 1) : F((s.dur_s||0)*1000, 1);
   return `<div style="margin:4px 0 10px 16px;padding:10px;background:#0d1b2a;border:1px solid #2d4a66;border-radius:4px">
     <div style="color:#a060ff;font-weight:700;margin-bottom:6px">
-      快照 ${esc(s.name)} · ${s.count} 对象 · 耗时 ${F((s.dur_s||0)*1000, 1)} ms · ${esc(s.timestamp)}
+      快照 ${esc(s.name)} · ${s.count} 对象 · 耗时 ${dur} ms · ${esc(s.timestamp||'')}
     </div>
-    <table class="dtable"><thead><tr>
+    ${archiveInfo}
+    <table class="dtable" style="margin-top:6px"><thead><tr>
       <th style="width:34px">#</th><th>对象名</th><th>大小</th><th>哈希</th>
-    </tr></thead><tbody>${rows}</tbody></table>
+    </tr></thead><tbody>${rows}${more}</tbody></table>
   </div>`;
 }
 

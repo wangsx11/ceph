@@ -308,6 +308,22 @@ def _cluster_core() -> Dict[str, Any]:
     }
 
 
+def _notify_peer_async(kind: str, name: str, data: str = ""):
+    """Tell the peer Flask that we just wrote/modified/deleted <name>,
+    so its SharedObjectView stays in sync. Fire-and-forget; the peer's
+    DP already has the actual bytes via RDMA replication, this is pure
+    metadata so both UIs can show the object."""
+    if not PEER_URL:
+        return
+    payload = {"op": kind, "name": name, "data": data, "from": ROLE}
+    def _fire():
+        try:
+            _peer_post("/api/demo3/announce", payload)
+        except Exception:
+            pass
+    threading.Thread(target=_fire, daemon=True).start()
+
+
 @app.route("/api/demo3/cluster")
 def demo3_cluster():
     return jsonify(_cluster_core())
@@ -345,6 +361,7 @@ def demo3_write():
                            extra={"repl_ns": r.get("repl_ns"),
                                   "degraded": bool(r.get("degraded", False)),
                                   "route": r.get("route", {})})
+    _notify_peer_async("write", name, data)
     return jsonify({
         "ok":          True,
         "op":          "write",
@@ -380,6 +397,7 @@ def demo3_modify():
                         "latency_us": lat}), 500
     rec = _obj_view.upsert(name, data, via="modify",
                            extra={"repl_ns": r.get("repl_ns")})
+    _notify_peer_async("modify", name, data)
     return jsonify({
         "ok":         True,
         "op":         "modify",
@@ -429,9 +447,31 @@ def demo3_delete():
     if not name:
         return jsonify({"ok": False, "error": "name required"}), 400
     existed = _obj_view.delete(name)
+    _notify_peer_async("delete", name)
     return jsonify({"ok": existed, "op": "delete", "name": name,
                     "node": ROLE, "ts": time.strftime("%H:%M:%S"),
                     "error": None if existed else "not present in local view"})
+
+
+@app.route("/api/demo3/announce", methods=["POST"])
+def demo3_announce():
+    """Peer just wrote/modified/deleted an object; sync our view so
+    the UI for this node also lists the object without waiting for a
+    manual read. Metadata-only: the actual bytes already traveled
+    over RDMA at PUT time."""
+    j    = request.get_json(force=True) or {}
+    op   = (j.get("op") or "").strip()
+    name = (j.get("name") or "").strip()
+    data = j.get("data") or ""
+    frm  = j.get("from") or "peer"
+    if not name or op not in ("write", "modify", "delete"):
+        return jsonify({"ok": False, "error": "bad payload"}), 400
+    if op == "delete":
+        _obj_view.delete(name)
+    else:
+        _obj_view.upsert(name, data, via=f"sync_from_{frm}",
+                         extra={"synced": True, "src_node": frm})
+    return jsonify({"ok": True, "op": op, "name": name, "node": ROLE})
 
 
 @app.route("/api/demo3/flush", methods=["POST"])

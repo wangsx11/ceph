@@ -170,7 +170,7 @@ function d5Summary() {
   const rows = [1,2,3].filter(r => D5.rounds[r].summary);
   if (!rows.length) return `<div style="color:#5a7a96;padding:16px;text-align:center">尚未有完成的轮次</div>`;
   let body = '<table class="dtable"><thead><tr>' +
-    ['轮次','对象数','线程','ops/s','吞吐 MB/s','bw Gbps','延迟 avg','p50','p99','p99.9']
+    ['轮次','对象数','覆盖 MB','时长','线程','ops/s','吞吐 MB/s','bw Gbps','延迟 avg','p50','p99','p99.9']
       .map(h => `<th style="text-align:right">${h}</th>`).join('') +
     '</tr></thead><tbody>';
   rows.forEach(r => {
@@ -178,6 +178,8 @@ function d5Summary() {
     body += `<tr>
       <td style="text-align:right;color:${D5_COLORS[r-1]};font-weight:700">${D5_LABELS[r-1]}</td>
       <td style="text-align:right">${s.count.toLocaleString()}</td>
+      <td style="text-align:right;color:#ffb020">${F(s.footprint_mb||0, 1)}</td>
+      <td style="text-align:right;color:#5a7a96">${s.duration_s||'-'}s</td>
       <td style="text-align:right">${s.threads}</td>
       <td style="text-align:right;color:#ff6090;font-weight:700">${s.iops.toLocaleString()}</td>
       <td style="text-align:right">${F(s.tp_mbps, 2)}</td>

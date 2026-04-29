@@ -15,6 +15,8 @@ const D3_STATE = {
   cluster: { A: null, B: null },
   objects: { A: [], B: [] },
   events:  [],           // 最近 50 条同步事件
+  latestUid: null,       // 仅本轮新增事件的 uid；轮询 refresh 不变
+  uidSeq:  0,            // 事件 uid 自增
   poll:    null,         // setInterval id
   form:    { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
   selected: null,        // 被选中查看详情的对象 name
@@ -170,7 +172,9 @@ function d3RenderEvents() {
     return `<div style="color:#5a7a96;text-align:center;padding:20px;font-size:1.1rem">
       尚无操作；请在上方发起写/改/读/删触发实时事件</div>`;
   }
-  return D3_STATE.events.map((e, i) => `<div class="eitem ${i===0?'latest':''}">
+  return D3_STATE.events.map((e) => {
+    const isLatest = e.uid === D3_STATE.latestUid;
+    return `<div class="eitem ${isLatest?'latest':''}">
     <span style="color:#5a7a96">${e.ts}</span>
     <span style="color:${e.color};font-weight:700;min-width:60px;display:inline-block">${e.op}</span>
     <span style="color:${e.nodeColor}">${e.node}</span>
@@ -179,7 +183,8 @@ function d3RenderEvents() {
     ${e.lat!=null ? `<span style="color:#ffb020">延迟 ${e.lat}μs</span>` : ''}
     ${e.hit ? `<span style="color:#00d0f0">hit=${e.hit}</span>` : ''}
     ${e.err ? `<span style="color:#ff4050">err: ${esc(e.err)}</span>` : ''}
-  </div>`).join('');
+  </div>`;
+  }).join('');
 }
 
 // ------------------------------------------------------------
@@ -263,6 +268,8 @@ function d3ShowDetail(node, name) {
 }
 
 function d3PushEvent(ev) {
+  ev.uid = ++D3_STATE.uidSeq;
+  D3_STATE.latestUid = ev.uid;
   D3_STATE.events.unshift(ev);
   if (D3_STATE.events.length > 50) D3_STATE.events.pop();
 }
