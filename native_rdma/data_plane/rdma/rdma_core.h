@@ -68,6 +68,13 @@ public:
                     const union ibv_gid& peer_gid,
                     uint8_t peer_gid_index);
 
+    // Recover a QP that has entered ERROR state (e.g. after
+    // IBV_WC_RETRY_EXC_ERR on SEND / RECV). This pushes the QP back to
+    // RESET -> INIT. Caller must then invoke connect_qp() again to bring
+    // it to RTS, and re-post any recv buffers it relies on.
+    // Returns true on success; false (with NR_ERROR log) on modify_qp failure.
+    bool reset_qp(int qp_idx);
+
     // Post a plain RECV on the given QP for subsequent SEND receive.
     int post_recv(int qp_idx, void* buf, size_t len, uint32_t lkey,
                   uint64_t wr_id);

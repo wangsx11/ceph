@@ -396,16 +396,60 @@ int main(int argc, char** argv) {
     std::atomic<uint64_t> busy_ns_1s{0};
 
     // 7) A dedicated thread drains QP_HB CQ: counts HB recv + repost.
+    // Self-healing: when QP_HB runs into IBV_WC_RETRY_EXC_ERR (status=12)
+    // it transitions to ERROR and every subsequent WR flushes with
+    // IBV_WC_WR_FLUSH_ERR (status=5). Without recovery, the peer_alive
+    // signal stays false forever even though QP_PUT (replication) is
+    // still healthy. We rebuild QP_HB in place: RESET -> INIT ->
+    // RTR -> RTS, then repost all recv buffers. Rate-limited so a burst
+    // of flush events doesn't trigger many rebuilds.
     std::atomic<bool> hb_stop{false};
+    std::atomic<uint64_t> hb_last_heal_ms{0};
+    constexpr uint64_t HB_HEAL_COOLDOWN_MS = 5000;
+    auto heal_qp_hb = [&]() {
+        uint64_t now = nr::now_ms();
+        uint64_t last = hb_last_heal_ms.load();
+        if (last != 0 && now - last < HB_HEAL_COOLDOWN_MS) return;
+        hb_last_heal_ms.store(now);
+        NR_WARN("QP_HB entered ERROR state, starting in-place self-heal "
+                "(RESET->INIT->RTR->RTS + re-post recv)");
+        if (!core.reset_qp(QP_HB)) {
+            NR_ERROR("heal QP_HB: reset_qp failed, giving up this round");
+            return;
+        }
+        // Re-use the same peer info captured during the OOB handshake.
+        // peer.qpns[QP_HB] is the peer's QPN for this same control QP.
+        if ((int)peer.qpns.size() <= QP_HB) {
+            NR_ERROR("heal QP_HB: peer.qpns has only %zu entries",
+                     peer.qpns.size());
+            return;
+        }
+        if (!core.connect_qp(QP_HB, peer.qpns[QP_HB], peer.lid,
+                             peer.gid, peer.gid_index)) {
+            NR_ERROR("heal QP_HB: connect_qp failed");
+            return;
+        }
+        // Re-post ALL recv buffers. wr_id format matches original pre-post.
+        for (int i = 0; i < HB_RECV_CNT; ++i) {
+            core.post_recv(QP_HB, hb_rx_buf[i], HB_MSG_CAP, slab.lkey(),
+                           0xAA000000ULL | (uint64_t)i);
+        }
+        NR_INFO("QP_HB self-heal complete; heartbeat should resume shortly");
+    };
     std::thread hb_thr([&]() {
         while (!hb_stop.load(std::memory_order_relaxed)) {
             ibv_wc wcs[8];
             int n = core.poll_cq(QP_HB, wcs, 8);
+            bool need_heal = false;
             for (int i = 0; i < n; ++i) {
                 auto& wc = wcs[i];
                 if (wc.status != IBV_WC_SUCCESS) {
                     NR_WARN("hb qp WC err status=%d opcode=%d",
                             wc.status, wc.opcode);
+                    // Any non-success completion means QP_HB is in or
+                    // heading to ERROR state. Mark for heal outside the
+                    // loop (so we only heal once per poll batch).
+                    need_heal = true;
                     continue;
                 }
                 if (wc.opcode == IBV_WC_RECV) {
@@ -429,6 +473,7 @@ int main(int argc, char** argv) {
                 }
                 // IBV_WC_SEND: nothing to do.
             }
+            if (need_heal) heal_qp_hb();
             if (n == 0) std::this_thread::sleep_for(std::chrono::microseconds(500));
         }
     });

@@ -271,6 +271,42 @@ uint8_t RdmaCore::local_gid_index() const {
     return impl_->cfg.gid_index;
 }
 
+bool RdmaCore::reset_qp(int qp_idx)
+{
+    if (qp_idx < 0 || qp_idx >= impl_->cfg.num_qp) {
+        NR_ERROR("reset_qp: bad qp_idx=%d", qp_idx);
+        return false;
+    }
+    auto* qp = impl_->qps[qp_idx];
+
+    // Step 1: any state -> RESET.
+    ibv_qp_attr r{};
+    r.qp_state = IBV_QPS_RESET;
+    if (ibv_modify_qp(qp, &r, IBV_QP_STATE)) {
+        NR_ERROR("reset_qp(%d): modify -> RESET failed", qp_idx);
+        return false;
+    }
+
+    // Step 2: RESET -> INIT (mirrors modify_qp_init's attrs).
+    ibv_qp_attr a{};
+    a.qp_state        = IBV_QPS_INIT;
+    a.pkey_index      = 0;
+    a.port_num        = 1;
+    a.qp_access_flags = IBV_ACCESS_LOCAL_WRITE |
+                        IBV_ACCESS_REMOTE_WRITE |
+                        IBV_ACCESS_REMOTE_READ |
+                        IBV_ACCESS_REMOTE_ATOMIC;
+    int flags = IBV_QP_STATE | IBV_QP_PKEY_INDEX |
+                IBV_QP_PORT | IBV_QP_ACCESS_FLAGS;
+    if (ibv_modify_qp(qp, &a, flags)) {
+        NR_ERROR("reset_qp(%d): modify -> INIT failed", qp_idx);
+        return false;
+    }
+    NR_INFO("reset_qp(%d): now in INIT, caller should connect_qp() next",
+            qp_idx);
+    return true;
+}
+
 bool RdmaCore::connect_qp(int qp_idx,
                           uint32_t peer_qpn, uint16_t peer_lid,
                           const union ibv_gid& peer_gid,
