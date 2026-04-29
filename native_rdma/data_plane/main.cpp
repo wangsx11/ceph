@@ -564,12 +564,19 @@ int main(int argc, char** argv) {
 
             // Collect demotion candidates (copy key+tier) under lock, then
             // call demote() without holding the index lock.
+            //
+            // Removed the previous `cands.size() >= 128` cap: with the demo
+            // driver pushing 1000 objects at once and deliberately waiting
+            // only a few seconds for the migrator to catch up, the 128-
+            // candidate cap per tick caused most objects to get stranded
+            // in DRAM (e.g. 437/1000 not demoted, HDD tier stays at 0).
+            // Demo scale is small; scanning the whole index is cheap and
+            // keeps the visible tier distribution matching user intent.
             struct Cand { std::string key; nr::Tier from; nr::Tier to;
                           uint64_t dram_off; };
             std::vector<Cand> cands;
-            cands.reserve(128);
+            cands.reserve(1024);
             tier.for_each([&](const std::string& k, const nr::ObjectMeta& m) {
-                if (cands.size() >= 128) return false;
                 if (m.tier == nr::Tier::DRAM && dram_idle > 0 &&
                     m.last_access > 0 && now_n - m.last_access > dram_idle) {
                     cands.push_back({k, nr::Tier::DRAM, nr::Tier::NVME, m.offset});

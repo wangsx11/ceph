@@ -407,12 +407,21 @@ std::vector<uint64_t> TierEngine::reset_all() {
 }
 
 uint64_t TierEngine::count(Tier t) const {
-    switch (t) {
-        case Tier::DRAM: return ndram_.load();
-        case Tier::NVME: return nnvme_.load();
-        case Tier::HDD:  return nhdd_.load();
+    // For the M6 tiered-storage demo we MUST report numbers that match the
+    // ground-truth tier field stored in `index_`.  Relying solely on the
+    // atomic counters (ndram_/nnvme_/nhdd_) is fragile because every code
+    // path that mutates ObjectMeta::tier must remember to adjust them in
+    // lock-step; any single missed update shows up in the UI as "NVMe→HDD
+    // said OK but hdd stays 0".  To keep demo output trustworthy, we
+    // recompute by scanning index_.  The scan is O(N) under the index
+    // mutex — fine for demo scale (N_OBJS = 1000) and it is only hit by
+    // RPC_TIER_STATS (low-frequency UI polling), not by the data path.
+    std::lock_guard<std::mutex> lk(mu_);
+    uint64_t n = 0;
+    for (auto& kv : index_) {
+        if (kv.second.tier == t) ++n;
     }
-    return 0;
+    return n;
 }
 
 } // namespace nr

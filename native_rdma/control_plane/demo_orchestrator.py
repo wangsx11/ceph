@@ -338,9 +338,12 @@ class TierDemoScript:
        step1 admin_flush 清零 DP 索引与本地状态
        step2 批量写入 1000 个 4KB 对象（全部进 DRAM）
        step3 对 HOT_KEYS(32) 持续高频 GET，热度累计
-       step4 等后台 migrator 3s（dram-demote-idle-ms 配合 1000ms 就够）；
-             若没看到分层变化，用 RPC_TIER_DEMOTE 兜底，但**只作用于
-             warm/cold 两组 key，绝不动 hot_keys**
+       step4 等后台 migrator 两阶段：
+             ① DRAM→NVMe  (idle>500ms)
+             ② NVMe→HDD   (idle>1500ms)
+             migrator 单轮扫描不再设 128 cap，一次扫完 968 个候选
+             如果统计仍然不达预期，才用 RPC_TIER_DEMOTE 兜底，但
+             **只作用于 warm/cold 两组 key，绝不动 hot_keys**
        step5 冷层对象数 ≥ 阈值时触发 RPC_SNAPSHOT，并将对象清单
              归档成 JSON 文件到 NR_SNAPSHOT_DIR
        step6 再次访问若干冷 key，观察 DP 自动回迁效果
@@ -353,7 +356,7 @@ class TierDemoScript:
     # COLD_M = N_OBJS - HOT_K - WARM_M = 668
     OBJ_SIZE        = 4096     # 4KB
     HOT_ROUNDS      = 20       # HOT_K 被读 20 轮
-    WAIT_MIGRATE_S  = 3        # 压缩到 3 秒（和 dram-demote-idle-ms=1000ms 配合）
+    WAIT_MIGRATE_S  = 14       # 阶段 A 6s + 阶段 B 8s = 14s (和 env 配合)
     SNAP_THRESHOLD  = 50       # 冷层 >=50 个即归档
     HEAT_SHOW_TOP   = 64       # UI 只展示热度前 64 条
     BATCH_PUT_REPORT= 100      # 每写 100 个推一次事件
@@ -588,12 +591,14 @@ class TierDemoScript:
             # ---- step 4: 两阶段等待 migrator 识别冷数据 ----
             self._set_step(4,
                 f"等后台 migrator 分两阶段识别：① DRAM→NVMe ② NVMe→HDD")
-            # 阶段 A: DRAM → NVMe (DRAM_DEMOTE_IDLE_MS=1000ms, 等 3.5s 足够)
+            # 阶段 A: DRAM → NVMe
+            # DRAM_DEMOTE_IDLE_MS=500ms, MIGRATE_INTERVAL_MS=300ms
+            # 等 6s 让 migrator 扫 ~20 次，足以把 968 个 warm/cold 全部下沉。
             self._add_event("PHASE", "#00d0f0",
-                "阶段 A: 等 DRAM→NVMe 下沉（3.5s）")
+                "阶段 A: 等 DRAM→NVMe 下沉（6s）")
             t0 = time.time()
             prev = self._state["tiers"].copy()
-            while time.time() - t0 < 3.5:
+            while time.time() - t0 < 6.0:
                 time.sleep(0.4)
                 self._refresh_tiers()
                 cur = self._state["tiers"]
@@ -608,11 +613,13 @@ class TierDemoScript:
                         f"(dram={cur['dram']} nvme={cur['nvme']} hdd={cur['hdd']})")
                 prev = dict(cur)
 
-            # 阶段 B: NVMe → HDD (NVMe_DEMOTE_IDLE_MS=3000ms, 等 5.5s 足够)
+            # 阶段 B: NVMe → HDD
+            # NVME_DEMOTE_IDLE_MS=1500ms + 扫描间隔 300ms
+            # 等 8s 保证所有 cold_keys 都能进入冷层。
             self._add_event("PHASE", "#4488ff",
-                "阶段 B: 等 NVMe→HDD 下沉（5.5s）")
+                "阶段 B: 等 NVMe→HDD 下沉（8s）")
             t0 = time.time()
-            while time.time() - t0 < 5.5:
+            while time.time() - t0 < 8.0:
                 time.sleep(0.4)
                 self._refresh_tiers()
                 cur = self._state["tiers"]
