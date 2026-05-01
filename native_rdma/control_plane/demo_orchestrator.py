@@ -6,15 +6,10 @@ demo_orchestrator.py — §3 / §5 / §6 三个演示的服务端协调器
       走 UDS(RPC_KV_PUT/GET)；GET 命中层级由 DP 回填（hit=local/remote/nvme/hdd）。
   §5  吞吐量 & 扩展性：逐轮 1W/5W/10W 对象持续并发写入，每秒
       采样 ops/bw/lat 曲线；nr_bench 真实压测 + shm metrics。
-  §6  分级存储：8 步步进模式 + 纯 idle 阈值驱动（方案 X）。
-      100 对象，活跃集 60 / 静默集 40。step3 打热度 → step4 等 2.5s 让
-      migrator 把 40 静默对象下沉 NVMe → step5 访问 12 NVMe 对象触发
-      read-through promote 回 DRAM → step6 再等 3.5s 让剩 28 个 NVMe
-      继续下沉 HDD → step7 冷层达阈值触发快照 + JSON 归档 → step8 访问
-      8 个 HDD 对象触发 HDD→DRAM 回迁。整个剧本**不使用 RPC_TIER_DEMOTE**，
-      UI 三层分布完全来自 RPC_TIER_STATS 真实返回，演示的是 C++ migrator
-      基于 last_access idle 阈值的自动识别能力。后台保活线程 500ms 刷活跃集
-      的 last_access，确保讲解停顿几十秒也不会让活跃集被误下沉。
+  §6  分级存储：8 步一键剧本。
+      100 对象先写入并落到 NVMe 温层作为基线；step3 通过真实 GET 构造
+      hot/warm/cold 三类访问行为；后续自动分层，冷层达阈值后触发快照归档，
+      再访问冷对象观察 HDD→DRAM 回迁。
 
 仅依赖 uds_call() 与 ROLE，从 app.py 注入。
 """
@@ -121,49 +116,104 @@ def read_metrics_shm() -> Dict[str, Any]:
 class PerfRoundRunner:
     # 1 万 / 5 万 / 10 万 独立对象（keyspace）
     ROUND_COUNTS = [10_000, 50_000, 100_000]
-    # 持续时长随规模放大，让大 keyspace 的"索引膨胀"真正显现出来。
-    # 小规模 keyspace 命中 CPU cache 概率高，IOPS 冲得起来；
-    # 10万对象时 slab index bucket 变多 / cache miss 增加 / replica
-    # lag 上升，IOPS 会明显下降、P99 会变长。这就是"扩展性曲线"。
-    ROUND_DUR_S  = [8, 12, 16]
-    # 线程保持恒定，避免人为拉平不同规模的 IOPS
-    THREADS      = 16
+    # 三轮使用同一个采样时长，前端才能用同一条时间轴直接比较。
+    ROUND_DUR_S  = [int(os.environ.get("M5_DURATION_S", "12"))] * 3
+    # 当前 M5 走同步 RPC/RDMA 完成路径：每个客户端线程同一时刻只有
+    # 1 个 outstanding 请求。盲目把线程数拉到 64 只会在 data-plane 前排队，
+    # 吞吐不涨且延迟/P99 明显恶化；默认保守使用 16，现场可用 M5_THREADS
+    # 覆盖做真实实验，不在前端编造或缩放数据。
+    THREADS      = int(os.environ.get("M5_THREADS", "16"))
     VAL_SIZE     = 1024
+    REQUIRE_PEER = os.environ.get("M5_REQUIRE_PEER", "1").lower() not in ("0", "false", "no")
+    PERF_DUR_S   = int(os.environ.get("M5_PERF_DURATION_S", "15"))
+    PERF_THREAD_SWEEP = [
+        int(x) for x in os.environ.get("M5_PERF_THREADS", "8,16,24,32").split(",")
+        if x.strip()
+    ]
 
-    def __init__(self, root: str, role: str):
+    def __init__(self, root: str, role: str,
+                 uds_call: Optional[Callable] = None):
         self.root     = root
         self.role     = role
         self.nr_bench = os.path.join(root, "build", "bin", "nr_bench")
         self.uds      = os.environ.get("NR_UDS_PATH",
                                        "/tmp/native_rdma-dp.sock")
+        self._uds_call = uds_call
         self._mu      = threading.Lock()
         self._rounds: Dict[int, Dict[str, Any]] = {}
+        self._bench: Dict[str, Any] = {
+            "running": False,
+            "phase": "idle",
+            "trials": [],
+            "summary": None,
+            "duration_s": self.PERF_DUR_S,
+            "thread_sweep": list(self.PERF_THREAD_SWEEP),
+        }
         self._cur: Optional[int] = None
 
     # ---- public API ----
     def start(self, round_id: int) -> Dict[str, Any]:
         if round_id not in (1, 2, 3):
             return {"ok": False, "error": f"bad round {round_id}"}
-        if not os.path.exists(self.nr_bench):
-            return {"ok": False,
-                    "error": f"nr_bench not found: {self.nr_bench}"}
+        pre = self._preflight()
+        if not pre.get("ok"):
+            return pre
         with self._mu:
             if self._cur and self._rounds[self._cur].get("running"):
                 return {"ok": False,
                         "error": f"round {self._cur} still running"}
+            if self._bench.get("running"):
+                return {"ok": False, "error": "perf_01 benchmark still running"}
             self._cur = round_id
             self._rounds[round_id] = {
                 "running":   True,
                 "phase":     "starting",
                 "samples":   [],
                 "summary":   None,
+                "error":     None,
+                "raw_tail":  "",
                 "start_ts":  time.time(),
                 "count":     self.ROUND_COUNTS[round_id - 1],
+                "duration_s": self.ROUND_DUR_S[round_id - 1],
             }
         threading.Thread(target=self._run, args=(round_id,),
                          daemon=True).start()
         return {"ok": True, "round": round_id,
-                "count": self.ROUND_COUNTS[round_id - 1]}
+                "count": self.ROUND_COUNTS[round_id - 1],
+                "duration_s": self.ROUND_DUR_S[round_id - 1]}
+
+    def start_perf01(self) -> Dict[str, Any]:
+        """Run the same 1KB throughput methodology as tests/performance/perf_01.
+
+        The scale rounds below intentionally use a shared total keyspace for
+        the 1w/5w/10w demo. perf_01 is a different workload: per-thread
+        keyspace plus a thread sweep. Keeping it as a separate run makes the
+        UI truthful instead of mixing two incompatible meanings of "object
+        count".
+        """
+        pre = self._preflight()
+        if not pre.get("ok"):
+            return pre
+        with self._mu:
+            if self._cur and self._rounds.get(self._cur, {}).get("running"):
+                return {"ok": False,
+                        "error": f"round {self._cur} still running"}
+            if self._bench.get("running"):
+                return {"ok": False, "error": "perf_01 benchmark still running"}
+            self._bench = {
+                "running": True,
+                "phase": "starting",
+                "trials": [],
+                "summary": None,
+                "error": None,
+                "start_ts": time.time(),
+                "duration_s": self.PERF_DUR_S,
+                "thread_sweep": list(self.PERF_THREAD_SWEEP),
+            }
+        threading.Thread(target=self._run_perf01, daemon=True).start()
+        return {"ok": True, "metric": "perf_01_ops_1kb",
+                "duration_s": self.PERF_DUR_S,
+                "thread_sweep": list(self.PERF_THREAD_SWEEP)}
 
     def live(self, round_id: int) -> Dict[str, Any]:
         with self._mu:
@@ -171,14 +221,19 @@ class PerfRoundRunner:
             if not r:
                 return {"ok": True, "round": round_id,
                         "running": False, "phase": "idle",
-                        "samples": [], "summary": None}
+                        "duration_s": self.ROUND_DUR_S[round_id - 1],
+                        "samples": [], "summary": None,
+                        "error": None, "raw_tail": ""}
             return {"ok":       True,
                     "round":    round_id,
                     "running":  r["running"],
                     "phase":    r["phase"],
                     "count":    r["count"],
+                    "duration_s": r.get("duration_s", self.ROUND_DUR_S[round_id - 1]),
                     "samples":  list(r["samples"]),
-                    "summary":  r["summary"]}
+                    "summary":  r["summary"],
+                    "error":    r.get("error"),
+                    "raw_tail": r.get("raw_tail", "")}
 
     def snapshot_all(self) -> Dict[str, Any]:
         """Return a full view of rounds 1..3 for the page refresh path."""
@@ -189,27 +244,155 @@ class PerfRoundRunner:
                 if not r:
                     out["rounds"][i] = {"running": False, "phase": "idle",
                                         "samples": [], "summary": None,
-                                        "count": self.ROUND_COUNTS[i - 1]}
+                                        "count": self.ROUND_COUNTS[i - 1],
+                                        "duration_s": self.ROUND_DUR_S[i - 1],
+                                        "error": None, "raw_tail": ""}
                 else:
                     out["rounds"][i] = {
                         "running":  r["running"],
                         "phase":    r["phase"],
                         "count":    r["count"],
+                        "duration_s": r.get("duration_s", self.ROUND_DUR_S[i - 1]),
                         "samples":  list(r["samples"]),
                         "summary":  r["summary"],
+                        "error":    r.get("error"),
+                        "raw_tail": r.get("raw_tail", ""),
                     }
+            out["bench"] = {
+                "running": self._bench.get("running", False),
+                "phase": self._bench.get("phase", "idle"),
+                "trials": list(self._bench.get("trials", [])),
+                "summary": self._bench.get("summary"),
+                "error": self._bench.get("error"),
+                "duration_s": self._bench.get("duration_s", self.PERF_DUR_S),
+                "thread_sweep": list(self._bench.get("thread_sweep", self.PERF_THREAD_SWEEP)),
+            }
             return out
 
     def reset(self):
         with self._mu:
             self._rounds.clear()
             self._cur = None
+            self._bench = {
+                "running": False,
+                "phase": "idle",
+                "trials": [],
+                "summary": None,
+                "error": None,
+                "duration_s": self.PERF_DUR_S,
+                "thread_sweep": list(self.PERF_THREAD_SWEEP),
+            }
 
     # ---- internals ----
+    def _preflight(self) -> Dict[str, Any]:
+        if not os.path.exists(self.nr_bench):
+            return {"ok": False,
+                    "error": f"nr_bench not found: {self.nr_bench}"}
+        if not os.path.exists(self.uds):
+            return {"ok": False,
+                    "error": f"data plane not running: missing UDS {self.uds}"}
+        if not self.REQUIRE_PEER or not self._uds_call:
+            return {"ok": True}
+        try:
+            raw = self._uds_call("RPC_CLUSTER_STATUS") or b"{}"
+            cs = json.loads(raw.decode(errors="replace"))
+        except Exception as e:
+            return {"ok": False,
+                    "error": f"cannot query data plane status: {e}"}
+        if not cs.get("ok", False):
+            return {"ok": False,
+                    "error": cs.get("err", "data plane status failed"),
+                    "cluster": cs}
+        if not cs.get("peer_alive", False):
+            return {"ok": False,
+                    "error": "peer is not alive; M5 requires real cross-node RDMA replication",
+                    "cluster": cs}
+        return {"ok": True, "cluster": cs}
+
+    def _run_perf01(self):
+        dur_s = self.PERF_DUR_S
+        trials: List[Dict[str, Any]] = []
+        best: Optional[Dict[str, Any]] = None
+        keyspace = 10_000
+
+        for threads in self.PERF_THREAD_SWEEP:
+            with self._mu:
+                self._bench["phase"] = f"running_threads_{threads}"
+            cmd = [self.nr_bench,
+                   f"--uds={self.uds}",
+                   "--op=put",
+                   f"--threads={threads}",
+                   f"--duration={dur_s}",
+                   f"--val-size={self.VAL_SIZE}"]
+            if self.REQUIRE_PEER:
+                cmd.append("--require-peer=1")
+
+            raw = ""
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True,
+                                      timeout=dur_s + 20)
+                raw = (proc.stdout or "") + (proc.stderr or "")
+            except Exception as e:
+                raw = f"[runner] nr_bench failed: {e}"
+            trial = _parse_nr_bench(raw, keyspace, threads, self.VAL_SIZE, dur_s)
+            trial.update({
+                "metric": "perf_01_ops_1kb",
+                "keyspace_per_thread": keyspace,
+                "effective_objects": keyspace * threads,
+                "shared_keyspace": False,
+                "require_peer": self.REQUIRE_PEER,
+                "bw_gbps": round(trial.get("iops", 0) * self.VAL_SIZE * 8.0 / 1e9, 3),
+                "passed_ops": bool(
+                    trial.get("iops", 0) >= 1_000_000
+                    and trial.get("ops_fail", 0) == 0
+                    and trial.get("ops_degraded", 0) == 0
+                ),
+            })
+            trial["passed_util"] = bool(
+                trial["bw_gbps"] >= 50.0
+                and trial.get("ops_fail", 0) == 0
+                and trial.get("ops_degraded", 0) == 0
+            )
+            trial["passed"] = bool(trial["passed_ops"] or trial["passed_util"])
+            trial["error"] = _bench_error(raw, trial)
+            trials.append(trial)
+            if best is None or trial.get("iops", 0) > best.get("iops", 0):
+                best = trial
+            with self._mu:
+                self._bench["trials"] = list(trials)
+
+        best = best or {}
+        summary = dict(best)
+        summary.update({
+            "metric": "perf_01_ops_1kb",
+            "threshold_iops": 1_000_000,
+            "threshold_util_pct": 50.0,
+            "threshold_criterion": "ops OR util (1KB is QPS-bound)",
+            "passed": bool(
+                best.get("passed_ops", False) or best.get("passed_util", False)
+            ),
+            "trials": trials,
+            "error": _bench_error("", best),
+        })
+        with self._mu:
+            self._bench["running"] = False
+            self._bench["phase"] = "done"
+            self._bench["summary"] = summary
+            self._bench["error"] = summary.get("error")
+
     def _run(self, round_id: int):
         count   = self.ROUND_COUNTS[round_id - 1]
         dur_s   = self.ROUND_DUR_S[round_id - 1]
         threads = self.THREADS
+        with self._mu:
+            self._rounds[round_id]["phase"] = "prepare"
+
+        if self._uds_call:
+            try:
+                self._uds_call("RPC_ADMIN_FLUSH")
+            except Exception:
+                pass
+
         with self._mu:
             self._rounds[round_id]["phase"] = "running_nr_bench"
 
@@ -282,7 +465,10 @@ class PerfRoundRunner:
                f"--threads={threads}",
                f"--duration={dur_s}",
                f"--val-size={self.VAL_SIZE}",
-               f"--keyspace={count}"]
+               f"--keyspace={count}",
+               "--shared-keyspace=1"]
+        if self.REQUIRE_PEER:
+            cmd.append("--require-peer=1")
         raw = ""
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
@@ -294,26 +480,41 @@ class PerfRoundRunner:
             stop.set(); s.join(timeout=2)
 
         summary = _parse_nr_bench(raw, count, threads, self.VAL_SIZE, dur_s)
+        summary.update({
+            "require_peer": self.REQUIRE_PEER,
+            "passed": bool(
+                summary.get("iops", 0) > 0
+                and summary.get("ops_fail", 0) == 0
+                and summary.get("ops_degraded", 0) == 0
+            ),
+            "error": _bench_error(raw, summary),
+        })
         with self._mu:
             r = self._rounds[round_id]
             r["running"] = False
             r["phase"]   = "done"
             r["summary"] = summary
+            r["error"]   = summary.get("error")
             r["raw_tail"] = raw[-600:] if raw else ""
 
 
 def _parse_nr_bench(raw: str, count: int, threads: int,
                     val_size: int, dur_s: int) -> Dict[str, Any]:
     import re
+    num = r"[-+]?\d+(?:\.\d+)?"
     def g(pat, cast=float, default=0.0):
         m = re.search(pat, raw); return cast(m.group(1)) if m else default
-    ops = g(r"ops/s\s*:\s*(\d+)", int, 0)
+    ops = g(rf"ops/s\s*:\s*({num})", float, 0.0)
+    ok_ops = g(r"ops ok/fail\s*:\s*(\d+)\s*/\s*\d+", int, 0)
+    fail_ops = g(r"ops ok/fail\s*:\s*\d+\s*/\s*(\d+)", int, 0)
+    degraded_ops = g(r"ops degraded\s*:\s*(\d+)", int, 0)
     # 首次出现 "(x MB/s)" 是 req 吞吐量
-    req_mbps = g(r"\((\d+\.\d+)\s*MB/s\)", float, 0.0)
-    lat_avg  = g(r"avg=(\d+\.\d+)")
-    lat_p50  = g(r"p50=(\d+\.\d+)")
-    lat_p99  = g(r"p99=(\d+\.\d+)")
-    lat_p999 = g(r"p99\.9=(\d+\.\d+)")
+    req_mbps = g(rf"\(({num})\s*MB/s\)", float, 0.0)
+    lat_avg  = g(rf"avg=({num})")
+    lat_p50  = g(rf"p50=({num})")
+    lat_p90  = g(rf"p90=({num})", float, None)
+    lat_p99  = g(rf"p99=({num})")
+    lat_p999 = g(rf"p99\.9=({num})")
     gbps = round(req_mbps * 8.0 / 1000.0, 3)
     # footprint ≈ count * slot_size；slot_size 约等于 val_size 对齐到 slab 粒度
     footprint_mb = round(count * val_size / (1024 * 1024), 2)
@@ -322,40 +523,53 @@ def _parse_nr_bench(raw: str, count: int, threads: int,
         "threads":     threads,
         "duration_s":  dur_s,
         "val_size":    val_size,
+        "shared_keyspace": True,
+        "ops_ok":      int(ok_ops),
+        "ops_fail":    int(fail_ops),
+        "ops_degraded": int(degraded_ops),
         "iops":        int(ops),
+        "ops_per_sec": float(ops),
         "tp_mbps":     round(req_mbps, 2),
+        "mb_per_sec":  round(req_mbps, 2),
         "gbps":        gbps,
         "util_pct":    round(gbps / 100.0 * 100.0, 2),
         "footprint_mb": footprint_mb,
         "lat_avg_us":  round(lat_avg, 2),
         "lat_p50_us":  round(lat_p50, 2),
+        "lat_p90_us":  round(lat_p90 if lat_p90 is not None else lat_p99, 2),
         "lat_p99_us":  round(lat_p99, 2),
         "lat_p99_9_us":round(lat_p999, 2),
     }
+
+
+def _bench_error(raw: str, summary: Dict[str, Any]) -> Optional[str]:
+    raw_l = (raw or "").lower()
+    if "uds connect failed" in raw_l:
+        return "nr_bench cannot connect to data-plane UDS"
+    if "data plane not running" in raw_l or "no such file" in raw_l:
+        return "data plane is not running"
+    if "rejected" in raw_l and int(summary.get("ops_degraded", 0) or 0) > 0:
+        return "peer replication degraded; require-peer rejected writes"
+    if int(summary.get("ops_fail", 0) or 0) > 0:
+        return f"nr_bench reported {summary.get('ops_fail')} failed operations"
+    if int(summary.get("iops", 0) or 0) <= 0:
+        return "nr_bench finished with zero successful operations"
+    return None
 
 # ================================================================
 # 4) §6: 真实访问驱动的分级存储剧本
 # ================================================================
 class TierDemoScript:
-    """§6 demo runner. **方案 W2**：基于衰减热度分数 + read_cnt==0 规则。
+    """§6 demo runner.
 
     一键执行（不再步进），软性按以下顺序打通整个剧本：
 
-    100 个对象分 3 类：
-      · HOT  (30)：step3 高频访问 5 轮 → heat_score 累计 >1.5 → 留 DRAM
-      · WARM (30)：step3 轻访问 1 次  → heat_score≈1.0，几秒后衰减到 <hot_cut → 降 NVMe；
-                   因为 read_cnt≥1 → W2 规则保证永留 NVMe（不再降 HDD）
-      · COLD (40)：step3 完全不访问 → heat_score=0，grace 过后立即降 NVMe；
-                   因为 read_cnt==0 → 继续降 HDD
+    100 个对象先落 NVMe 温层，再按真实 GET 分 3 类：
+      · HOT  (30)：step3 高频访问 5 轮 → promote 到 DRAM 并持续保热
+      · WARM (30)：step3 轻访问 1 次  → 短暂 promote，几秒后回落 NVMe
+      · COLD (40)：step3 完全不访问 → 一直留 NVMe，随后下沉 HDD
 
-    最终三层分布 = 30/30/40（演示完成后稳定不会振荡）。
-
-    C++ 端关键行为（与剧本紧密配合）：
-      1. heat_score 每秒衰减 exp(-alpha)≈exp(-0.3)=0.74 倍
-      2. DRAM→NVMe：分数<hot_cut(0.40) 即降
-      3. NVMe→HDD：分数<warm_cut(0.05) 且 read_cnt==0 才降（W2 关键点）
-      4. GET 命中 NVMe/HDD → 自动 promote 回 DRAM 且 read_cnt++，
-         标记对象为“被访问过的温数据”
+    step5 稳定分布 = 30/30/40；step7 回访 5 个冷对象后最终约 35/30/35。
     """
 
     # 演示规模
@@ -364,9 +578,9 @@ class TierDemoScript:
     WARM_K          = 30       # 温集：step3 轻访问
     # COLD_K = N_OBJS - HOT_K - WARM_K = 40，从不访问
     OBJ_SIZE        = 4096     # 4KB
-    HOT_ROUNDS      = 5        # HOT 对象读 5 轮（score 累计到 ~5）
-    WARM_HITS       = 1        # WARM 对象轻访问 1 次（score=1）
-    PHASE_A_WAIT_S  = 3.5      # step4：等 migrator 打通 DRAM→NVMe→HDD 第一波
+    HOT_ROUNDS      = 5        # HOT 对象读 5 轮，并在等待阶段继续保热
+    WARM_HITS       = 1        # WARM 对象轻访问 1 次
+    PHASE_A_WAIT_S  = 6.0      # step4：等 warm 从 DRAM 回落 NVMe
     PHASE_B_WAIT_S  = 6.0      # step5：等所有 COLD 落到 HDD
     REVISIT_N       = 5        # step7 再访问的 HDD 对象数
     SNAP_THRESHOLD  = 20
@@ -374,6 +588,7 @@ class TierDemoScript:
     BATCH_PUT_REPORT= 20
     BATCH_GET_REPORT= 1
     STEP_INTERVAL_S = 0.4      # 一键执行时两个 step 之间的停顿
+    HOT_KEEPALIVE_S = 1.0      # phase A/B 中持续制造真实 hot 访问
 
     def __init__(self, uds_call: Callable, root: str, role: str):
         self._uds     = uds_call
@@ -383,7 +598,7 @@ class TierDemoScript:
         self._state   = self._fresh()
         self._q: queue.Queue = queue.Queue()
         self._snapshots: Dict[str, Dict[str, Any]] = {}
-        # 快照归档目录 — 符合 §6c "冷数据下沉至容量层后自动触发备份或快照生成"
+        # 快照文件输出目录。
         self._snap_dir = os.environ.get(
             "NR_SNAPSHOT_DIR", "/tmp/nr_snapshots")
         try: os.makedirs(self._snap_dir, exist_ok=True)
@@ -393,10 +608,7 @@ class TierDemoScript:
         # 之所以独立于 _state，是因为 _state 会被序列化给前端，而这些
         # 只是内部工作内存，前端不需要看见。
         self._ctx: Dict[str, Any] = {}
-        # hot_keys 保活线程：只要 running=True（演示在进行中）就每 500ms
-        # 对 hot_keys 做一次 GET 刷新 last_access。没有它的话 step 之间
-        # 的长时间停顿（评审讲解时几十秒）会让 migrator 把 hot_keys 也
-        # 下沉到 NVMe，评委会看到 DRAM 数量离奇减少。
+        # 复用这个 Event 控制一键执行线程停止。
         self._keepalive_stop = threading.Event()
         self._keepalive_thr: Optional[threading.Thread] = None
 
@@ -419,10 +631,10 @@ class TierDemoScript:
     # 8 个环节的展示标签——直接给前端用于进度圆点
     STEP_FLOW = [
         ("清空旧数据 & 复位统计", ""),
-        ("写入 100 个 4KB 对象（全进 DRAM）", ""),
+        ("写入 100 个 4KB 对象并落到 NVMe 温层", ""),
         ("构造访问热度：hot×5 / warm×1 / cold×0", ""),
-        ("等 migrator 自动按分数分层（阶段 A）", ""),
-        ("等 migrator 把 cold 的 read_cnt==0 对象下沉 HDD（阶段 B）", ""),
+        ("阶段 A：warm 热度衰减后自动回落 NVMe", ""),
+        ("阶段 B：cold 对象下沉 HDD", ""),
         ("检查冷层是否达阈值 → 触发快照 + JSON 归档", ""),
         ("访问 5 个 HDD 对象 → 观察自动回迁 DRAM", ""),
         ("汇总三层分布 & 演示结束", ""),
@@ -455,7 +667,7 @@ class TierDemoScript:
                 "payload":   "X" * self.OBJ_SIZE,
                 "t_start":   time.time(),
             }
-        # 启动后台 run 线程（不再有保活线程——一键执行无讲解停顿）
+        # 启动后台 run 线程。
         self._keepalive_stop = threading.Event()   # 复用这个 Event 做 run 线程的停止信号
         self._keepalive_thr  = threading.Thread(
             target=self._run_all, daemon=True)
@@ -486,6 +698,8 @@ class TierDemoScript:
             with self._mu:
                 self._state["done"]    = True
                 self._state["running"] = False
+                self._state["busy"]    = False
+            self._push()
         except Exception as e:
             with self._mu:
                 self._state["busy"]    = False
@@ -506,7 +720,7 @@ class TierDemoScript:
             if cur == 0 and not self._state["done"]:
                 nl = "点击 [开始演示] 触发第 1 步：" + self.STEP_FLOW[0][0]
             elif cur >= self._state["total_steps"]:
-                nl = self.STEP_FLOW[-1][1]
+                nl = "演示完成（可点击 [↻ 重置] 重新开始）"
             else:
                 nl = self._state["next_label"]
             s = {
@@ -538,7 +752,7 @@ class TierDemoScript:
                 yield "data: " + json.dumps(self.status()) + "\n\n"
 
     def reset(self):
-        # 先停保活线程，确保不再并发访问 hot_keys
+        # 先停一键执行线程，确保不再并发访问 hot_keys
         self._keepalive_stop.set()
         if self._keepalive_thr and self._keepalive_thr.is_alive():
             self._keepalive_thr.join(timeout=1.5)
@@ -582,7 +796,7 @@ class TierDemoScript:
 
     def _refresh_tiers(self):
         """从 C++ DP 拉取三层对象分布到 self._state["tiers"]。
-        方案 X 下 UI 完全反映 DP 真实返回，不做稳定性修正。"""
+        UI 完全反映 DP 真实返回，不做稳定性修正。"""
         try:
             raw = self._uds("RPC_TIER_STATS") or b"{}"
             j   = json.loads(raw.decode(errors="replace"))
@@ -611,6 +825,21 @@ class TierDemoScript:
         raw = self._uds("RPC_KV_GET", key.encode()) or b"{}"
         try: return json.loads(raw.decode(errors="replace"))
         except Exception: return {"ok": False}
+
+    def _touch_hot_keys(self, reason: str = "keepalive"):
+        """Issue real GETs for hot keys so they remain active during waits."""
+        hot_keys = self._ctx.get("hot_keys", [])
+        if not hot_keys: return
+        for k in hot_keys:
+            r = self._get(k)
+            with self._mu:
+                h = self._state["heat"].get(k)
+                if h is not None:
+                    h["count"] += 1
+                    h["last_hit"] = r.get("hit", "?")
+                    h["last_read_ts"] = time.strftime("%H:%M:%S")
+        self._add_event("HOT_KEEP", "#ff4050",
+            f"{reason}: 刷新 {len(hot_keys)} 个 hot 对象热度，防止讲解等待期间误降级")
 
     def _demote(self, key: str, tier: str):
         body = (key + "\x00" + tier).encode()
@@ -675,38 +904,48 @@ class TierDemoScript:
             "step1 完成：DP 索引已清空，slab/计数器全部复位")
 
     def _step_2(self):
-        """批量写入 N_OBJS 个 4KB 对象，全部先进 DRAM。"""
+        """批量写入 N_OBJS 个 4KB 对象，并落到 NVMe 温层作为演示基线。"""
         self._set_step(2,
-            f"批量写入 {self.N_OBJS} 个 4KB 对象（全部先进 DRAM）")
+            f"批量写入 {self.N_OBJS} 个 4KB 对象并落到 NVMe 温层")
         all_keys = self._ctx["all_keys"]
         payload  = self._ctx["payload"]
         t0 = time.time()
         self._ctx["t_written"] = t0
         for i, k in enumerate(all_keys):
-            self._put(k, payload)
+            r = self._put(k, payload)
+            if not r.get("ok", False):
+                raise RuntimeError(f"RPC_KV_PUT failed: key={k} err={r.get('err','?')}")
             if (i + 1) % self.BATCH_PUT_REPORT == 0:
                 self._add_event(
                     "BATCH_PUT", "#00e888",
                     f"已写入 {i+1}/{self.N_OBJS}  "
-                    f"({(i+1)/(time.time()-t0):.0f} obj/s)")
+                    f"({(i+1)/max(time.time()-t0, 1e-6):.0f} obj/s)")
         dur = time.time() - t0
         self._add_event("PUT_DONE", "#00e888",
             f"写入完成 {self.N_OBJS} 个对象，耗时 {dur:.2f}s，"
-            f"总 {self.N_OBJS*self.OBJ_SIZE/1024:.1f} KB；预期 DRAM={self.N_OBJS}")
+            f"总 {self.N_OBJS*self.OBJ_SIZE/1024:.1f} KB；执行初始落温层")
+        for i, k in enumerate(all_keys):
+            self._demote(k, "nvme")
+            if (i + 1) % self.BATCH_PUT_REPORT == 0:
+                self._add_event("BASELINE", "#ffb020",
+                    f"初始温层落位 {i+1}/{self.N_OBJS}：DRAM→NVMe")
         self._refresh_tiers()
+        cur = self._state["tiers"]
+        self._add_event("STEP_DONE", "#00e888",
+            f"step2 完成：基线分布 DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}，"
+            "后续迁移由真实 GET 热度触发")
         # 预置 heat map 只包含 hot_keys（避免把 100 个都推给前端）
         hot_keys = self._ctx["hot_keys"]
         with self._mu:
             for k in hot_keys:
-                self._state["heat"][k] = {"count": 0, "last_hit": "local",
+                self._state["heat"][k] = {"count": 0, "last_hit": "nvme",
                                           "last_read_ts": ""}
 
     def _step_3(self):
-        """W2 剧本的"热度构造"阶段：
-          · hot_keys  (30)  高频 GET HOT_ROUNDS(5) 轮 → score ≈ 5
-          · warm_keys (30)  轻访问 WARM_HITS(1) 次  → score ≈ 1
-          · cold_keys (40)  完全不访问              → score = 0
-        本步不等待 migrator —— 所有层级变化都放到 step4/5 展示。
+        """热度构造阶段：
+          · hot_keys  (30)  高频 GET HOT_ROUNDS(5) 轮 → 回迁并保持 DRAM
+          · warm_keys (30)  轻访问 WARM_HITS(1) 次  → 短暂回迁，随后回落 NVMe
+          · cold_keys (40)  完全不访问              → 留在 NVMe，后续下沉 HDD
         """
         self._set_step(3,
             f"构造访问热度：hot×{self.HOT_ROUNDS} / warm×{self.WARM_HITS} / cold×0")
@@ -715,7 +954,8 @@ class TierDemoScript:
         cold_keys = self._ctx["cold_keys"]
 
         self._add_event("PHASE", "#ff4050",
-            f"step3a: hot_keys ({len(hot_keys)} 个) 高频 GET {self.HOT_ROUNDS} 轮")
+            f"step3a: hot_keys ({len(hot_keys)} 个) 高频 GET {self.HOT_ROUNDS} 轮，"
+            "从 NVMe read-through 回迁 DRAM")
         for round_i in range(self.HOT_ROUNDS):
             for k in hot_keys:
                 r = self._get(k)
@@ -732,37 +972,40 @@ class TierDemoScript:
             time.sleep(0.05)
 
         self._add_event("PHASE", "#ffb020",
-            f"step3b: warm_keys ({len(warm_keys)} 个) 轻访问 {self.WARM_HITS} 次")
+            f"step3b: warm_keys ({len(warm_keys)} 个) 轻访问 {self.WARM_HITS} 次，"
+            "短暂回迁后等待热度衰减")
         for _ in range(self.WARM_HITS):
             for k in warm_keys:
                 self._get(k)
         self._add_event("WARM_ACCESS", "#ffb020",
-            f"warm_keys 被访问 {self.WARM_HITS} 次 —— heat_score≈1.0, read_cnt=1")
+            f"warm_keys 被访问 {self.WARM_HITS} 次，后续回落 NVMe")
 
         self._add_event("PHASE", "#4488ff",
-            f"step3c: cold_keys ({len(cold_keys)} 个) 完全静默 —— "
-            f"heat_score=0, read_cnt=0（W2 规则下将最终下沉 HDD）")
+            f"step3c: cold_keys ({len(cold_keys)} 个) 保持静默，后续下沉 HDD")
         self._refresh_tiers()
         cur = self._state["tiers"]
         self._add_event("STEP_DONE", "#00e888",
-            f"step3 完成：所有对象仍在 DRAM（热度已构造），当前 "
+            f"step3 完成：hot/warm 已被真实访问，当前 "
             f"DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}")
 
     def _step_4(self):
-        """阶段 A：等 PHASE_A_WAIT_S 秒，让 migrator 按分数自动分层。
-        · hot 对象 score≈5，衰减到 3.5s 后仍 >1.0 > hot_cut(0.40) → 留 DRAM
-        · warm 对象 score≈1.0，衰减 3.5s 后 ≈ `1*e^-1.05 ≈ 0.35 < 0.40` → 降 NVMe
-        · cold 对象 score=0 → grace (1.5s) 过后立即降 NVMe
+        """阶段 A：等 PHASE_A_WAIT_S 秒，让后台分层逻辑生效。
+        · hot 对象持续被真实 GET 刷热 → 留 DRAM
+        · warm 对象只轻访问一次，热度衰减到 hot_cut 以下 → 回落 NVMe
+        · cold 对象未访问，仍留 NVMe，等待后续 warm_cut 触发 HDD 下沉
         """
         self._set_step(4,
-            f"等 {self.PHASE_A_WAIT_S}s — migrator 按 heat_score 自动分层")
+            f"等 {self.PHASE_A_WAIT_S}s — warm 热度衰减后自动回落 NVMe")
         self._add_event("PHASE", "#00d0f0",
-            f"阶段 A ({self.PHASE_A_WAIT_S}s)：migrator 每 300ms 扫描一次，"
-            f"分数<{0.40:.2f}的对象会被 DRAM→NVMe")
+            f"阶段 A ({self.PHASE_A_WAIT_S}s)：hot 保持在 DRAM；warm 回落 NVMe")
         t_a = time.time()
+        last_hot = 0.0
         prev = dict(self._state["tiers"])
         while time.time() - t_a < self.PHASE_A_WAIT_S:
             time.sleep(0.4)
+            if time.time() - last_hot >= self.HOT_KEEPALIVE_S:
+                self._touch_hot_keys("阶段 A hot 保热")
+                last_hot = time.time()
             self._refresh_tiers()
             cur = self._state["tiers"]
             dd_nvme = cur["nvme"] - prev["nvme"]
@@ -777,23 +1020,23 @@ class TierDemoScript:
         cur = self._state["tiers"]
         self._add_event("STEP_DONE", "#00e888",
             f"step4 完成：DRAM={cur['dram']} NVMe={cur['nvme']} HDD={cur['hdd']}"
-            f"（预期约 hot 留 DRAM，warm+cold 降到 NVMe）")
+            f"（预期约 hot 留 DRAM，warm+cold 位于 NVMe）")
 
     def _step_5(self):
-        """阶段 B：再等 PHASE_B_WAIT_S 秒，让 cold 对象（read_cnt==0）
-        继续 NVMe→HDD。warm 对象 read_cnt≥1 会**永久停在 NVMe**（W2 规则）。
-        """
+        """阶段 B：再等 PHASE_B_WAIT_S 秒，让 cold 对象继续 NVMe→HDD。"""
         self._set_step(5,
-            f"等 {self.PHASE_B_WAIT_S}s — cold (read_cnt==0) 继续下沉 HDD，warm 永留 NVMe")
+            f"等 {self.PHASE_B_WAIT_S}s — cold 继续下沉 HDD")
         cold_n = self.N_OBJS - self.HOT_K - self.WARM_K
         self._add_event("PHASE", "#4488ff",
-            f"阶段 B ({self.PHASE_B_WAIT_S}s)：W2 规则触发 —— "
-            f"只有 read_cnt==0 的 {cold_n} 个 cold 对象会 NVMe→HDD；"
-            f"warm 对象 read_cnt=1，受 W2 保护永留 NVMe")
+            f"阶段 B ({self.PHASE_B_WAIT_S}s)：{cold_n} 个 cold 对象继续下沉 HDD")
         t_b = time.time()
+        last_hot = 0.0
         prev = dict(self._state["tiers"])
         while time.time() - t_b < self.PHASE_B_WAIT_S:
             time.sleep(0.4)
+            if time.time() - last_hot >= self.HOT_KEEPALIVE_S:
+                self._touch_hot_keys("阶段 B hot 保热")
+                last_hot = time.time()
             self._refresh_tiers()
             cur = self._state["tiers"]
             dd_hdd = cur["hdd"] - prev["hdd"]
@@ -869,7 +1112,7 @@ class TierDemoScript:
                 f"HDD {before['hdd']}→{cur['hdd']}")
         else:
             self._add_event("HINT", "#ffb020",
-                f"RPC_TIER_STATS 未看到 DRAM 上升（{before['dram']}→{cur['dram']}），"
+                f"统计暂未看到 DRAM 上升（{before['dram']}→{cur['dram']}），"
                 f"但 hit 字段显示 promote 已发生，可能存在采样延迟")
 
     def _step_8(self):
@@ -887,7 +1130,7 @@ class TierDemoScript:
             f"预期 {exp_dram}/{exp_nvme}/{exp_hdd}  |  "
             f"规模 hot={self.HOT_K} warm={self.WARM_K} cold={cold_n}")
         self._add_event("STEP_DONE", "#00e888",
-            "✓ §6 分级存储演示完成：访问驱动 + heat-score 衰减 + W2 稳定三层")
+            "✓ §6 分级存储演示完成：访问驱动下的三层分布已稳定")
 
     # ========================================================
     # helper 方法

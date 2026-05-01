@@ -26,8 +26,10 @@ ROLE="${ROLE:-A}"
 FLASK_PORT_DEFAULT=$([ "$ROLE" = "A" ] && echo 5000 || echo 5001)
 FLASK_PORT="${FLASK_PORT:-$FLASK_PORT_DEFAULT}"
 
-# 默认演示用 1MB slot / 4GB slab（满足 perf_06 + m6 分级存储需要）
-export SLAB_SLOT_SIZE="${SLAB_SLOT_SIZE:-1048576}"
+# 默认演示用 4KB slot / 4GB slab：M5 的 1万/5万/10万 1KB 对象可真实常驻，
+# M6 的 4KB 对象也能正常迁移。perf_06 的 1MB 带宽测试请显式覆盖
+# SLAB_SLOT_SIZE=1048576 SLAB_TOTAL_BYTES=4294967296。
+export SLAB_SLOT_SIZE="${SLAB_SLOT_SIZE:-4096}"
 export SLAB_TOTAL_BYTES="${SLAB_TOTAL_BYTES:-4294967296}"
 
 # ---- 色彩输出 ----

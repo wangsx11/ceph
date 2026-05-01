@@ -11,6 +11,7 @@ BIN="$ROOT/build/bin/nr_bench"
 UDS="${UDS:-/tmp/native_rdma-dp.sock}"
 DUR="${DUR:-10}"
 THREADS="${THREADS:-8}"
+REQUIRE_PEER="${REQUIRE_PEER:-1}"
 OUT_DIR="${OUT_DIR:-$ROOT/logs/perf}"
 TS="$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
@@ -26,10 +27,12 @@ echo ">>> perf#3 QoS: hi + lo concurrent, threads=$THREADS each, dur=${DUR}s" >&
 
 # Launch both in parallel.  Keyspace disjoint so they don't collide.
 "$BIN" --uds="$UDS" --op=put --prio=hi --threads="$THREADS" \
-       --val-size=1024 --duration="$DUR" --keyspace=5000 > "$TMP_HI" 2>&1 &
+       --val-size=1024 --duration="$DUR" --keyspace=5000 \
+       --require-peer="$REQUIRE_PEER" > "$TMP_HI" 2>&1 &
 PID_HI=$!
 "$BIN" --uds="$UDS" --op=put --prio=lo --threads="$THREADS" \
-       --val-size=1024 --duration="$DUR" --keyspace=5000 > "$TMP_LO" 2>&1 &
+       --val-size=1024 --duration="$DUR" --keyspace=5000 \
+       --require-peer="$REQUIRE_PEER" > "$TMP_LO" 2>&1 &
 PID_LO=$!
 wait "$PID_HI" "$PID_LO" || true
 
@@ -48,7 +51,11 @@ hi_ops = float(hi.get("ops_per_sec", 0))
 lo_ops = float(lo.get("ops_per_sec", 0))
 # Gain = (hi - lo) / lo * 100%.  Positive => high-prio has an advantage.
 gain_pct = ((hi_ops - lo_ops) / lo_ops * 100.0) if lo_ops > 0 else 0.0
-passed = gain_pct >= 22.0
+hi_fail = int(hi.get("ops_fail", 0))
+lo_fail = int(lo.get("ops_fail", 0))
+hi_degr = int(hi.get("ops_degraded", 0))
+lo_degr = int(lo.get("ops_degraded", 0))
+passed = gain_pct >= 22.0 and hi_fail == 0 and lo_fail == 0 and hi_degr == 0 and lo_degr == 0
 result = {
     "metric":     "perf_03_qos",
     "hi_ops":     hi_ops,
@@ -56,6 +63,8 @@ result = {
     "hi_p99_us":  hi.get("lat_p99_us", 0),
     "lo_p99_us":  lo.get("lat_p99_us", 0),
     "gain_pct":   round(gain_pct, 2),
+    "ops_fail":   hi_fail + lo_fail,
+    "ops_degraded": hi_degr + lo_degr,
     "threshold_gain_pct": 22.0,
     "passed":     bool(passed),
     "raw_hi":     hi,

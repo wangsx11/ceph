@@ -8,6 +8,7 @@
 #   UDS=/tmp/native_rdma-dp.sock   path to data plane UDS
 #   DUR=15                         seconds per run
 #   LINK_GBPS=100                  theoretical link bandwidth (used for %)
+#   REQUIRE_PEER=1                 reject local-only degraded PUTs
 #   OUT_DIR=logs/perf              where to drop the JSON report
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -15,6 +16,7 @@ BIN="$ROOT/build/bin/nr_bench"
 UDS="${UDS:-/tmp/native_rdma-dp.sock}"
 DUR="${DUR:-15}"
 LINK_GBPS="${LINK_GBPS:-100}"
+REQUIRE_PEER="${REQUIRE_PEER:-1}"
 OUT_DIR="${OUT_DIR:-$ROOT/logs/perf}"
 TS="$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
@@ -23,14 +25,15 @@ OUT="$OUT_DIR/perf_01_ops_1kb_${TS}.json"
 [ -x "$BIN" ] || { echo "nr_bench missing: $BIN" >&2; exit 2; }
 [ -S "$UDS" ] || { echo "data plane not running (no $UDS)" >&2; exit 2; }
 
-best_ops=0
+best_ops=-1
 best_json='{}'
 best_threads=0
 
 for t in 8 16 24 32; do
     echo ">>> perf#1 threads=$t val=1024 dur=${DUR}s" >&2
     raw=$("$BIN" --uds="$UDS" --op=put --threads="$t" \
-                 --val-size=1024 --duration="$DUR" 2>&1 || true)
+                 --val-size=1024 --duration="$DUR" \
+                 --require-peer="$REQUIRE_PEER" 2>&1 || true)
     echo "$raw" >&2
     j=$(echo "$raw" | python3 "$ROOT/tests/performance/parse_bench.py")
     ops=$(echo "$j" | python3 -c "import json,sys; print(int(json.load(sys.stdin).get('ops_per_sec',0)))")
@@ -46,6 +49,8 @@ import json, sys
 out_path, j_text, threads, link_gbps = sys.argv[1], sys.argv[2], int(sys.argv[3]), float(sys.argv[4])
 j = json.loads(j_text) if j_text.strip() else {}
 ops   = float(j.get("ops_per_sec", 0))
+fail  = int(j.get("ops_fail", 0))
+degr  = int(j.get("ops_degraded", 0))
 vsz   = int(j.get("val_size", 1024))
 # Raw user payload bandwidth (does not include RDMA headers).
 bw_bps    = ops * vsz * 8.0
@@ -57,8 +62,8 @@ util_pct  = (bw_gbps / link_gbps) * 100.0 if link_gbps > 0 else 0.0
 # exclusive on a 100 Gbps link (50% utilization would require ~6M ops/s),
 # so we treat them as OR: either bar passes the requirement. This matches
 # how real-world small-op vs large-op workloads are evaluated separately.
-passed_ops  = (ops >= 1_000_000)
-passed_util = (util_pct >= 50.0)
+passed_ops  = (ops >= 1_000_000 and fail == 0 and degr == 0)
+passed_util = (util_pct >= 50.0 and fail == 0 and degr == 0)
 passed      = passed_ops or passed_util
 result = {
     "metric":     "perf_01_ops_1kb",
@@ -72,6 +77,8 @@ result = {
                    "criterion":   "ops OR util (1KB is QPS-bound)"},
     "passed_ops":  bool(passed_ops),
     "passed_util": bool(passed_util),
+    "ops_fail":    fail,
+    "ops_degraded": degr,
     "passed":      bool(passed),
     "raw":         j,
 }

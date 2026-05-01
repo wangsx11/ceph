@@ -27,6 +27,7 @@ DUR="${DUR:-10}"
 THREADS="${THREADS:-8}"
 VAL_SIZE="${VAL_SIZE:-1048576}"   # 1 MB default
 KEYSPACE="${KEYSPACE:-512}"       # small so warmup fills the space quickly
+REQUIRE_PEER="${REQUIRE_PEER:-1}"
 OUT_DIR="${OUT_DIR:-$ROOT/logs/perf}"
 TS="$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
@@ -62,7 +63,8 @@ run_one() {
     # (512 MB), well within any reasonable slab.
     "$BIN" --uds="$UDS" --op="$op" --threads="$th" \
            --val-size="$VAL_SIZE" --duration="$dur" \
-           --keyspace="$KEYSPACE" --shared-keyspace=1 2>&1
+           --keyspace="$KEYSPACE" --shared-keyspace=1 \
+           --require-peer="$REQUIRE_PEER" 2>&1
 }
 
 # Phase 1: write throughput (16 threads to saturate RDMA link).
@@ -91,6 +93,8 @@ jr = json.loads(jr_text) if jr_text.strip() else {}
 wops  = float(jw.get("ops_per_sec", 0))
 rops  = float(jr.get("ops_per_sec", 0))
 wfail = int(jw.get("ops_fail", 0))
+wdegr = int(jw.get("ops_degraded", 0))
+rfail = int(jr.get("ops_fail", 0))
 
 # BYTE-BASED bandwidth. For writes we use req_bytes (what we sent over
 # UDS as the PUT body, which the server then replicates via RDMA WRITE
@@ -124,16 +128,20 @@ skipped = (wops == 0 and wfail > 0)
 passed = (not skipped) \
     and (w_bw_gbs >= 10.0) \
     and (r_bw_gbs >= 20.0) \
-    and (hit_lo <= hit_ratio <= hit_hi)
+    and (hit_lo <= hit_ratio <= hit_hi) \
+    and wfail == 0 and wdegr == 0 and rfail == 0
 
 result = {
     "metric":     "perf_06_tier_bw",
     "val_size":   vsz,
     "keyspace":   int(jr.get("val_size", 0) or 0) and None,  # not essential
     "write_ops":  wops,
+    "write_fail": wfail,
+    "write_degraded": wdegr,
     "write_tx_bytes": w_tx_bytes,
     "write_gbs":  round(w_bw_gbs, 3),
     "read_ops":   rops_per_s,
+    "read_fail":  rfail,
     "read_ops_total": rops_total,
     "read_rx_bytes":  r_rx_bytes,
     "read_gbs":   round(r_bw_gbs, 3),

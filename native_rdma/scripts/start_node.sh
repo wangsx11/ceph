@@ -54,4 +54,5 @@ exec "$BIN" \
     --heat-score-init="${HEAT_SCORE_INIT:-1.0}" \
     --score-grace-ms="${SCORE_GRACE_MS:-2000}" \
     --migrate-interval-ms="${MIGRATE_INTERVAL_MS:-1000}" \
+    --migrate-batch-limit="${MIGRATE_BATCH_LIMIT:-16}" \
     2>&1 | tee -a "$LOG_DIR/dp_${ROLE}.log"

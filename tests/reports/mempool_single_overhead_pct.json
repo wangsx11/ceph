@@ -1,8 +1,0 @@
-{
-  "metric": "mempool_single_overhead_pct",
-  "value": 0.0,
-  "target": 5.0,
-  "unit": "%",
-  "pass": true,
-  "ts": 1777106323
-}

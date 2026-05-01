@@ -10,6 +10,7 @@ BIN="$ROOT/build/bin/nr_bench"
 UDS="${UDS:-/tmp/native_rdma-dp.sock}"
 DUR="${DUR:-10}"
 THREADS="${THREADS:-8}"
+REQUIRE_PEER="${REQUIRE_PEER:-1}"
 OUT_DIR="${OUT_DIR:-$ROOT/logs/perf}"
 TS="$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$OUT_DIR"
@@ -20,7 +21,8 @@ OUT="$OUT_DIR/perf_02_latency_${TS}.json"
 
 echo ">>> perf#2 threads=$THREADS val=1024 dur=${DUR}s op=mix" >&2
 raw=$("$BIN" --uds="$UDS" --op=mix --threads="$THREADS" \
-             --val-size=1024 --duration="$DUR" 2>&1)
+             --val-size=1024 --duration="$DUR" \
+             --require-peer="$REQUIRE_PEER" 2>&1)
 echo "$raw" >&2
 j=$(echo "$raw" | python3 "$ROOT/tests/performance/parse_bench.py")
 
@@ -31,10 +33,14 @@ j = json.loads(j_text)
 avg = float(j.get("lat_avg_us", 1e9))
 p99 = float(j.get("lat_p99_us", 1e9))
 ok  = int(j.get("ops_ok", 0))
-passed = (ok >= 100_000) and (avg <= 50.0) and (p99 <= 100.0)
+fail = int(j.get("ops_fail", 0))
+degr = int(j.get("ops_degraded", 0))
+passed = (ok >= 100_000) and (avg <= 50.0) and (p99 <= 100.0) and fail == 0 and degr == 0
 result = {
     "metric":     "perf_02_latency",
     "samples":    ok,
+    "ops_fail":   fail,
+    "ops_degraded": degr,
     "lat_avg_us": avg,
     "lat_p50_us": float(j.get("lat_p50_us", 0)),
     "lat_p99_us": p99,

@@ -9,7 +9,7 @@ The nr_bench binary prints blocks like::
       op            : put
       ops ok/fail   : 3593723 / 0
       ops/s         : 359356
-      latency us    : avg=21.73  p50=21.02  p99=32.11  p99.9=40.97  max=6345.06
+      latency us    : avg=21.73  p50=21.02  p90=28.40  p99=32.11  p99.9=40.97  max=6345.06
 
 We pull every numeric field into a flat dict suitable for emitting JSON.
 """
@@ -35,15 +35,20 @@ def parse_bench_output(text: str) -> Dict[str, Any]:
     if m:
         out["ops_ok"]   = int(m.group(1))
         out["ops_fail"] = int(m.group(2))
+    m = re.search(r"ops degraded\s*:\s*(\d+)", text)
+    if m:
+        out["ops_degraded"] = int(m.group(1))
     m = re.search(rf"ops/s\s*:\s*({_NUM})", text)
     if m: out["ops_per_sec"] = float(m.group(1))
-    m = re.search(rf"latency us\s*:\s*avg=({_NUM})\s+p50=({_NUM})\s+p99=({_NUM})\s+p99\.9=({_NUM})\s+max=({_NUM})", text)
+    m = re.search(rf"latency us\s*:\s*avg=({_NUM})\s+p50=({_NUM})(?:\s+p90=({_NUM}))?\s+p99=({_NUM})\s+p99\.9=({_NUM})\s+max=({_NUM})", text)
     if m:
         out["lat_avg_us"]   = float(m.group(1))
         out["lat_p50_us"]   = float(m.group(2))
-        out["lat_p99_us"]   = float(m.group(3))
-        out["lat_p99_9_us"] = float(m.group(4))
-        out["lat_max_us"]   = float(m.group(5))
+        if m.group(3) is not None:
+            out["lat_p90_us"] = float(m.group(3))
+        out["lat_p99_us"]   = float(m.group(4))
+        out["lat_p99_9_us"] = float(m.group(5))
+        out["lat_max_us"]   = float(m.group(6))
     # Real bytes moved over UDS (added in nr_bench W5-fix). Falls back to
     # missing keys when running an older nr_bench -- callers should handle
     # absence gracefully.

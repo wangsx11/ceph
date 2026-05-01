@@ -1,8 +1,0 @@
-{
-  "metric": "mempool_mt_gain_pct",
-  "value": 75882.0895522388,
-  "target": 20.0,
-  "unit": "%",
-  "pass": true,
-  "ts": 1777106329
-}

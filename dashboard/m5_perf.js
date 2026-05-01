@@ -2,30 +2,27 @@
 // m5_perf.js — §5 吞吐量 & 扩展性演示（重写版）
 //
 // 设计：
-//   · 本端点"开始本轮"，每 800ms 拉 /api/demo5/live?round=N 取曲线
-//   · 4 张曲线（IOPS / 吞吐量 / 平均延迟 / P99 延迟）叠加 3 轮
-//   · 右侧并排展示对端实时 shm metrics（通过 /api/peer/demo5/snapshot 取）
+//   · 本端点"开始本轮"，每 800ms 拉 /api/demo5/snapshot 取曲线
+//   · 3 张曲线（IOPS / 吞吐量 / RDMA 复制延迟）纵向排布，叠加 3 轮
 //   · 汇总表比较三轮"规模 vs 性能"
 // ============================================================
 
 const D5_API_SELF = (window.API_BASE || location.origin) + '/api/demo5';
-const D5_API_PEER = (window.API_BASE || location.origin) + '/api/peer/demo5';
 
 const D5 = {
   rounds: {                                    // 本端 3 轮
-    1: { running:false, phase:'idle', count:10000,  samples:[], summary:null },
-    2: { running:false, phase:'idle', count:50000,  samples:[], summary:null },
-    3: { running:false, phase:'idle', count:100000, samples:[], summary:null },
+    1: { running:false, phase:'idle', count:10000,  duration_s:12, samples:[], summary:null },
+    2: { running:false, phase:'idle', count:50000,  duration_s:12, samples:[], summary:null },
+    3: { running:false, phase:'idle', count:100000, duration_s:12, samples:[], summary:null },
   },
   currentRound: 0,         // 0 表示还未开跑
-  peerRounds: null,        // 对端 snapshot_all 结果（只读展示）
-  peerMetrics: null,
-  selfMetrics: null,
   poll: null,
 };
 
 const D5_COLORS = ['#ff6060', '#f0c030', '#40a0ff'];
 const D5_LABELS = ['第一轮 1万', '第二轮 5万', '第三轮 10万'];
+const D5_ROUND_DURS = { 1:12, 2:12, 3:12 };
+const D5_X_MAX = Math.max(...Object.values(D5_ROUND_DURS));
 
 // ------------------------------------------------------------
 // 渲染
@@ -36,6 +33,7 @@ function renderM5() {
 
   const running = Object.values(D5.rounds).some(r => r.running);
   const doneCnt = Object.values(D5.rounds).filter(r => r.summary).length;
+  const errors = d5Errors();
 
   el.innerHTML = `
     <div class="ctrl-panel">
@@ -47,9 +45,9 @@ function renderM5() {
         </div>
       </div>
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:6px">
-        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 以逐轮递增的 keyspace (1万/5万/10万 1KB 对象) 并发 PUT；每轮 8/12/16 秒<br>
-        · 数据平面通过 RDMA WRITE 将每条写入跨节点复制；UI 每 250ms 采样一次 shm metrics 绘制曲线<br>
-        · 线程数固定 16，让"规模扩大"真实反映到 IOPS 下降 / P99 上升（扩展性曲线）
+        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 按共享 keyspace 逐轮递增 (1万/5万/10万 1KB 对象) 并发 PUT；每轮 12 秒<br>
+        · 所有 PUT 要求 peer 在线并完成真实跨节点复制，降级本地写不计入通过<br>
+        · 横坐标统一为 0~12s，便于直接比较对象规模变化下的 IOPS、吞吐量和 RDMA 复制延迟
       </div>
       <div class="ctrl-row">
         <button class="btn btn-round-1 btn-sm" onclick="d5Start(1)" ${d5BtnDisabled(1)}>▶ 第一轮 1万</button>
@@ -58,13 +56,13 @@ function renderM5() {
         <div style="flex:1"></div>
         <button class="btn btn-outline btn-sm" onclick="d5Reset()">↻ 重置</button>
       </div>
+      ${errors ? `<div style="margin-top:10px;padding:9px 12px;background:#ff405012;border:1px solid #ff405040;border-radius:6px;color:#ff9aa3;font-size:1rem">${errors}</div>` : ''}
     </div>
 
-    <div class="g2" style="margin-top:12px">
-      <div class="card">${chead('IOPS 曲线 (ops/s)',      '⚡', '#ff6090')}<div class="card-body"><div style="height:170px">${d5Chart('iops')}</div></div></div>
-      <div class="card">${chead('吞吐量曲线 (MB/s)',       '🚀', '#00d0f0')}<div class="card-body"><div style="height:170px">${d5Chart('tp')}</div></div></div>
-      <div class="card">${chead('复制延迟曲线 (μs)',       '⏳', '#ffb020', tag('RDMA WRITE 瞬时', '#ffb020'))}<div class="card-body"><div style="height:170px">${d5Chart('repl')}</div></div></div>
-      <div class="card">${chead('P99 延迟曲线 (μs)',        '📈', '#a060ff')}<div class="card-body"><div style="height:170px">${d5Chart('p99')}</div></div></div>
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px">
+      <div class="card">${chead('IOPS 曲线 (ops/s)',      '⚡', '#ff6090')}<div class="card-body"><div style="height:190px">${d5Chart('iops')}</div></div></div>
+      <div class="card">${chead('吞吐量曲线 (MB/s)',       '🚀', '#00d0f0')}<div class="card-body"><div style="height:190px">${d5Chart('tp')}</div></div></div>
+      <div class="card">${chead('RDMA 复制延迟曲线 (μs)',  '⏳', '#ffb020', tag('瞬时', '#ffb020'))}<div class="card-body"><div style="height:190px">${d5Chart('repl')}</div></div></div>
     </div>
 
     <div class="card" style="margin-top:12px">${chead('三轮汇总（规模 → 性能）', '📊')}
@@ -80,42 +78,26 @@ function d5BtnDisabled(round) {
   return anyRunning ? 'disabled' : '';
 }
 
-function d5MetricsCard(title, m, color) {
-  if (!m) {
-    return `<div class="card">${chead(title, '📡', color)}
-      <div class="card-body"><div style="color:#5a7a96;padding:12px;text-align:center">尚未获取指标...</div></div>
-    </div>`;
+function d5Errors() {
+  const xs = [];
+  for (let r=1; r<=3; r++) {
+    const err = D5.rounds[r].error || (D5.rounds[r].summary && D5.rounds[r].summary.error);
+    if (err) xs.push(`${D5_LABELS[r-1]}: ${err}`);
   }
-  return `<div class="card">${chead(title, '📡', color, tag('LIVE', '#00e888'))}
-    <div class="card-body">
-      <div class="g4">
-        ${metric('ops/s',    F(m.ops_per_sec||0, 0),         '',   color)}
-        ${metric('bw_tx',    F(m.bw_tx_gbps||0, 2),          'Gbps','#00d0f0')}
-        ${metric('lat_avg',  F(m.lat_avg_us||0, 2),          'μs', '#ffb020')}
-        ${metric('lat_p99',  F(m.lat_p99_us||0, 2),          'μs', '#a060ff')}
-      </div>
-      <div class="g4" style="margin-top:10px">
-        ${metric('rdma_util',F(m.rdma_util_pct||0, 1),       '%',  '#ff6090')}
-        ${metric('ops_total',F((m.ops_total||0)/1e6, 2),     'M',  '#5a7a96')}
-        ${metric('obj_dram', m.obj_dram||0,                  '',   '#ff4050')}
-        ${metric('obj_hdd',  m.obj_hdd||0,                   '',   '#4488ff')}
-      </div>
-    </div>
-  </div>`;
+  return xs.map(x => `<div>${x}</div>`).join('');
 }
 
-// SVG 4 合 1 曲线
+// SVG 三轮叠加曲线；所有图固定使用同一条 0~12s 横轴。
 function d5Chart(type) {
-  const w = 480, h = 150, pad = 38;
+  const w = 720, h = 170, pad = 46;
   let svg = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:${h}px" preserveAspectRatio="none">`;
   svg += `<line x1="${pad}" y1="5" x2="${pad}" y2="${h-20}" stroke="#2d4a66"/>`;
   svg += `<line x1="${pad}" y1="${h-20}" x2="${w-5}" y2="${h-20}" stroke="#2d4a66"/>`;
 
   // 找所有值
-  let maxT = 0, all = [];
+  let all = [];
   for (let rr=1; rr<=3; rr++) {
     const samps = D5.rounds[rr].samples;
-    if (samps.length > maxT) maxT = samps.length;
     samps.forEach(p => { if (p[type] != null) all.push(p[type]); });
   }
   if (all.length === 0) {
@@ -123,10 +105,10 @@ function d5Chart(type) {
     return svg + '</svg>';
   }
   // 根据曲线类型决定 y 轴 padding：
-  //   · 延迟类 (lat / p99 / repl) 抖动幅度通常很小（RDMA 稳定在 3~10μs），
+  //   · 延迟类 (lat / repl) 抖动幅度通常很小（RDMA 稳定在微秒级），
   //     需要在上下各留 20% 空间，让曲线的小抖动在视觉上明显可见
   //   · 吞吐类 (iops / tp) 从 0 起步更符合直觉，下界压到 0
-  const isLat = (type === 'lat' || type === 'p99' || type === 'repl');
+  const isLat = (type === 'lat' || type === 'repl');
   let rawMax = Math.max(...all);
   let rawMin = Math.min(...all);
   let mx, mn;
@@ -141,10 +123,10 @@ function d5Chart(type) {
     mn = (rawMin > rawMax * 0.3) ? Math.max(0, rawMin * 0.7) : 0;
   }
   const rng = (mx - mn) || 1;
-  const xMax = Math.max(maxT, 8);
+  const xMax = D5_X_MAX;
 
   // 横轴
-  for (let t=0; t<=xMax; t += Math.max(2, Math.floor(xMax/4))) {
+  for (let t=0; t<=xMax; t += Math.max(3, Math.floor(xMax/4))) {
     const x = pad + (t / xMax) * (w - pad - 5);
     svg += `<text x="${x}" y="${h-6}" fill="#5a7a96" font-size="9" text-anchor="middle" font-family="Share Tech Mono">${t}s</text>`;
   }
@@ -165,7 +147,8 @@ function d5Chart(type) {
     const pts = [];
     samps.forEach((p, i) => {
       if (p[type] == null) return;
-      const x = pad + (i / xMax) * (w - pad - 5);
+      const t = Math.min(xMax, Number(p.t != null ? p.t : i * 0.25));
+      const x = pad + (t / xMax) * (w - pad - 5);
       const y = 8 + ((mx - p[type]) / rng) * (h - 36);
       pts.push(`${x},${y}`);
     });
@@ -181,24 +164,25 @@ function d5Summary() {
   const rows = [1,2,3].filter(r => D5.rounds[r].summary);
   if (!rows.length) return `<div style="color:#5a7a96;padding:16px;text-align:center">尚未有完成的轮次</div>`;
   let body = '<table class="dtable"><thead><tr>' +
-    ['轮次','对象数','覆盖 MB','时长','线程','ops/s','吞吐 MB/s','bw Gbps','延迟 avg','p50','p99','p99.9']
+    ['轮次','对象数','覆盖 MB','时长','线程','ops/s','吞吐 MB/s','bw Gbps','延迟 avg(μs)','p50(μs)','p90(μs)','p99(μs)']
       .map(h => `<th style="text-align:right">${h}</th>`).join('') +
     '</tr></thead><tbody>';
   rows.forEach(r => {
     const s = D5.rounds[r].summary;
+    const p90 = s.lat_p90_us != null ? s.lat_p90_us : s.lat_p99_us;
     body += `<tr>
       <td style="text-align:right;color:${D5_COLORS[r-1]};font-weight:700">${D5_LABELS[r-1]}</td>
-      <td style="text-align:right">${s.count.toLocaleString()}</td>
+      <td style="text-align:right">${(s.count||0).toLocaleString()}</td>
       <td style="text-align:right;color:#ffb020">${F(s.footprint_mb||0, 1)}</td>
       <td style="text-align:right;color:#5a7a96">${s.duration_s||'-'}s</td>
       <td style="text-align:right">${s.threads}</td>
-      <td style="text-align:right;color:#ff6090;font-weight:700">${s.iops.toLocaleString()}</td>
+      <td style="text-align:right;color:#ff6090;font-weight:700">${(s.iops||0).toLocaleString()}</td>
       <td style="text-align:right">${F(s.tp_mbps, 2)}</td>
       <td style="text-align:right;color:#00d0f0">${F(s.gbps, 3)}</td>
       <td style="text-align:right">${F(s.lat_avg_us, 2)}</td>
       <td style="text-align:right">${F(s.lat_p50_us, 2)}</td>
+      <td style="text-align:right;color:#ffb020">${F(p90, 2)}</td>
       <td style="text-align:right;color:#a060ff">${F(s.lat_p99_us, 2)}</td>
-      <td style="text-align:right;color:#5a7a96">${F(s.lat_p99_9_us, 2)}</td>
     </tr>`;
   });
   body += '</tbody></table>';
@@ -232,6 +216,7 @@ async function d5Reset() {
     D5.rounds[r].summary  = null;
     D5.rounds[r].running  = false;
     D5.rounds[r].phase    = 'idle';
+    D5.rounds[r].error    = null;
   }
   D5.currentRound = 0;
   renderM5();
@@ -249,17 +234,11 @@ async function d5Refresh() {
         D5.rounds[r].running = rr.running;
         D5.rounds[r].phase   = rr.phase;
         D5.rounds[r].count   = rr.count;
+        D5.rounds[r].duration_s = rr.duration_s || D5_ROUND_DURS[r];
         D5.rounds[r].samples = rr.samples;
         D5.rounds[r].summary = rr.summary;
+        D5.rounds[r].error   = rr.error || (rr.summary && rr.summary.error) || null;
       }
-      D5.selfMetrics = j.metrics;
-    }
-    // 对端 snapshot（只用来展示 peer 实时指标）
-    const pr  = await fetch(`${D5_API_PEER}/snapshot`);
-    const pj  = await pr.json();
-    if (pj.ok) {
-      D5.peerMetrics = pj.metrics;
-      D5.peerRounds  = pj.rounds;
     }
   } catch (e) { /* silent */ }
   renderM5();

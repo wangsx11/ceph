@@ -4,7 +4,7 @@
 // Usage:
 //   ./bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=8 --duration=10 --val-size=64
 //
-// Reports:  ops/s, avg(us), p50(us), p99(us), p999(us), max(us)
+// Reports:  ops/s, avg(us), p50(us), p90(us), p99(us), p999(us), max(us)
 
 #include <atomic>
 #include <chrono>
@@ -28,6 +28,7 @@ struct Opt {
     int         val_size = 64;
     int         keyspace = 10000;      // rotating key id range
     std::string prio     = "";         // "hi" | "lo" | "" (default)
+    bool        require_peer = false;   // fail PUTs that completed degraded/local-only
     // Default key layout is per-thread ("bk_<tid>_<id>") so independent
     // threads don't step on each other -- useful for measuring per-thread
     // latency (perf_02) or QoS isolation (perf_03).
@@ -55,6 +56,8 @@ static void parse(int argc, char** argv, Opt& o) {
         else if (k == "--keyspace") o.keyspace = std::stoi(v);
         else if (k == "--prio")     o.prio = v;
         else if (k == "--shared-keyspace") o.shared_keyspace =
+            (v.empty() || v == "1" || v == "true");
+        else if (k == "--require-peer") o.require_peer =
             (v.empty() || v == "1" || v == "true");
     }
 }
@@ -94,7 +97,9 @@ static int read_all(int fd, void* buf, size_t n) {
 // what the bandwidth-oriented tests (perf_06) need -- otherwise a GET
 // that misses (server returns a short "not found" response) would be
 // counted as if it returned the requested val_size worth of bytes.
-static int64_t rpc_call(int fd, const char* kind, const void* body, size_t blen) {
+static int64_t rpc_call(int fd, const char* kind, const void* body, size_t blen,
+                        bool* degraded) {
+    if (degraded) *degraded = false;
     uint32_t kl = (uint32_t)std::strlen(kind);
     if (write_all(fd, &kl, 4) < 0) return -1;
     if (write_all(fd, kind, kl) < 0) return -1;
@@ -106,6 +111,13 @@ static int64_t rpc_call(int fd, const char* kind, const void* body, size_t blen)
     // Drain and discard response body.
     std::vector<char> buf(rl);
     if (rl && read_all(fd, buf.data(), rl) < 0) return -1;
+    if (rl >= 12 && buf[0] == '{') {
+        std::string resp(buf.begin(), buf.end());
+        if (resp.find("\"ok\":false") != std::string::npos) return -2;
+        if (degraded && resp.find("\"degraded\":true") != std::string::npos) {
+            *degraded = true;
+        }
+    }
     return (int64_t)rl;
 }
 
@@ -117,15 +129,17 @@ static inline uint64_t now_ns() {
 int main(int argc, char** argv) {
     Opt o; parse(argc, argv, o);
     std::printf("[nr_bench] uds=%s op=%s threads=%d duration=%ds "
-                "val_size=%d keyspace=%d%s prio=%s\n",
+                "val_size=%d keyspace=%d%s prio=%s require_peer=%s\n",
                 o.uds.c_str(), o.op.c_str(), o.threads, o.duration,
                 o.val_size, o.keyspace,
                 o.shared_keyspace ? "(shared)" : "",
-                o.prio.empty() ? "default" : o.prio.c_str());
+                o.prio.empty() ? "default" : o.prio.c_str(),
+                o.require_peer ? "true" : "false");
 
     std::atomic<bool> stop{false};
     std::atomic<uint64_t> ops_done{0};
     std::atomic<uint64_t> ops_fail{0};
+    std::atomic<uint64_t> ops_degraded{0};
     std::atomic<uint64_t> bytes_resp{0};   // sum of response payload bytes
     std::atomic<uint64_t> bytes_req{0};    // sum of request payload bytes
     std::vector<std::vector<uint32_t>> lats(o.threads); // per-thread ns samples
@@ -147,7 +161,16 @@ int main(int argc, char** argv) {
         std::vector<char> body;
         body.reserve(64 + o.val_size);
         while (!stop.load(std::memory_order_relaxed)) {
-            int key_id = (int)((tid * 1000003ULL + local_cnt) % (uint64_t)o.keyspace);
+            uint64_t kid;
+            if (o.shared_keyspace) {
+                // Keep the total keyspace bounded to N, but partition each
+                // sweep across threads so a high-concurrency benchmark does
+                // not make all workers hammer neighboring keys at once.
+                kid = local_cnt * (uint64_t)o.threads + (uint64_t)tid;
+            } else {
+                kid = tid * 1000003ULL + local_cnt;
+            }
+            int key_id = (int)(kid % (uint64_t)o.keyspace);
             int kn;
             if (o.shared_keyspace) {
                 // One global keyspace: key_id alone determines the key, so
@@ -195,9 +218,12 @@ int main(int argc, char** argv) {
             kind += prio_suffix;
 
             uint64_t t0 = now_ns();
-            int64_t recv = rpc_call(fd, kind.c_str(), body.data(), body.size());
+            bool degraded = false;
+            int64_t recv = rpc_call(fd, kind.c_str(), body.data(), body.size(),
+                                    &degraded);
             uint64_t dt = now_ns() - t0;
-            bool ok = (recv >= 0);
+            if (degraded) ops_degraded.fetch_add(1, std::memory_order_relaxed);
+            bool ok = (recv >= 0) && !(o.require_peer && degraded);
             if (ok) {
                 ops_done.fetch_add(1, std::memory_order_relaxed);
                 bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
@@ -230,8 +256,9 @@ int main(int argc, char** argv) {
     for (auto& v : lats) all.insert(all.end(), v.begin(), v.end());
     uint64_t ops = ops_done.load();
     uint64_t fail = ops_fail.load();
+    uint64_t degraded = ops_degraded.load();
 
-    double avg_us = 0, p50 = 0, p99 = 0, p999 = 0, pmax = 0;
+    double avg_us = 0, p50 = 0, p90 = 0, p99 = 0, p999 = 0, pmax = 0;
     if (!all.empty()) {
         uint64_t sum = 0;
         for (auto v : all) sum += v;
@@ -243,6 +270,7 @@ int main(int argc, char** argv) {
             return all[i] / 1000.0;
         };
         p50  = at(0.50);
+        p90  = at(0.90);
         p99  = at(0.99);
         p999 = at(0.999);
         pmax = all.back() / 1000.0;
@@ -254,6 +282,9 @@ int main(int argc, char** argv) {
     std::printf("  op            : %s\n",     o.op.c_str());
     std::printf("  ops ok/fail   : %lu / %lu\n",
                 (unsigned long)ops, (unsigned long)fail);
+    std::printf("  ops degraded  : %lu%s\n",
+                (unsigned long)degraded,
+                o.require_peer ? " (rejected)" : "");
     std::printf("  ops/s         : %.0f\n",   ops / elapsed);
     // Bytes-based bandwidth: this is what the UDS really moved, not an
     // assumed ops*val_size product. For GETs where the key misses, the
@@ -264,7 +295,7 @@ int main(int argc, char** argv) {
                 (unsigned long)tx, tx / elapsed / 1e6);
     std::printf("  resp_bytes    : %lu (%.2f MB/s)\n",
                 (unsigned long)rx, rx / elapsed / 1e6);
-    std::printf("  latency us    : avg=%.2f  p50=%.2f  p99=%.2f  p99.9=%.2f  max=%.2f\n",
-                avg_us, p50, p99, p999, pmax);
+    std::printf("  latency us    : avg=%.2f  p50=%.2f  p90=%.2f  p99=%.2f  p99.9=%.2f  max=%.2f\n",
+                avg_us, p50, p90, p99, p999, pmax);
     return 0;
 }

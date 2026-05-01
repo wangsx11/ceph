@@ -224,7 +224,7 @@ def admin_flush():
 
 _DASH_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _obj_view  = SharedObjectView()
-_perf_run  = PerfRoundRunner(_DASH_ROOT, ROLE)
+_perf_run  = PerfRoundRunner(_DASH_ROOT, ROLE, uds_call)
 _tier_demo = TierDemoScript(uds_call, _DASH_ROOT, ROLE)
 
 # peer url: 由 env 注入，例如 "http://192.168.0.214:5001"
@@ -522,6 +522,11 @@ def demo5_start():
     try: round_id = int(j.get("round", 0))
     except (TypeError, ValueError): round_id = 0
     r = _perf_run.start(round_id)
+    return jsonify(r), (200 if r.get("ok") else 400)
+
+@app.route("/api/demo5/perf01/start", methods=["POST"])
+def demo5_perf01_start():
+    r = _perf_run.start_perf01()
     return jsonify(r), (200 if r.get("ok") else 400)
 
 @app.route("/api/demo5/live")

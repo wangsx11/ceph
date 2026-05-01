@@ -65,6 +65,7 @@ struct Args {
     double      heat_score_init   = 1.0;    // score bump per access
     uint64_t    score_grace_ms    = 2000;   // new-object protection window
     int         migrate_interval_ms = 1000;
+    size_t      migrate_batch_limit = 16;    // max background demotes per tick
 };
 
 static void parse_args(int argc, char** argv, Args& a) {
@@ -92,6 +93,7 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--heat-score-init")   a.heat_score_init   = std::stod(v);
         else if (k == "--score-grace-ms")    a.score_grace_ms    = std::stoull(v);
         else if (k == "--migrate-interval-ms") a.migrate_interval_ms = std::stoi(v);
+        else if (k == "--migrate-batch-limit") a.migrate_batch_limit = std::stoull(v);
     }
 }
 
@@ -612,6 +614,10 @@ int main(int argc, char** argv) {
                 }
                 return true;
             });
+            if (args.migrate_batch_limit > 0 &&
+                cands.size() > args.migrate_batch_limit) {
+                cands.resize(args.migrate_batch_limit);
+            }
             for (auto& c : cands) {
                 bool ok = tier.demote(c.key, c.to, slab.base_addr(),
                                       slab.capacity() * slab.slot_size());
@@ -793,8 +799,13 @@ int main(int argc, char** argv) {
         prefetcher.on_access(k);
         uint32_t sz = meta.size;
         const char* hit_kind = "local";
-        // Cold hit: object lives on NVMe/HDD, promote it back to DRAM first.
-        if (meta.tier != nr::Tier::DRAM) {
+        if (meta.tier == nr::Tier::DRAM) {
+            // DRAM hits are still real user reads.  They must refresh
+            // heat_score/read_cnt; otherwise the M6 demo's hot/warm reads are
+            // invisible to the tier migrator and every object looks cold.
+            tier.on_access(k);
+        } else {
+            // Cold hit: object lives on NVMe/HDD, promote it back to DRAM first.
             void* slot = slab.alloc();
             if (!slot) {
                 *resp = "{\"ok\":false,\"err\":\"slab oom on promote\"}";
@@ -852,7 +863,9 @@ int main(int argc, char** argv) {
         }
         prefetcher.on_access(k);
         uint32_t sz = meta.size;
-        if (meta.tier != nr::Tier::DRAM) {
+        if (meta.tier == nr::Tier::DRAM) {
+            tier.on_access(k);
+        } else {
             void* slot = slab.alloc();
             if (!slot) { resp->assign(5, '\0'); return; }
             uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());

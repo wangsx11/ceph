@@ -2,10 +2,9 @@
 // m3_sync.js — §3 跨节点对象读写 & 数据同步（重写版）
 //
 // 设计：
-//   · 只打本端 Flask；对端数据走 /api/peer/* 反向代理 → 零 CORS
-//   · 页面分三区：节点概览 / 并排双面板 / 同步事件时间线
+//   · 页面通过 /api/demo3 和 /api/peer/demo3 操作 A/B 两端
+//   · 页面分三区：节点概览 / 并排双节点面板 / 同步事件时间线
 //   · 自动轮询 1s；用户发起的写/改/删/读操作立即触发两端刷新
-//   · 延迟、命中层级、复制耗时等指标直接展示，满足 §3c 可观测性
 // ============================================================
 
 const D3_API_SELF = (window.API_BASE || location.origin) + '/api/demo3';
@@ -18,7 +17,7 @@ const D3_STATE = {
   latestUid: null,       // 仅本轮新增事件的 uid；轮询 refresh 不变
   uidSeq:  0,            // 事件 uid 自增
   poll:    null,         // setInterval id
-  // A/B 各自一套对话框状态（共享同一 key 空间，都能对同一对象增删改查）
+  // A/B 各自一套表单状态
   forms: {
     A: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
     B: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
@@ -47,10 +46,6 @@ function renderM3() {
           <div class="dot" style="background:#5a7a96;width:6px;height:6px"></div>等待就绪
         </div>
       </div>
-      <div style="font-size:1rem;color:#5a7a96;margin-bottom:8px">
-        ◆ 本地 Flask 通过 UDS 把 PUT / GET 直投数据平面；写入由 RDMA 同步复制到对端节点<br>
-        ◆ 每次操作展示：<span style="color:#c0d8f0">延迟(μs)</span> · <span style="color:#c0d8f0">命中层级</span>(local/remote/nvme/hdd) · <span style="color:#c0d8f0">replica_lag</span>
-      </div>
       <div class="g2" style="gap:10px">
         <div id="d3-node-A">${d3RenderNodeStatCard('A', cA)}</div>
         <div id="d3-node-B">${d3RenderNodeStatCard('B', cB)}</div>
@@ -58,16 +53,12 @@ function renderM3() {
     </div>
 
     <div class="ctrl-panel" style="margin-top:12px">
-      <div style="font-size:1.2rem;font-weight:700;color:#c0d8f0;margin-bottom:8px">共享对象操作（节点 A / B 独立对话框，同一 key 空间）</div>
+      <div style="font-size:1.2rem;font-weight:700;color:#c0d8f0;margin-bottom:8px">对象操作</div>
       <div class="g2" style="gap:10px">
         ${d3RenderOpPanel('A')}
         ${d3RenderOpPanel('B')}
       </div>
-      <div style="display:flex;align-items:center;margin-top:8px;gap:12px">
-        <div style="font-size:1rem;color:#5a7a96;flex:1">
-          提示：两个节点对话框的 <b>对象名</b> 相同即指向同一对象 — A 写入后在 B 侧用相同 name 即可读/改/删；命中层级 <span class="mono" style="color:#00e888">local</span>=RDMA 已同步，<span class="mono" style="color:#ffb020">remote</span>=需回源。
-        </div>
-        <button class="btn btn-outline btn-sm" onclick="d3SyncName()">↔ 把 A 的对象名同步到 B</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
         <button class="btn btn-outline btn-sm" onclick="d3FlushAll()">↻ 清空两端</button>
       </div>
     </div>
@@ -109,7 +100,7 @@ function d3EventHTML(e, withLatest) {
 }
 
 // ------------------------------------------------------------
-// A/B 各自的操作对话框
+// A/B 各自的操作面板
 // ------------------------------------------------------------
 function d3RenderOpPanel(node) {
   const color     = node === 'A' ? '#00e888' : '#00d0f0';
@@ -118,8 +109,8 @@ function d3RenderOpPanel(node) {
   return `<div style="padding:12px;background:#1b2a3d;border-radius:6px;border:1px solid ${color}40">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
       <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color}88"></span>
-      <div style="font-size:1.2rem;font-weight:700;color:${color}">节点 ${node} 对话框</div>
-      <div style="color:#5a7a96;font-size:0.95rem">（所有操作下发到节点 ${node} 的数据平面，经 RDMA 同步到 ${node==='A'?'B':'A'}）</div>
+      <div style="font-size:1.2rem;font-weight:700;color:${color}">节点 ${node}</div>
+      <div style="color:#5a7a96;font-size:0.95rem">数据平面 ${node}</div>
     </div>
     <div class="ctrl-row" style="margin-bottom:6px">
       <span class="ctrl-label" style="min-width:48px">对象名</span>
@@ -140,15 +131,6 @@ function d3RenderOpPanel(node) {
       <button class="btn btn-danger  btn-sm" onclick="d3Op('${node}','delete')">删除</button>
     </div>
   </div>`;
-}
-
-// 把 A 侧（或 B 侧）对话框里的对象名同步到另一侧，方便"在两端对同一对象操作"
-function d3SyncName() {
-  const a = document.getElementById('d3-name-A');
-  const b = document.getElementById('d3-name-B');
-  if (!a || !b) return;
-  b.value = a.value;
-  D3_STATE.forms.B.name = a.value;
 }
 
 function d3RenderNodeStatCard(node, c) {
@@ -179,7 +161,7 @@ function d3RenderNodeStatCard(node, c) {
     </div>
     <div class="g4" style="gap:8px">
       ${metric('本端对象',  c.objects_here,                    '',  color)}
-      ${metric('replica lag', F(c.replica_lag_us || 0, 1),     'μs', '#ffb020')}
+      ${metric('同步延迟', F(c.replica_lag_us || 0, 1),        'μs', '#ffb020')}
       ${metric('bw_tx',     F((c.metrics && c.metrics.bw_tx_gbps) || 0, 2), 'Gbps', '#00d0f0')}
       ${metric('QPs',       c.peer_num_qp,                     '',  '#a060ff')}
     </div>

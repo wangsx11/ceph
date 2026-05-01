@@ -1,12 +1,9 @@
 // ============================================================
-// m6_tiering.js — §6 分级存储能力演示（一键执行 / 方案 W2）
+// m6_tiering.js — §6 分级存储能力演示
 //
 // 设计：
 //   · 后端是 8 步剧本，点击 [开始演示] 后后台线程一键走完
-//   · C++ migrator 按 heat_score + read_cnt 自动分层：
-//       DRAM score<0.40 → 降 NVMe
-//       NVMe score<0.05 且 read_cnt==0 → 降 HDD（W2 规则）
-//   · 三层柱状图数字完全来自 RPC_TIER_STATS 真实返回
+//   · 初始 100 对象落 NVMe 温层；真实 GET 负责热层回迁和分层变化
 //   · [↻ 重置] 清理 DP 状态回到未开始
 // ============================================================
 
@@ -15,12 +12,12 @@ const D6_API = (window.API_BASE || location.origin) + '/api/demo6';
 // 8 步的可读标签（与后端 STEP_FLOW 保持顺序一致）
 const D6_STEP_LABELS = [
   '清空旧数据 & 复位统计',
-  '批量写入 100 个对象（全进 DRAM）',
-  '构造访问热度：hot×5 / warm×1 / cold×0',
-  '阶段 A：migrator 按分数自动分层（DRAM→NVMe）',
-  '阶段 B：read_cnt==0 的 cold → HDD，warm 永留 NVMe',
+  '写入 100 个对象并落到温层 NVMe',
+  '真实访问：hot 高频 / warm 轻访问 / cold 静默',
+  '阶段 A：warm 热度衰减后回落 NVMe',
+  '阶段 B：cold 下沉 HDD',
   '冷层达阈值 → 触发快照 + JSON 归档',
-  '访问 5 个 HDD 对象 → 观察自动回迁 DRAM',
+  '访问 5 个 HDD 对象 → 自动回迁 DRAM',
   '汇总三层分布 & 演示结束',
 ];
 const D6_TOTAL_STEPS = 8;
@@ -41,35 +38,45 @@ const D6 = {
   expanded:   {},
 };
 
+function d6DisplayStep() {
+  const raw = Number(D6.step || 0);
+  if (D6.busy) return Math.min(D6_TOTAL_STEPS, Math.max(1, raw));
+  return Math.min(D6_TOTAL_STEPS, Math.max(0, raw));
+}
+
 function renderM6() {
   const el = document.getElementById('pg-m6');
   if (!el) return;
+  const shownStep = d6DisplayStep();
   const statusCls = D6.busy ? 'running'
                   : D6.running ? 'running'
                   : (D6.done ? 'done' : 'idle');
-  const statusTxt = D6.busy    ? `正在执行第 ${D6.step + 1} 步 ...`
+  const statusTxt = D6.busy    ? `正在执行第 ${shownStep} 步 ...`
                   : D6.done    ? '演示完成（可点 ↻ 重置 重新开始）'
                   : D6.running ? `已完成 ${D6.step}/${D6_TOTAL_STEPS} 步`
                   : '就绪（点击 [开始演示] 触发第 1 步）';
 
-  // 步骤条：i <= step 已完成、== step+1 且 busy 正在进行
+  // 步骤条：后端 busy 时 step 表示当前步；非 busy 时 step 表示已完成步数。
   let stepsH = '<div class="steps">';
   for (let i = 1; i <= D6_TOTAL_STEPS; i++) {
-    const cls = (i <= D6.step) ? 'done'
-              : (i === D6.step + 1 && D6.busy) ? 'active'
-              : '';
+    const cls = D6.busy
+      ? (i < shownStep ? 'done' : (i === shownStep ? 'active' : ''))
+      : (i <= D6.step ? 'done' : '');
     stepsH += `<div class="step ${cls}" title="${esc(D6_STEP_LABELS[i-1])}"></div>`;
   }
   stepsH += '</div>';
 
   // 当前/下一步提示文字
+  const labelIdx = D6.busy
+    ? shownStep - 1
+    : (D6.step === 0 ? 0 : Math.min(D6.step, D6_TOTAL_STEPS - 1));
   const hintTxt = D6.done
     ? `✓ 已完成全部 ${D6_TOTAL_STEPS} 步`
     : (D6.busy
-        ? `⏳ 正在执行：${esc(D6_STEP_LABELS[D6.step])}`
+        ? `⏳ 正在执行：${esc(D6_STEP_LABELS[labelIdx])}`
         : (D6.step === 0
             ? `▸ 第 1 步：${esc(D6_STEP_LABELS[0])}`
-            : `▸ 下一步（第 ${D6.step + 1}/${D6_TOTAL_STEPS} 步）：${esc(D6_STEP_LABELS[D6.step])}`));
+            : `▸ 下一步（第 ${Math.min(D6.step + 1, D6_TOTAL_STEPS)}/${D6_TOTAL_STEPS} 步）：${esc(D6_STEP_LABELS[labelIdx])}`));
   const curStep = `<div style="font-size:1.05rem;color:${D6.done?'#00e888':'#ffb020'};margin-top:4px">${hintTxt}</div>`;
 
   // 目标规模总览
@@ -84,9 +91,9 @@ function renderM6() {
   // 三层柱状图
   const total = Math.max(1, D6.tiers.dram + D6.tiers.nvme + D6.tiers.hdd);
   const tiersH = `<div class="g3">
-    ${d6Tier('🔥 热层 (DRAM)',  D6.tiers.dram, total, '#ff4050', '高频访问·0访问延迟')}
-    ${d6Tier('🌡 温层 (NVMe)',  D6.tiers.nvme, total, '#ffb020', '中频数据·次级存储')}
-    ${d6Tier('❄ 冷层 (HDD)',  D6.tiers.hdd,  total, '#4488ff', '长期无访问·归档')}
+    ${d6Tier('🔥 热层 (DRAM)',  D6.tiers.dram, total, '#ff4050', '高频访问·内存层')}
+    ${d6Tier('🌡 温层 (NVMe)',  D6.tiers.nvme, total, '#ffb020', '轻访问数据·SSD温层')}
+    ${d6Tier('❄ 冷层 (HDD)',  D6.tiers.hdd,  total, '#4488ff', '长期无访问·容量层')}
   </div>`;
 
   // 事件流：过滤掉 snapshot 类条目
@@ -121,7 +128,6 @@ function renderM6() {
 
   const coldNow = D6.tiers.hdd;
   const threshold = 20;  // 与后端 SNAP_THRESHOLD 保持一致
-  const archDir = '${NR_SNAPSHOT_DIR:-/tmp/nr_snapshots}';
   const snapHint = D6.snapList.length === 0
     ? `<div style="color:#5a7a96;padding:14px;text-align:center;font-size:1rem">
          尚无快照 — 冷层对象数达阈值 <b style="color:#ffb020">${threshold}</b> 时触发归档；
@@ -155,14 +161,14 @@ function renderM6() {
   } else {
     // running 中
     mainBtnHTML = `<button class="btn btn-primary" disabled>
-                     ⏳ 正在执行 (${D6.step}/${D6_TOTAL_STEPS})
+                     ⏳ ${D6.busy ? `第 ${shownStep} 步` : `已完成 ${D6.step}/${D6_TOTAL_STEPS}`}
                    </button>`;
   }
 
   el.innerHTML = `
     <div class="ctrl-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示（一键执行 / W2 规则）</div>
+        <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑥ 分级存储能力演示</div>
         <div class="ctrl-status ${statusCls}">
           <div class="dot ${D6.busy?'dot-pulse':''}" style="background:${D6.busy?'#00e888':D6.done?'#00d0f0':'#5a7a96'};width:6px;height:6px"></div>
           ${statusTxt}
@@ -170,13 +176,6 @@ function renderM6() {
       </div>
       ${stepsH}${curStep}
       ${targetH}
-      <div style="font-size:1rem;color:#5a7a96;margin:6px 0 10px">
-        <b style="color:#c0d8f0">一键执行 + W2 规则</b>：点击 [开始演示] 后后台自动走完 8 步。
-        C++ migrator 按 heat_score + read_cnt 自动分层：
-        DRAM score&lt;0.40 → NVMe；NVMe score&lt;0.05 且 read_cnt==0 → HDD。
-        read_cnt≥1 的 warm 对象永留 NVMe（W2 关键规则）。<br>
-        三层柱状图数字来自 <span class="mono" style="color:#c0d8f0">RPC_TIER_STATS</span> 真实返回；快照归档目录：<span class="mono" style="color:#c0d8f0">${archDir}</span>
-      </div>
       <div class="ctrl-row" style="align-items:center;gap:12px">
         ${mainBtnHTML}
         <span style="color:#8aa8c6;font-size:0.95rem;flex:1">
@@ -187,7 +186,7 @@ function renderM6() {
     </div>
 
     <div class="card" style="margin-top:12px">
-      ${chead('三层存储分布（来自 RPC_TIER_STATS）', '🏗')}
+      ${chead('三层存储分布', '🏗')}
       <div class="card-body">${tiersH}</div>
     </div>
 
@@ -260,6 +259,7 @@ async function d6Start() {
     D6.nextLabel = j.next_label || D6_STEP_LABELS[0];
     renderM6();
     d6StartPoll();
+    d6PollOnce();
   } catch (e) {
     alert('start error: ' + e);
   }
@@ -279,6 +279,7 @@ async function d6Reset() {
     running:false, done:false, busy:false, step:0,
     nextLabel: '点击 [开始演示] 一键走完整剧本',
     tiers:{dram:0,nvme:0,hdd:0}, events:[], heat:{},
+    totals:{total:0,hot:0,warm:0,cold:0},
     snapshots:{}, expanded:{}, snapList: [],
   });
   renderM6();
@@ -294,8 +295,8 @@ async function d6PollOnce() {
 
 function d6StartPoll() {
   if (D6.poll) return;
-  // 演示期间持续 1s polling；步骤之间的保活期间也需要更新 hot_keys 最新热度。
-  D6.poll = setInterval(d6PollOnce, 1000);
+  // 贴近数据平面采样周期，避免整批迁移被 1s 采样压成突变。
+  D6.poll = setInterval(d6PollOnce, 350);
 }
 
 function d6ApplyStatus(j) {
@@ -307,7 +308,12 @@ function d6ApplyStatus(j) {
   if (j.totals)          D6.totals  = j.totals;
   if (j.events)          D6.events  = j.events;
   if (j.heat)            D6.heat    = j.heat;
-  if (j.done) D6.done = true;
+  if (j.done) {
+    D6.done = true;
+    D6.running = false;
+    D6.busy = false;
+    if (D6.poll) { clearInterval(D6.poll); D6.poll = null; }
+  }
   renderM6();
 }
 
