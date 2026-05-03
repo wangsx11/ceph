@@ -1,0 +1,10 @@
+[19:52:40] start storage/FN-2 多层感知、冷热分离与调度
+[19:52:40] repo_root=/home/wangshouxin/ceph-web
+[19:52:40] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[19:52:40] rpc RPC_KV_PUT body_len=59
+[19:52:40] rpc RPC_KV_PUT resp_len=202 resp={"ok":true,"key":"fn_storage_tier_1777809160575_2624074","size":21,"offset":139264,"repl_ns":61294,"degraded":false,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[19:52:40] rpc RPC_TIER_DEMOTE body_len=42
+[19:52:40] rpc RPC_TIER_DEMOTE resp_len=69 resp={"ok":true,"key":"fn_storage_tier_1777809160575_2624074","to":"nvme"}
+[19:52:40] rpc RPC_KV_GET body_len=37
+[19:52:40] rpc RPC_KV_GET resp_len=72 resp={"ok":true,"hit":"nvme_promote","size":21,"val":"tiering_probe_payload"}
+[19:52:40] result=PASS completion=完成

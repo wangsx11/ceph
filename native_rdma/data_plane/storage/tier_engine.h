@@ -111,6 +111,17 @@ public:
                                uint64_t* existing_off, uint32_t* existing_size,
                                uint64_t  new_off,      uint32_t  new_size);
 
+    // Batch version: process N reserve-or-reuse operations under a single lock.
+    // `is_new[i]` set to true when the key is new (caller owns the slot).
+    struct BatchItem {
+        std::string_view key;
+        uint64_t  new_off;
+        uint32_t  new_size;
+        uint64_t  existing_off;
+        bool      is_new;
+    };
+    void batch_reserve_or_reuse(BatchItem* items, size_t n);
+
     // Iterate for snapshot. Callback(key, meta) returns false to stop.
     template <class Fn>
     void for_each(Fn&& fn) const {

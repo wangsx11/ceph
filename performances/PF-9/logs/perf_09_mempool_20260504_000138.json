@@ -1,0 +1,22 @@
+{
+  "metric": "perf_09_mempool",
+  "threads_multi": 8,
+  "malloc_ops_1t": 30002588,
+  "slab_ops_1t": 75574728,
+  "overhead_pct": 0.0,
+  "malloc_ops_Nt": 12658238,
+  "slab_ops_Nt": 24317918,
+  "scale_gain_pct": 92.11,
+  "malloc_rss_kb": 5596,
+  "slab_cap_kb": 131072,
+  "savings_pct": 8.0,
+  "thresholds": {
+    "overhead_pct": 5.0,
+    "savings_pct": 7.0,
+    "scale_gain_pct": 20.0
+  },
+  "passed_overhead": true,
+  "passed_savings": true,
+  "passed_scale": true,
+  "passed": true
+}

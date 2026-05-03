@@ -1,0 +1,12 @@
+[23:41:52] start storage/FN-4 可配置压缩与去重
+[23:41:52] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:52] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:52] rpc RPC_COMPRESS_STATS body_len=0
+[23:41:52] rpc RPC_COMPRESS_STATS resp_len=82 resp={"ok":true,"raw_bytes":0,"cmp_bytes":0,"objects":0,"ratio":0.0000,"saved_bytes":0}
+[23:41:52] rpc RPC_KV_PUT body_len=4130
+[23:41:52] rpc RPC_KV_PUT resp_len=197 resp={"ok":true,"key":"fn_compress_1777822912860_2982313","size":4096,"offset":176128,"repl_ns":345,"degraded":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[23:41:52] rpc RPC_TIER_DEMOTE body_len=37
+[23:41:52] rpc RPC_TIER_DEMOTE resp_len=64 resp={"ok":true,"key":"fn_compress_1777822912860_2982313","to":"hdd"}
+[23:41:52] rpc RPC_COMPRESS_STATS body_len=0
+[23:41:52] rpc RPC_COMPRESS_STATS resp_len=89 resp={"ok":true,"raw_bytes":4096,"cmp_bytes":19,"objects":1,"ratio":0.0046,"saved_bytes":4077}
+[23:41:52] result=PASS completion=部分完成

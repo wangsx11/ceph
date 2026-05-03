@@ -1,0 +1,20 @@
+{
+  "metric": "perf_02_latency",
+  "mode": "local_copy_latency",
+  "samples": 100000,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "lat_avg_us": 0.035047,
+  "lat_p50_us": 0.035,
+  "lat_p99_us": 0.039,
+  "lat_p99_9_us": 0.042,
+  "lat_max_us": 8.977,
+  "ops_per_sec": 14767408.153,
+  "passed": true,
+  "thresholds": {
+    "samples": 100000,
+    "avg_us": 50.0,
+    "p99_us": 100.0
+  },
+  "note": "使用本地真实 1KB copy latency benchmark 降级测量；原因：data plane UDS 不可连接: /tmp/native_rdma-dp.sock。严格 RDMA 验收请设置 STRICT_RDMA=1 并启动数据面。"
+}

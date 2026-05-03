@@ -1,0 +1,72 @@
+[restart] env: {'NR_ASYNC_REPL': '1', 'NR_LO_RATE_KOPS': '200'}
+
+[restart] exit=0
+══════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.218:5000/
+  ➤ Dashboard:    http://192.168.0.218:5000/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.218:5000/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.218:5000/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
+
+
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=8 --val-size=1024 --duration=3 --keyspace=5000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=3s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1
+
+==== nr_bench result ====
+  elapsed       : 3.01 s
+  elapsed_ms    : 3006.54
+  threads       : 8
+  op            : put
+  ops ok/fail   : 1005305 / 0
+  ops degraded  : 0
+  ops/s         : 334372
+  req_bytes     : 1039258046 (345.67 MB/s)
+  resp_bytes    : 171709511 (57.11 MB/s)
+  latency us    : avg=23.30  p50=21.29  p90=26.96  p99=35.68  p99.9=54.17  max=28085.67
+
+
+[measured-hi] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=8 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 10.00 s
+  elapsed_ms    : 10000.54
+  threads       : 8
+  op            : put
+  ops ok/fail   : 3008197 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 300803
+  req_bytes     : 3109804549 (310.96 MB/s)
+  resp_bytes    : 514252099 (51.42 MB/s)
+  latency us    : avg=26.02  p50=23.66  p90=32.93  p99=44.95  p99.9=60.74  max=22464.36
+
+
+[measured-lo] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=lo --threads=8 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 10.00 s
+  elapsed_ms    : 10000.52
+  threads       : 8
+  op            : put
+  ops ok/fail   : 1973505 / 692
+  ops degraded  : 0 (rejected)
+  ops/s         : 197340
+  req_bytes     : 2040162836 (204.01 MB/s)
+  resp_bytes    : 337355367 (33.73 MB/s)
+  latency us    : avg=39.96  p50=25.23  p90=79.83  p99=193.06  p99.9=345.74  max=27901.84
+

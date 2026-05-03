@@ -1,0 +1,25 @@
+{
+  "metric": "perf_01",
+  "ops_threads": 4,
+  "ops_val_size": 1024,
+  "ops_per_sec": 0.0,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "passed_ops": false,
+  "bw_threads": 4,
+  "bw_val_size": 1048576,
+  "bw_write_gbps": 0.0,
+  "bw_link_gbps": 100.0,
+  "bw_util_pct": 0.0,
+  "bw_fail": 0,
+  "bw_degraded": 0,
+  "passed_util": false,
+  "thresholds": {
+    "ops_per_sec": 1000000,
+    "util_pct": 50.0,
+    "criterion": "ops AND util (分项验收)"
+  },
+  "passed": false,
+  "raw_ops": {},
+  "raw_bw": {}
+}

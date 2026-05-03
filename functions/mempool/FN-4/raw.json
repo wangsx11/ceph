@@ -1,0 +1,79 @@
+{
+  "module": "mempool",
+  "module_name": "一致性总线内存池化仿真计算模块",
+  "fn_id": "FN-4",
+  "function": "跨节点内存自适应分配与热数据迁移",
+  "source": "docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 4 条",
+  "started_at": "2026-05-03T23:41:54+0800",
+  "finished_at": "2026-05-03T23:41:54+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "部分完成",
+  "evidence": [
+    "当前可观测热数据迁移闭环成功: demote->nvme, GET hit=nvme_promote",
+    "TierEngine 初始化日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+  ],
+  "details": {
+    "put": {
+      "ok": true,
+      "key": "fn_hot_migrate_1777822914009_2982584",
+      "size": 21,
+      "offset": 204800,
+      "repl_ns": 317,
+      "degraded": true,
+      "route": {
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true
+      }
+    },
+    "demote": {
+      "ok": true,
+      "key": "fn_hot_migrate_1777822914009_2982584",
+      "to": "nvme"
+    },
+    "get": {
+      "ok": true,
+      "hit": "nvme_promote",
+      "size": 21,
+      "val": "hot-migration-payload"
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260503_234153.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260503_234153.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 155,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":false,\"peer_slab_base\":140506295586816,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"degraded_puts\":17,\"degraded_bytes\":4221}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 185,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_hot_migrate_1777822914009_2982584\",\"size\":21,\"offset\":204800,\"repl_ns\":317,\"degraded\":true,\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 41,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_hot_migrate_1777822914009_2982584\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 36,
+      "response_len": 72,
+      "response_preview": "{\"ok\":true,\"hit\":\"nvme_promote\",\"size\":21,\"val\":\"hot-migration-payload\"}"
+    }
+  ]
+}

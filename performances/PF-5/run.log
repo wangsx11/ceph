@@ -1,0 +1,15 @@
+$ /home/wangshouxin/ceph-web/native_rdma/build/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=16 --val-size=1024 --duration=15 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=16 duration=15s val_size=1024 keyspace=10000 prio=default require_peer=true
+
+==== nr_bench result ====
+  elapsed       : 15.03 s
+  threads       : 16
+  op            : put
+  ops ok/fail   : 3952647 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 262977
+  req_bytes     : 4088087513 (271.99 MB/s)
+  resp_bytes    : 683697229 (45.49 MB/s)
+  latency us    : avg=60.19  p50=37.56  p90=48.74  p99=63.86  p99.9=164.88  max=106377.37
+

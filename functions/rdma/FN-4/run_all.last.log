@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-4 WAIVED - CPU 与 GPU 高速直通访问
+- 当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260503_234153.log
+
+
+## STDERR
+

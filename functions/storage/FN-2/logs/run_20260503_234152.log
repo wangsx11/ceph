@@ -1,0 +1,10 @@
+[23:41:52] start storage/FN-2 多层感知、冷热分离与调度
+[23:41:52] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:52] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:52] rpc RPC_KV_PUT body_len=59
+[23:41:52] rpc RPC_KV_PUT resp_len=187 resp={"ok":true,"key":"fn_storage_tier_1777822912725_2982275","size":21,"offset":139264,"repl_ns":436,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_TIER_DEMOTE body_len=42
+[23:41:52] rpc RPC_TIER_DEMOTE resp_len=69 resp={"ok":true,"key":"fn_storage_tier_1777822912725_2982275","to":"nvme"}
+[23:41:52] rpc RPC_KV_GET body_len=37
+[23:41:52] rpc RPC_KV_GET resp_len=72 resp={"ok":true,"hit":"nvme_promote","size":21,"val":"tiering_probe_payload"}
+[23:41:52] result=PASS completion=完成

@@ -1,0 +1,4 @@
+rdma/FN-3 PASS - 流量优先级机制
+- 高低优先级 PUT 均成功，QosSched 日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260503_234153.log

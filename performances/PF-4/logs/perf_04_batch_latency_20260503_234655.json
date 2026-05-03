@@ -1,0 +1,8 @@
+{
+  "metric": "perf_04_batch_latency",
+  "scenario_a": {},
+  "scenario_b": {},
+  "passed_a": false,
+  "passed_b": false,
+  "passed": false
+}

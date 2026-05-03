@@ -1,0 +1,46 @@
+{
+  "module": "mempool",
+  "module_name": "一致性总线内存池化仿真计算模块",
+  "fn_id": "FN-6",
+  "function": "内存池高可靠机制",
+  "source": "docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 6 条",
+  "started_at": "2026-05-03T23:41:54+0800",
+  "finished_at": "2026-05-03T23:41:54+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "部分完成",
+  "evidence": [
+    "HA 字段完备: peer_alive=False degraded_puts=19 degraded_bytes=4255",
+    "默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": false,
+      "peer_slab_base": 140506295586816,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "degraded_puts": 19,
+      "degraded_bytes": 4255
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260503_234154.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260503_234154.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-6/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 155,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":false,\"peer_slab_base\":140506295586816,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"degraded_puts\":19,\"degraded_bytes\":4255}"
+    }
+  ]
+}

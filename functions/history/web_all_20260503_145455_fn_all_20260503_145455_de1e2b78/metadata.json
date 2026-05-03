@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "job_id": "fn_all_20260503_145455_de1e2b78",
+  "kind": "run_all",
+  "module": "",
+  "fn_id": "",
+  "state": "finished",
+  "exit_code": 0,
+  "started_at": "2026-05-03T14:54:55+0800",
+  "finished_at": "2026-05-03T14:54:56+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/ceph-web/functions/history/web_all_20260503_145455_fn_all_20260503_145455_de1e2b78",
+  "history_dir": "functions/history/web_all_20260503_145455_fn_all_20260503_145455_de1e2b78",
+  "job_log": "functions/history/web_all_20260503_145455_fn_all_20260503_145455_de1e2b78/stdout.log",
+  "env": {
+    "CURRENT_NODE": "A",
+    "REQUIRE_PEER": "1",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "ALLOW_DESTRUCTIVE": "0",
+    "CTRL_URL": "http://127.0.0.1:5000"
+  }
+}

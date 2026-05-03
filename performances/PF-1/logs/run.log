@@ -1,0 +1,140 @@
+============================================================
+Sub-test B: large-object bandwidth utilization
+============================================================
+
+[restart] env: {'SLAB_SLOT_SIZE': '1048576', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+
+[restart] exit=0
+══════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.218:5000/
+  ➤ Dashboard:    http://192.168.0.218:5000/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.218:5000/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.218:5000/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
+
+
+[warmup-bw] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1048576 --duration=5 --keyspace=512 --shared-keyspace=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=5s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=1
+
+==== nr_bench result ====
+  elapsed       : 5.00 s
+  elapsed_ms    : 5000.84
+  threads       : 4
+  op            : put
+  ops ok/fail   : 44453 / 0
+  ops degraded  : 2446
+  ops/s         : 8889
+  req_bytes     : 46612650497 (9320.96 MB/s)
+  resp_bytes    : 7570715 (1.51 MB/s)
+  latency us    : avg=412.72  p50=401.93  p90=446.67  p99=559.62  p99.9=888.03  max=27481.63
+
+
+[measured-bw threads=2] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=2 --val-size=1048576 --duration=15 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=2 duration=15s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 15.00 s
+  elapsed_ms    : 15000.81
+  threads       : 2
+  op            : put
+  ops ok/fail   : 71604 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 4773
+  req_bytes     : 75082721686 (5005.24 MB/s)
+  resp_bytes    : 12198844 (0.81 MB/s)
+  latency us    : avg=382.93  p50=382.51  p90=425.75  p99=512.90  p99.9=546.84  max=21932.93
+
+network_samples={"samples": [{"ts_ns": 7456406742232148, "bw_tx_gbps": 74.95221248}, {"ts_ns": 7456406942373849, "bw_tx_gbps": 60.94323711999999}, {"ts_ns": 7456407142499671, "bw_tx_gbps": 40.26531839999999}, {"ts_ns": 7456407342636973, "bw_tx_gbps": 40.558919679999995}, {"ts_ns": 7456407542763495, "bw_tx_gbps": 40.4750336}, {"ts_ns": 7456407742890722, "bw_tx_gbps": 40.97835007999999}, {"ts_ns": 7456407943025993, "bw_tx_gbps": 40.894464}, {"ts_ns": 7456408143161241, "bw_tx_gbps": 40.31539964179104}, {"ts_ns": 7456408343285297, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456408543416313, "bw_tx_gbps": 40.85252095999999}, {"ts_ns": 7456408743559115, "bw_tx_gbps": 40.81057792}, {"ts_ns": 7456408943694057, "bw_tx_gbps": 40.894464}, {"ts_ns": 7456409143831347, "bw_tx_gbps": 40.60086272}, {"ts_ns": 7456409343966640, "bw_tx_gbps": 38.5875968}, {"ts_ns": 7456409544066851, "bw_tx_gbps": 40.64927458706467}, {"ts_ns": 7456409744249360, "bw_tx_gbps": 40.642805759999995}, {"ts_ns": 7456409944386628, "bw_tx_gbps": 40.76863487999999}, {"ts_ns": 7456410144525206, "bw_tx_gbps": 40.894464}, {"ts_ns": 7456410344663967, "bw_tx_gbps": 40.81057792}, {"ts_ns": 7456410544805542, "bw_tx_gbps": 38.54565376}, {"ts_ns": 7456410744924209, "bw_tx_gbps": 40.894464}, {"ts_ns": 7456410945047307, "bw_tx_gbps": 40.106727800995024}, {"ts_ns": 7456411145168392, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456411345302117, "bw_tx_gbps": 40.60086272}, {"ts_ns": 7456411545434754, "bw_tx_gbps": 40.26531839999999}, {"ts_ns": 7456411745563409, "bw_tx_gbps": 40.558919679999995}, {"ts_ns": 7456411945671413, "bw_tx_gbps": 40.6847488}, {"ts_ns": 7456412145791234, "bw_tx_gbps": 40.43309056}, {"ts_ns": 7456412345935462, "bw_tx_gbps": 40.05560319999999}, {"ts_ns": 7456412546045994, "bw_tx_gbps": 40.357134009950244}, {"ts_ns": 7456412746153846, "bw_tx_gbps": 40.60086272}, {"ts_ns": 7456412946270538, "bw_tx_gbps": 40.642805759999995}, {"ts_ns": 7456413146381630, "bw_tx_gbps": 40.43309056}, {"ts_ns": 7456413346504104, "bw_tx_gbps": 40.4750336}, {"ts_ns": 7456413546646013, "bw_tx_gbps": 40.13948927999999}, {"ts_ns": 7456413746775828, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456413946906012, "bw_tx_gbps": 38.293995519999996}, {"ts_ns": 7456414147029226, "bw_tx_gbps": 40.39114752}, {"ts_ns": 7456414347151971, "bw_tx_gbps": 40.27366527363184}, {"ts_ns": 7456414547294180, "bw_tx_gbps": 40.39114752}, {"ts_ns": 7456414747434468, "bw_tx_gbps": 40.34920448}, {"ts_ns": 7456414947593646, "bw_tx_gbps": 40.05560319999999}, {"ts_ns": 7456415147720185, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456415347849497, "bw_tx_gbps": 40.6847488}, {"ts_ns": 7456415547963384, "bw_tx_gbps": 40.76863487999999}, {"ts_ns": 7456415748086039, "bw_tx_gbps": 40.52407148258707}, {"ts_ns": 7456415948225941, "bw_tx_gbps": 40.43309056}, {"ts_ns": 7456416148348447, "bw_tx_gbps": 40.516976639999996}, {"ts_ns": 7456416348486991, "bw_tx_gbps": 40.6847488}, {"ts_ns": 7456416548632057, "bw_tx_gbps": 40.4750336}, {"ts_ns": 7456416748767545, "bw_tx_gbps": 40.558919679999995}, {"ts_ns": 7456416948905012, "bw_tx_gbps": 40.516976639999996}, {"ts_ns": 7456417149036342, "bw_tx_gbps": 40.894464}, {"ts_ns": 7456417349144260, "bw_tx_gbps": 40.44060274626865}, {"ts_ns": 7456417549268477, "bw_tx_gbps": 40.6847488}, {"ts_ns": 7456417749401204, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456417949535359, "bw_tx_gbps": 40.60086272}, {"ts_ns": 7456418149668863, "bw_tx_gbps": 40.72669184}, {"ts_ns": 7456418349800628, "bw_tx_gbps": 40.34920448}, {"ts_ns": 7456418549928998, "bw_tx_gbps": 40.30726144}, {"ts_ns": 7456418750097793, "bw_tx_gbps": 39.77285285572139}, {"ts_ns": 7456418950207482, "bw_tx_gbps": 38.461767679999994}, {"ts_ns": 7456419150310545, "bw_tx_gbps": 38.461767679999994}, {"ts_ns": 7456419350421713, "bw_tx_gbps": 38.21010944}, {"ts_ns": 7456419550537102, "bw_tx_gbps": 38.419824639999995}, {"ts_ns": 7456419750643670, "bw_tx_gbps": 38.335938559999995}, {"ts_ns": 7456419950793102, "bw_tx_gbps": 38.5875968}, {"ts_ns": 7456420150922113, "bw_tx_gbps": 38.461767679999994}, {"ts_ns": 7456420351045011, "bw_tx_gbps": 38.562556179104476}, {"ts_ns": 7456420551181252, "bw_tx_gbps": 38.797312}, {"ts_ns": 7456420751319419, "bw_tx_gbps": 38.62953983999999}, {"ts_ns": 7456420951440340, "bw_tx_gbps": 38.71342592}, {"ts_ns": 7456421151579591, "bw_tx_gbps": 38.50371072}, {"ts_ns": 7456421351715231, "bw_tx_gbps": 38.62953983999999}, {"ts_ns": 7456421551853426, "bw_tx_gbps": 38.71342592}, {"ts_ns": 7456421751979392, "bw_tx_gbps": 38.67148288}], "positive_samples": 76, "network_tx_gbps_avg": 40.791794708646236, "network_tx_gbps_peak": 74.95221248}
+
+[measured-bw threads=3] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=3 --val-size=1048576 --duration=15 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=3 duration=15s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 15.00 s
+  elapsed_ms    : 15000.66
+  threads       : 3
+  op            : put
+  ops ok/fail   : 101603 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 6773
+  req_bytes     : 106539156659 (7102.30 MB/s)
+  resp_bytes    : 17315694 (1.15 MB/s)
+  latency us    : avg=405.90  p50=400.02  p90=442.61  p99=536.27  p99.9=566.91  max=27432.07
+
+network_samples={"samples": [{"ts_ns": 7456421751979392, "bw_tx_gbps": 38.67148288}, {"ts_ns": 7456421952085654, "bw_tx_gbps": 38.22868123383084}, {"ts_ns": 7456422152217694, "bw_tx_gbps": 58.63636992}, {"ts_ns": 7456422352347708, "bw_tx_gbps": 58.97191424}, {"ts_ns": 7456422552473775, "bw_tx_gbps": 58.84608512}, {"ts_ns": 7456422752603764, "bw_tx_gbps": 59.1396864}, {"ts_ns": 7456422952740483, "bw_tx_gbps": 58.80414208}, {"ts_ns": 7456423152875428, "bw_tx_gbps": 58.929971200000004}, {"ts_ns": 7456423352986975, "bw_tx_gbps": 56.623104}, {"ts_ns": 7456423553127309, "bw_tx_gbps": 55.96578770149253}, {"ts_ns": 7456423753263699, "bw_tx_gbps": 55.82618624}, {"ts_ns": 7456423953393444, "bw_tx_gbps": 56.53921792}, {"ts_ns": 7456424153517484, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456424353635818, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456424553753364, "bw_tx_gbps": 56.79087616}, {"ts_ns": 7456424753873872, "bw_tx_gbps": 56.79087616}, {"ts_ns": 7456424953996040, "bw_tx_gbps": 58.67831296}, {"ts_ns": 7456425154137032, "bw_tx_gbps": 55.757115860696516}, {"ts_ns": 7456425354257544, "bw_tx_gbps": 56.37144575999999}, {"ts_ns": 7456425554425087, "bw_tx_gbps": 56.45533183999999}, {"ts_ns": 7456425754544540, "bw_tx_gbps": 56.958648319999995}, {"ts_ns": 7456425954692452, "bw_tx_gbps": 57.042534399999994}, {"ts_ns": 7456426154822316, "bw_tx_gbps": 56.958648319999995}, {"ts_ns": 7456426354961172, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456426555087601, "bw_tx_gbps": 57.301287482587064}, {"ts_ns": 7456426755214177, "bw_tx_gbps": 57.042534399999994}, {"ts_ns": 7456426955324070, "bw_tx_gbps": 57.08447743999999}, {"ts_ns": 7456427155448343, "bw_tx_gbps": 57.042534399999994}, {"ts_ns": 7456427355559227, "bw_tx_gbps": 57.08447743999999}, {"ts_ns": 7456427555674207, "bw_tx_gbps": 57.21030656}, {"ts_ns": 7456427755796916, "bw_tx_gbps": 56.874762239999995}, {"ts_ns": 7456427955924216, "bw_tx_gbps": 56.91670528}, {"ts_ns": 7456428156042457, "bw_tx_gbps": 56.6335375920398}, {"ts_ns": 7456428356151580, "bw_tx_gbps": 57.08447743999999}, {"ts_ns": 7456428556261129, "bw_tx_gbps": 56.958648319999995}, {"ts_ns": 7456428756386370, "bw_tx_gbps": 57.042534399999994}, {"ts_ns": 7456428956509563, "bw_tx_gbps": 57.33613568}, {"ts_ns": 7456429156654845, "bw_tx_gbps": 57.21030656}, {"ts_ns": 7456429356778583, "bw_tx_gbps": 57.12642048}, {"ts_ns": 7456429556922083, "bw_tx_gbps": 57.16836351999999}, {"ts_ns": 7456429757062243, "bw_tx_gbps": 56.71700632835821}, {"ts_ns": 7456429957185491, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456430157341933, "bw_tx_gbps": 56.4133888}, {"ts_ns": 7456430357457610, "bw_tx_gbps": 56.79087616}, {"ts_ns": 7456430557583469, "bw_tx_gbps": 56.91670528}, {"ts_ns": 7456430757705879, "bw_tx_gbps": 56.958648319999995}, {"ts_ns": 7456430957834807, "bw_tx_gbps": 57.00059136}, {"ts_ns": 7456431157938819, "bw_tx_gbps": 57.2522496}, {"ts_ns": 7456431358074895, "bw_tx_gbps": 56.42486575124377}, {"ts_ns": 7456431558210377, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456431758354772, "bw_tx_gbps": 56.74893312}, {"ts_ns": 7456431958480645, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456432158619598, "bw_tx_gbps": 57.042534399999994}, {"ts_ns": 7456432358748812, "bw_tx_gbps": 56.832819199999996}, {"ts_ns": 7456432558887986, "bw_tx_gbps": 56.45533183999999}, {"ts_ns": 7456432759031811, "bw_tx_gbps": 56.28755968}, {"ts_ns": 7456432959169481, "bw_tx_gbps": 54.755491024875624}, {"ts_ns": 7456433159289607, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456433359447300, "bw_tx_gbps": 56.74893312}, {"ts_ns": 7456433559566031, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456433759683232, "bw_tx_gbps": 56.4133888}, {"ts_ns": 7456433959813225, "bw_tx_gbps": 56.53921792}, {"ts_ns": 7456434159939149, "bw_tx_gbps": 56.58116095999999}, {"ts_ns": 7456434360068862, "bw_tx_gbps": 56.299662646766166}, {"ts_ns": 7456434560203908, "bw_tx_gbps": 56.58116095999999}, {"ts_ns": 7456434760326006, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456434960465489, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456435160609910, "bw_tx_gbps": 56.4133888}, {"ts_ns": 7456435360743084, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456435560878613, "bw_tx_gbps": 56.79087616}, {"ts_ns": 7456435761007396, "bw_tx_gbps": 56.623104}, {"ts_ns": 7456435961148187, "bw_tx_gbps": 56.50833448756219}, {"ts_ns": 7456436161286847, "bw_tx_gbps": 56.66504704}, {"ts_ns": 7456436361424540, "bw_tx_gbps": 57.16836351999999}, {"ts_ns": 7456436561562972, "bw_tx_gbps": 56.49727488}, {"ts_ns": 7456436761695988, "bw_tx_gbps": 51.08662272}], "positive_samples": 76, "network_tx_gbps_avg": 56.3411361751244, "network_tx_gbps_peak": 59.1396864}
+
+[measured-bw threads=4] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1048576 --duration=15 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=15s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 15.00 s
+  elapsed_ms    : 15000.73
+  threads       : 4
+  op            : put
+  ops ok/fail   : 122320 / 10631
+  ops degraded  : 0 (rejected)
+  ops/s         : 8154
+  req_bytes     : 128262646233 (8550.43 MB/s)
+  resp_bytes    : 20844704 (1.39 MB/s)
+  latency us    : avg=414.36  p50=401.65  p90=445.93  p99=611.78  p99.9=811.61  max=20145.36
+
+network_samples={"samples": [{"ts_ns": 7456436761695988, "bw_tx_gbps": 51.08662272}, {"ts_ns": 7456436961833228, "bw_tx_gbps": 52.97405952}, {"ts_ns": 7456437161974879, "bw_tx_gbps": 77.42685184}, {"ts_ns": 7456437362111050, "bw_tx_gbps": 77.12511235820895}, {"ts_ns": 7456437562241536, "bw_tx_gbps": 77.30102271999999}, {"ts_ns": 7456437762368889, "bw_tx_gbps": 77.51073792}, {"ts_ns": 7456437962506714, "bw_tx_gbps": 77.63656703999999}, {"ts_ns": 7456438162639573, "bw_tx_gbps": 77.46879488}, {"ts_ns": 7456438362780433, "bw_tx_gbps": 77.25907967999999}, {"ts_ns": 7456438562901976, "bw_tx_gbps": 77.13325056}, {"ts_ns": 7456438763031070, "bw_tx_gbps": 77.09130752}, {"ts_ns": 7456438963150461, "bw_tx_gbps": 77.04164362189054}, {"ts_ns": 7456439163284000, "bw_tx_gbps": 77.1751936}, {"ts_ns": 7456439363413967, "bw_tx_gbps": 76.79770624}, {"ts_ns": 7456439563542051, "bw_tx_gbps": 76.21050367999999}, {"ts_ns": 7456439763682620, "bw_tx_gbps": 74.61666816}, {"ts_ns": 7456439963825884, "bw_tx_gbps": 74.74249728}, {"ts_ns": 7456440163948589, "bw_tx_gbps": 74.6586112}, {"ts_ns": 7456440364109307, "bw_tx_gbps": 74.20370658706467}, {"ts_ns": 7456440564249937, "bw_tx_gbps": 74.91026944}, {"ts_ns": 7456440764384951, "bw_tx_gbps": 74.8683264}, {"ts_ns": 7456440964546250, "bw_tx_gbps": 76.04273152}, {"ts_ns": 7456441164711824, "bw_tx_gbps": 77.25907967999999}, {"ts_ns": 7456441364869156, "bw_tx_gbps": 77.34296576}, {"ts_ns": 7456441565071792, "bw_tx_gbps": 77.08337799004975}, {"ts_ns": 7456441765293321, "bw_tx_gbps": 74.95221248}, {"ts_ns": 7456441965484459, "bw_tx_gbps": 74.36500991999999}, {"ts_ns": 7456442165624877, "bw_tx_gbps": 73.56809215999999}, {"ts_ns": 7456442365798290, "bw_tx_gbps": 74.61666816}, {"ts_ns": 7456442565955852, "bw_tx_gbps": 74.8683264}, {"ts_ns": 7456442766111138, "bw_tx_gbps": 74.37064405970149}, {"ts_ns": 7456442966273652, "bw_tx_gbps": 74.74249728}, {"ts_ns": 7456443166461434, "bw_tx_gbps": 74.74249728}, {"ts_ns": 7456443366627435, "bw_tx_gbps": 74.91026944}, {"ts_ns": 7456443566789233, "bw_tx_gbps": 74.95221248}, {"ts_ns": 7456443766909788, "bw_tx_gbps": 75.03609856}, {"ts_ns": 7456443967083033, "bw_tx_gbps": 72.03351944278607}, {"ts_ns": 7456444167207283, "bw_tx_gbps": 75.11998464}, {"ts_ns": 7456444367343416, "bw_tx_gbps": 74.6586112}, {"ts_ns": 7456444567474100, "bw_tx_gbps": 75.11998464}, {"ts_ns": 7456444767612535, "bw_tx_gbps": 75.03609856}, {"ts_ns": 7456444967745574, "bw_tx_gbps": 75.20387072}, {"ts_ns": 7456445167880296, "bw_tx_gbps": 75.11998464}, {"ts_ns": 7456445368033593, "bw_tx_gbps": 69.16407296}, {"ts_ns": 7456445568215939, "bw_tx_gbps": 58.761990368159196}, {"ts_ns": 7456445768358867, "bw_tx_gbps": 59.51717376}, {"ts_ns": 7456445968512208, "bw_tx_gbps": 59.3494016}, {"ts_ns": 7456446168673448, "bw_tx_gbps": 59.26551552}, {"ts_ns": 7456446368809064, "bw_tx_gbps": 59.3494016}, {"ts_ns": 7456446568943791, "bw_tx_gbps": 59.055800319999996}, {"ts_ns": 7456446769074273, "bw_tx_gbps": 58.970662208955225}, {"ts_ns": 7456446969220412, "bw_tx_gbps": 59.60105984}, {"ts_ns": 7456447169360896, "bw_tx_gbps": 59.097743359999996}, {"ts_ns": 7456447369489532, "bw_tx_gbps": 59.47523072}, {"ts_ns": 7456447569633575, "bw_tx_gbps": 58.97191424}, {"ts_ns": 7456447769799117, "bw_tx_gbps": 59.64300287999999}, {"ts_ns": 7456447969949019, "bw_tx_gbps": 59.013857279999996}, {"ts_ns": 7456448170092046, "bw_tx_gbps": 59.09586531343284}, {"ts_ns": 7456448370237987, "bw_tx_gbps": 59.51717376}, {"ts_ns": 7456448570373565, "bw_tx_gbps": 59.055800319999996}, {"ts_ns": 7456448770517152, "bw_tx_gbps": 59.30745855999999}, {"ts_ns": 7456448970646498, "bw_tx_gbps": 59.43328767999999}, {"ts_ns": 7456449170794484, "bw_tx_gbps": 59.26551552}, {"ts_ns": 7456449370941088, "bw_tx_gbps": 59.30745855999999}, {"ts_ns": 7456449571082931, "bw_tx_gbps": 58.970662208955225}, {"ts_ns": 7456449771226180, "bw_tx_gbps": 59.30745855999999}, {"ts_ns": 7456449971410809, "bw_tx_gbps": 59.5591168}, {"ts_ns": 7456450171574812, "bw_tx_gbps": 59.39134464}, {"ts_ns": 7456450371751515, "bw_tx_gbps": 59.097743359999996}, {"ts_ns": 7456450571899227, "bw_tx_gbps": 59.47523072}, {"ts_ns": 7456450772052231, "bw_tx_gbps": 58.761990368159196}, {"ts_ns": 7456450972170561, "bw_tx_gbps": 58.510540799999994}, {"ts_ns": 7456451172295827, "bw_tx_gbps": 60.14631935999999}, {"ts_ns": 7456451372437099, "bw_tx_gbps": 59.39134464}, {"ts_ns": 7456451572566162, "bw_tx_gbps": 59.223572479999994}, {"ts_ns": 7456451772696289, "bw_tx_gbps": 59.47523072}], "positive_samples": 76, "network_tx_gbps_avg": 68.05148961851792, "network_tx_gbps_peak": 77.63656703999999}
+
+
+============================================================
+Sub-test A: 1KB ops throughput
+============================================================
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+
+[restart] exit=0
+══════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.218:5000/
+  ➤ Dashboard:    http://192.168.0.218:5000/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.218:5000/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.218:5000/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
+
+
+[measured-ops] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=15 --require-peer=1 --batch=64
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=15s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64
+
+==== nr_bench result ====
+  elapsed       : 15.00 s
+  elapsed_ms    : 15000.31
+  threads       : 4
+  op            : put
+  ops ok/fail   : 16733312 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 1115531
+  req_bytes     : 17385097804 (1158.98 MB/s)
+  resp_bytes    : 7320824 (0.49 MB/s)
+  latency us    : avg=3.41  p50=3.12  p90=4.50  p99=6.34  p99.9=80.45  max=437.70
+

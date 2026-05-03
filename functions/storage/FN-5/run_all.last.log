@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-5 PASS - IO 调度与优先级管理
+- 数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260503_234152.log
+
+
+## STDERR
+

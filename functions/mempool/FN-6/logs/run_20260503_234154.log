@@ -1,0 +1,6 @@
+[23:41:54] start mempool/FN-6 内存池高可靠机制
+[23:41:54] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:54] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:54] rpc RPC_CLUSTER_STATUS body_len=0
+[23:41:54] rpc RPC_CLUSTER_STATUS resp_len=155 resp={"ok":true,"self":"A","peer_alive":false,"peer_slab_base":140506295586816,"peer_slab_rkey":71936,"peer_num_qp":32,"degraded_puts":19,"degraded_bytes":4255}
+[23:41:54] result=PASS completion=部分完成

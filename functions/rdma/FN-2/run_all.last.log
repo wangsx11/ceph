@@ -1,0 +1,13 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-2 PASS - 聚合数据传输
+- RPC_KV_PUT_BATCH 成功: ok_n=4/4
+- BatchAggregator 启动日志存在: True
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260503_234153.log
+
+
+## STDERR
+

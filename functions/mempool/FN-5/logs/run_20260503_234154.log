@@ -1,0 +1,18 @@
+[23:41:54] start mempool/FN-5 任务级与用户级内存隔离
+[23:41:54] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:54] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:54] rpc RPC_ISO_DENY body_len=20
+[23:41:54] rpc RPC_ISO_DENY resp_len=69 resp={"ok":true,"action":"deny","tenant_id":23914,"pool":"default/slab1k"}
+[23:41:54] rpc RPC_KV_PUT body_len=55
+[23:41:54] rpc RPC_KV_PUT resp_len=68 resp={"ok":false,"err":"tenant 23914 not allowed on pool default/slab1k"}
+[23:41:54] rpc RPC_ISO_ALLOW body_len=20
+[23:41:54] rpc RPC_ISO_ALLOW resp_len=70 resp={"ok":true,"action":"allow","tenant_id":23914,"pool":"default/slab1k"}
+[23:41:54] rpc RPC_KV_PUT body_len=49
+[23:41:54] rpc RPC_KV_PUT resp_len=190 resp={"ok":true,"key":"fn_iso_1777822914076_2982604","size":13,"offset":208896,"repl_ns":458,"degraded":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[23:41:54] rpc RPC_KV_GET body_len=35
+[23:41:54] rpc RPC_KV_GET resp_len=57 resp={"ok":true,"hit":"local","size":13,"val":"allowed-value"}
+[23:41:54] rpc RPC_ISO_DENY body_len=20
+[23:41:54] rpc RPC_ISO_DENY resp_len=69 resp={"ok":true,"action":"deny","tenant_id":23914,"pool":"default/slab1k"}
+[23:41:54] rpc RPC_KV_PUT body_len=61
+[23:41:54] rpc RPC_KV_PUT resp_len=68 resp={"ok":false,"err":"tenant 23914 not allowed on pool default/slab1k"}
+[23:41:54] result=PASS completion=完成

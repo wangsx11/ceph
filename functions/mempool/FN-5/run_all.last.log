@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-5 PASS - 任务级与用户级内存隔离
+- tenant=23914 完成拒绝->允许->读取->撤销->拒绝闭环
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260503_234154.log
+
+
+## STDERR
+

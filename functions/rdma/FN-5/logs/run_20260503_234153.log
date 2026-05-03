@@ -1,0 +1,68 @@
+[23:41:53] start rdma/FN-5 分布式节点路由转发与负载均衡
+[23:41:53] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=116 resp={"ok":true,"key":"fn_route_0","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_1","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=116 resp={"ok":true,"key":"fn_route_2","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=116 resp={"ok":true,"key":"fn_route_3","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_4","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_5","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_6","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_7","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_8","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=10
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=129 resp={"ok":true,"key":"fn_route_9","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_10","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_11","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_12","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_13","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_14","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_15","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_16","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_17","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_18","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_19","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_20","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_21","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_22","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_23","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_24","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_25","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_26","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_27","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_28","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=131 resp={"ok":true,"key":"fn_route_29","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_30","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] rpc RPC_ROUTE_QUERY body_len=11
+[23:41:53] rpc RPC_ROUTE_QUERY resp_len=118 resp={"ok":true,"key":"fn_route_31","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[23:41:53] result=PASS completion=完成

@@ -1,0 +1,227 @@
+{
+  "generated_at": "2026-05-03T14:54:56+0800",
+  "run_log": "/home/wangshouxin/ceph-web/functions/logs/run_all_20260503_145455.log",
+  "rows": [
+    {
+      "module": "storage",
+      "fn_id": "FN-1",
+      "function": "仿真引擎异构存储统一访问接口",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-1/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_TIER_STATS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-2",
+      "function": "多层感知、冷热分离与调度",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-2/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_KV_PUT 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-3",
+      "function": "多策略预取机制",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-3/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_KV_PUT 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-4",
+      "function": "可配置压缩与去重",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-4/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_COMPRESS_STATS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-5",
+      "function": "IO 调度与优先级管理",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-5/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-6",
+      "function": "仿真数据运行中采集",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-6/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-6/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_SIM_CAPTURE_RESET 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-1",
+      "function": "RDMA 与 TCP/IP 统一通信层",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-1/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-2",
+      "function": "聚合数据传输",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-2/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_KV_PUT_BATCH 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-3",
+      "function": "流量优先级机制",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-3/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-4",
+      "function": "CPU 与 GPU 高速直通访问",
+      "status": "WAIVED",
+      "completion": "硬件/环境豁免",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-4/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-5",
+      "function": "分布式节点路由转发与负载均衡",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-5/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_ROUTE_QUERY 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-1",
+      "function": "RDMA 语义远程内存访问与零拷贝",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-1/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-2",
+      "function": "分布式内存池 API",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-2/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_KV_PUT 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-3",
+      "function": "内存池统一命名机制",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-3/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-4",
+      "function": "跨节点内存自适应分配与热数据迁移",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-4/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-5",
+      "function": "任务级与用户级内存隔离",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-5/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_ISO_DENY 调用失败: [Errno 1] Operation not permitted"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-6",
+      "function": "内存池高可靠机制",
+      "status": "SKIP",
+      "completion": "未完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-6/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-6/raw.json",
+      "exit_code": 2,
+      "evidence": [
+        "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted"
+      ]
+    }
+  ]
+}

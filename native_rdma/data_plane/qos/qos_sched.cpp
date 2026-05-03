@@ -12,8 +12,9 @@ bool QosSched::init(RdmaCore& core, const Config& cfg) {
     cfg_  = cfg;
     if (cfg.hi_qp_start + cfg.hi_qp_count > core.num_qp()) return false;
     if (cfg.lo_qp_start + cfg.lo_qp_count > core.num_qp()) return false;
-    lo_last_refill_ns_ = now_ns();
-    lo_tokens_ = cfg.lo_rate_limit_kops ? cfg.lo_rate_limit_kops * 1000 : 0;
+    lo_last_refill_ns_.store(now_ns(), std::memory_order_relaxed);
+    lo_tokens_.store(cfg.lo_rate_limit_kops ? (int64_t)cfg.lo_rate_limit_kops * 1000 : 0,
+                     std::memory_order_relaxed);
     NR_INFO("QosSched ready: hi=[%d,%d) lo=[%d,%d) lo_rate_kops=%u",
             cfg.hi_qp_start, cfg.hi_qp_start + cfg.hi_qp_count,
             cfg.lo_qp_start, cfg.lo_qp_start + cfg.lo_qp_count,
@@ -32,39 +33,41 @@ int QosSched::pick_qp(bool high_priority) {
 
 void QosSched::on_submit(bool high_priority) {
     if (high_priority || cfg_.lo_rate_limit_kops == 0) return;
-    // Real throttling: lock, refill token bucket, wait for a token if none
-    // are available. The lock also becomes a serialization point for the
-    // low-priority class -- exactly what we want for docs/§7 row #3 where
-    // high priority must beat low priority by >=22%.
-    //
-    // NB: use unique_lock (not lock_guard) because we need to .unlock()
-    // while sleeping so other low-prio callers aren't blocked on us; the
-    // destructor will then correctly decide based on the current lock
-    // state instead of double-unlocking.
-    std::unique_lock<std::mutex> lk(lo_mu_);
-    const uint64_t cap = (uint64_t)cfg_.lo_rate_limit_kops * 1000ULL;
+    // Lock-free fast path: try to consume a token atomically.
+    // Only fall back to the refill+sleep path when tokens run out.
+    int64_t t = lo_tokens_.fetch_sub(1, std::memory_order_relaxed);
+    if (t > 0) return;  // got a token, proceed immediately
+
+    // Slow path: refill and possibly sleep
+    lo_tokens_.fetch_add(1, std::memory_order_relaxed); // undo the decrement
+    const int64_t cap = (int64_t)cfg_.lo_rate_limit_kops * 1000LL;
     while (true) {
-        uint64_t t = now_ns();
-        uint64_t elapsed_ns = t - lo_last_refill_ns_;
-        uint64_t add = ((uint64_t)cfg_.lo_rate_limit_kops * 1000ULL * elapsed_ns)
-                       / 1000000000ULL;
+        uint64_t now = now_ns();
+        uint64_t last = lo_last_refill_ns_.load(std::memory_order_relaxed);
+        uint64_t elapsed_ns = now - last;
+        int64_t add = ((int64_t)cfg_.lo_rate_limit_kops * 1000LL * (int64_t)elapsed_ns)
+                      / 1000000000LL;
         if (add > 0) {
-            lo_tokens_ += add;
-            lo_last_refill_ns_ = t;
-            if (lo_tokens_ > cap) lo_tokens_ = cap;
+            // Try to claim the refill (CAS on last_refill to avoid double-refill)
+            if (lo_last_refill_ns_.compare_exchange_weak(last, now,
+                    std::memory_order_relaxed)) {
+                int64_t cur = lo_tokens_.fetch_add(add, std::memory_order_relaxed) + add;
+                // Cap overflow
+                if (cur > cap) {
+                    lo_tokens_.fetch_sub(cur - cap, std::memory_order_relaxed);
+                }
+            }
         }
-        if (lo_tokens_ > 0) {
-            --lo_tokens_;
-            return;    // unique_lock dtor releases the lock.
-        }
-        // Not enough tokens: sleep briefly before retrying. Drop the lock
-        // first so other low-prio callers can attempt a refill too.
+        // Try to consume again
+        t = lo_tokens_.fetch_sub(1, std::memory_order_relaxed);
+        if (t > 0) return;
+        lo_tokens_.fetch_add(1, std::memory_order_relaxed);
+
+        // Sleep briefly before retry
         uint64_t wait_ns = 1000000000ULL / ((uint64_t)cfg_.lo_rate_limit_kops * 1000ULL);
-        if (wait_ns < 1000) wait_ns = 1000;      // >= 1 us
+        if (wait_ns < 1000) wait_ns = 1000;
         wait_ns /= 4;
-        lk.unlock();
         std::this_thread::sleep_for(std::chrono::nanoseconds(wait_ns));
-        lk.lock();
     }
 }
 

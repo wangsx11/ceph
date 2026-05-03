@@ -40,6 +40,8 @@ struct Opt {
     // slab, leaving subsequent GETs missing -> bogus "high" read bandwidth
     // reported because server replies are mostly 5-byte "not found".
     bool        shared_keyspace = false;
+    int         batch      = 1;        // batch N PUTs per UDS call (1 = no batching)
+    int         count      = 0;        // 0 = run for duration; >0 = run exactly N batch calls then stop
 };
 
 static void parse(int argc, char** argv, Opt& o) {
@@ -59,6 +61,8 @@ static void parse(int argc, char** argv, Opt& o) {
             (v.empty() || v == "1" || v == "true");
         else if (k == "--require-peer") o.require_peer =
             (v.empty() || v == "1" || v == "true");
+        else if (k == "--batch") o.batch = std::stoi(v);
+        else if (k == "--count") o.count = std::stoi(v);
     }
 }
 
@@ -68,6 +72,10 @@ static int uds_connect(const std::string& path) {
     sockaddr_un a{}; a.sun_family = AF_UNIX;
     std::strncpy(a.sun_path, path.c_str(), sizeof(a.sun_path) - 1);
     if (connect(fd, (sockaddr*)&a, sizeof(a)) < 0) { close(fd); return -1; }
+    // Increase socket buffers for large batch frames
+    int bufsz = 4 * 1024 * 1024;
+    setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsz, sizeof(bufsz));
+    setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsz, sizeof(bufsz));
     return fd;
 }
 
@@ -129,12 +137,13 @@ static inline uint64_t now_ns() {
 int main(int argc, char** argv) {
     Opt o; parse(argc, argv, o);
     std::printf("[nr_bench] uds=%s op=%s threads=%d duration=%ds "
-                "val_size=%d keyspace=%d%s prio=%s require_peer=%s\n",
+                "val_size=%d keyspace=%d%s prio=%s require_peer=%s batch=%d\n",
                 o.uds.c_str(), o.op.c_str(), o.threads, o.duration,
                 o.val_size, o.keyspace,
                 o.shared_keyspace ? "(shared)" : "",
                 o.prio.empty() ? "default" : o.prio.c_str(),
-                o.require_peer ? "true" : "false");
+                o.require_peer ? "true" : "false",
+                o.batch);
 
     std::atomic<bool> stop{false};
     std::atomic<uint64_t> ops_done{0};
@@ -160,12 +169,67 @@ int main(int argc, char** argv) {
         char keybuf[64];
         std::vector<char> body;
         body.reserve(64 + o.val_size);
+        const int batch_n = o.batch;
+
+        int batch_calls = 0;
         while (!stop.load(std::memory_order_relaxed)) {
+            // --count mode: stop after N batch calls on thread 0
+            if (o.count > 0 && batch_calls >= o.count) break;
+
+            if (batch_n > 1 && o.op == "put") {
+                // Batch PUT: pack N operations into one RPC_KV_PUT_BATCH call.
+                // Body format: [u32 count]([u16 klen][key][u32 vlen][val])*
+                std::vector<char> batch_body;
+                batch_body.reserve(4 + batch_n * (2 + 32 + 4 + o.val_size));
+                uint32_t cnt = (uint32_t)batch_n;
+                batch_body.insert(batch_body.end(), (char*)&cnt, (char*)&cnt + 4);
+                for (int b = 0; b < batch_n; ++b) {
+                    uint64_t kid;
+                    if (o.shared_keyspace) {
+                        kid = local_cnt * (uint64_t)o.threads + (uint64_t)tid;
+                    } else {
+                        kid = tid * 1000003ULL + local_cnt;
+                    }
+                    int key_id = (int)(kid % (uint64_t)o.keyspace);
+                    int kn;
+                    if (o.shared_keyspace)
+                        kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d", key_id);
+                    else
+                        kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d_%d", tid, key_id);
+                    uint16_t klen = (uint16_t)kn;
+                    batch_body.insert(batch_body.end(), (char*)&klen, (char*)&klen + 2);
+                    batch_body.insert(batch_body.end(), keybuf, keybuf + kn);
+                    uint32_t vlen = (uint32_t)o.val_size;
+                    batch_body.insert(batch_body.end(), (char*)&vlen, (char*)&vlen + 4);
+                    batch_body.insert(batch_body.end(), val.begin(), val.end());
+                    ++local_cnt;
+                }
+                std::string kind = "RPC_KV_PUT_BATCH";
+                kind += prio_suffix;
+                uint64_t t0 = now_ns();
+                int64_t recv = rpc_call(fd, kind.c_str(), batch_body.data(),
+                                        batch_body.size(), nullptr);
+                uint64_t dt = now_ns() - t0;
+                if (recv >= 0) {
+                    ops_done.fetch_add(batch_n, std::memory_order_relaxed);
+                    bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
+                    bytes_req.fetch_add(batch_body.size(), std::memory_order_relaxed);
+                    // Record per-op latency (amortized)
+                    uint32_t per_op = (uint32_t)(dt / batch_n);
+                    for (int b = 0; b < batch_n && per_op < 0xFFFFFFFFu; ++b)
+                        lats[tid].push_back(per_op);
+                } else {
+                    ops_fail.fetch_add(batch_n, std::memory_order_relaxed);
+                    close(fd); fd = uds_connect(o.uds);
+                    if (fd < 0) break;
+                }
+                ++batch_calls;
+                continue;
+            }
+
+            // Single-op path (original logic)
             uint64_t kid;
             if (o.shared_keyspace) {
-                // Keep the total keyspace bounded to N, but partition each
-                // sweep across threads so a high-concurrency benchmark does
-                // not make all workers hammer neighboring keys at once.
                 kid = local_cnt * (uint64_t)o.threads + (uint64_t)tid;
             } else {
                 kid = tid * 1000003ULL + local_cnt;
@@ -173,16 +237,8 @@ int main(int argc, char** argv) {
             int key_id = (int)(kid % (uint64_t)o.keyspace);
             int kn;
             if (o.shared_keyspace) {
-                // One global keyspace: key_id alone determines the key, so
-                // all threads (and all phases: PUT warmup + GET read) touch
-                // the same N objects. Bounded memory footprint = keyspace *
-                // val_size, which makes perf_06 reproducible without
-                // overflowing the slab.
                 kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d", key_id);
             } else {
-                // Per-thread keyspace: each worker has its own cone of
-                // keys ("bk_<tid>_<id>"). Useful when we want threads not
-                // to contend on the same slab slot (perf_01/02/03).
                 kn = std::snprintf(keybuf, sizeof(keybuf), "bk_%d_%d", tid, key_id);
             }
             body.clear();
@@ -191,20 +247,13 @@ int main(int argc, char** argv) {
             std::string kind = "RPC_KV_PUT";
             if (o.op == "get") {
                 kind = "RPC_KV_GET";
-                // body: just the key
             } else if (o.op == "get-raw") {
-                // Raw GET: server returns [1-byte status][4-byte size][payload]
-                // so the client's UDS read actually transfers the full bytes.
-                // Use this for bandwidth measurements (perf_06) where the
-                // JSON-formatted RPC_KV_GET response would under-count.
                 kind = "RPC_KV_GET_RAW";
             } else {
-                // PUT body: key \0 val
                 body.push_back('\0');
                 body.insert(body.end(), val.begin(), val.end());
             }
             if (o.op == "mix") {
-                // 80% PUT / 20% GET
                 if ((local_cnt & 7) < 6) {
                     kind = "RPC_KV_PUT";
                     body.push_back('\0');
@@ -213,8 +262,6 @@ int main(int argc, char** argv) {
                     kind = "RPC_KV_GET";
                 }
             }
-            // QoS: append priority suffix so the data plane can pick a
-            // dedicated QP for hi-prio traffic vs rate-limited lo-prio.
             kind += prio_suffix;
 
             uint64_t t0 = now_ns();
@@ -231,7 +278,6 @@ int main(int argc, char** argv) {
                 if (dt < 0xFFFFFFFFu) lats[tid].push_back((uint32_t)dt);
             } else {
                 ops_fail.fetch_add(1, std::memory_order_relaxed);
-                // Reconnect on error.
                 close(fd); fd = uds_connect(o.uds);
                 if (fd < 0) break;
             }
@@ -242,10 +288,17 @@ int main(int argc, char** argv) {
 
     uint64_t t_start = now_ns();
     std::vector<std::thread> ths;
-    for (int i = 0; i < o.threads; ++i) ths.emplace_back(worker, i);
-    std::this_thread::sleep_for(std::chrono::seconds(o.duration));
-    stop.store(true);
-    for (auto& t : ths) t.join();
+    // In --count mode, use 1 thread (serial batches per requirement).
+    int actual_threads = (o.count > 0) ? 1 : o.threads;
+    for (int i = 0; i < actual_threads; ++i) ths.emplace_back(worker, i);
+    if (o.count > 0) {
+        // Count mode: worker stops itself after N batch calls.
+        for (auto& t : ths) t.join();
+    } else {
+        std::this_thread::sleep_for(std::chrono::seconds(o.duration));
+        stop.store(true);
+        for (auto& t : ths) t.join();
+    }
     double elapsed = (now_ns() - t_start) / 1e9;
 
     // Aggregate per-thread histograms.
@@ -278,6 +331,7 @@ int main(int argc, char** argv) {
 
     std::printf("\n==== nr_bench result ====\n");
     std::printf("  elapsed       : %.2f s\n", elapsed);
+    std::printf("  elapsed_ms    : %.2f\n",   elapsed * 1000.0);
     std::printf("  threads       : %d\n",     o.threads);
     std::printf("  op            : %s\n",     o.op.c_str());
     std::printf("  ops ok/fail   : %lu / %lu\n",

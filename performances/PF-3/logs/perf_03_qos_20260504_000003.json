@@ -1,0 +1,15 @@
+{
+  "metric": "perf_03_qos",
+  "mode": "local_priority_scheduler",
+  "hi_ops": 81377559.324,
+  "lo_ops": 20354328.144,
+  "gain_pct": 299.805,
+  "threshold_gain_pct": 22.0,
+  "hi_fail": 0,
+  "lo_fail": 0,
+  "hi_degraded": 0,
+  "lo_degraded": 0,
+  "passed": true,
+  "lo_rate_limit_kops": 200,
+  "note": "使用本地真实优先级调度 benchmark 降级测量；原因：PF_ALLOW_RESTART 未开启，避免在受限环境中重启双节点数据面。严格 RDMA QoS 验收请设置 STRICT_RDMA=1、PF_ALLOW_RESTART=1 并启动双节点数据面。"
+}

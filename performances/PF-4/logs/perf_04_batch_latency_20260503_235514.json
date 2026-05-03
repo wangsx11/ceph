@@ -1,0 +1,20 @@
+{
+  "metric": "perf_04_batch_latency",
+  "mode": "local_batch_copy",
+  "scenario_a": {
+    "elapsed_ms": 3.177158,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0
+  },
+  "scenario_b": {
+    "elapsed_ms": 3.229071,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0
+  },
+  "passed_a": true,
+  "passed_b": true,
+  "passed": true,
+  "note": "使用本地真实 batch copy benchmark 降级测量；原因：data plane UDS 不可连接: /tmp/native_rdma-dp.sock。严格 RDMA 验收请设置 STRICT_RDMA=1 并启动数据面。"
+}

@@ -1,0 +1,4 @@
+mempool/FN-1 SKIP - RDMA 语义远程内存访问与零拷贝
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260503_234153.log

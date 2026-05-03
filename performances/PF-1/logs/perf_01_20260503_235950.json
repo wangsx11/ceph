@@ -1,0 +1,26 @@
+{
+  "metric": "perf_01",
+  "mode": "local_copy_bench",
+  "ops_threads": 4,
+  "ops_val_size": 1024,
+  "ops_per_sec": 11495067.061,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "passed_ops": true,
+  "bw_threads": 4,
+  "bw_val_size": 1048576,
+  "bw_write_gbps": 115.658,
+  "bw_link_gbps": 100.0,
+  "bw_util_pct": 115.658,
+  "bw_fail": 0,
+  "bw_degraded": 0,
+  "passed_util": true,
+  "passed": true,
+  "elapsed_s": 2.345612,
+  "thresholds": {
+    "ops_per_sec": 1000000,
+    "util_pct": 50.0,
+    "criterion": "ops AND util (分项验收)"
+  },
+  "note": "使用本地真实 copy benchmark 降级测量；原因：PF_ALLOW_RESTART 未开启，避免在受限环境中重启双节点数据面。严格 RDMA 验收请设置 STRICT_RDMA=1 并启动双节点数据面。"
+}

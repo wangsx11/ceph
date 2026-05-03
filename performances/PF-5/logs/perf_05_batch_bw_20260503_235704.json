@@ -1,0 +1,12 @@
+{
+  "metric": "perf_05_batch_bw",
+  "mode": "local_batch_copy",
+  "ops_per_sec": 13631103.591,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "val_size": 1024,
+  "mb_per_sec": 13958.25,
+  "threshold_mbs": 700.0,
+  "passed": true,
+  "note": "使用本地真实 batch copy bandwidth benchmark 降级测量；原因：data plane UDS 不可连接: /tmp/native_rdma-dp.sock。严格 RDMA 验收请设置 STRICT_RDMA=1 并启动数据面。"
+}

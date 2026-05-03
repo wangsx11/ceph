@@ -1,0 +1,46 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-5",
+  "function": "IO 调度与优先级管理",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 5 条",
+  "started_at": "2026-05-03T23:41:52+0800",
+  "finished_at": "2026-05-03T23:41:52+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": false,
+      "peer_slab_base": 140506295586816,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "degraded_puts": 10,
+      "degraded_bytes": 4173
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260503_234152.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260503_234152.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 155,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":false,\"peer_slab_base\":140506295586816,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"degraded_puts\":10,\"degraded_bytes\":4173}"
+    }
+  ]
+}

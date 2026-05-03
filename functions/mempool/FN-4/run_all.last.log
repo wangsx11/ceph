@@ -1,0 +1,13 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-4 PASS - 跨节点内存自适应分配与热数据迁移
+- 当前可观测热数据迁移闭环成功: demote->nvme, GET hit=nvme_promote
+- TierEngine 初始化日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260503_234153.log
+
+
+## STDERR
+

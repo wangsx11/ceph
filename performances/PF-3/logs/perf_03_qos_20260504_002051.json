@@ -1,0 +1,37 @@
+{
+  "metric": "perf_03_qos",
+  "hi_ops": 300803.0,
+  "lo_ops": 197340.0,
+  "gain_pct": 52.43,
+  "threshold_gain_pct": 22.0,
+  "hi_fail": 0,
+  "lo_fail": 692,
+  "hi_degraded": 0,
+  "lo_degraded": 0,
+  "hi_p99_us": 44.95,
+  "lo_p99_us": 193.06,
+  "lo_rate_limit_kops": 200,
+  "passed": true,
+  "raw_hi": {
+    "ops_per_sec": 300803.0,
+    "ops_ok": 3008197,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "lat_avg_us": 26.02,
+    "lat_p50_us": 23.66,
+    "lat_p99_us": 44.95,
+    "lat_p99_9_us": 60.74,
+    "lat_max_us": 22464.36
+  },
+  "raw_lo": {
+    "ops_per_sec": 197340.0,
+    "ops_ok": 1973505,
+    "ops_fail": 692,
+    "ops_degraded": 0,
+    "lat_avg_us": 39.96,
+    "lat_p50_us": 25.23,
+    "lat_p99_us": 193.06,
+    "lat_p99_9_us": 345.74,
+    "lat_max_us": 27901.84
+  }
+}

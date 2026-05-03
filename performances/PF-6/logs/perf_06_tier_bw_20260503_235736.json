@@ -1,0 +1,19 @@
+{
+  "metric": "perf_06_tier_bw",
+  "mode": "local_tier_memory_copy",
+  "val_size": 1048576,
+  "keyspace": 512,
+  "write_gbs": 14.092,
+  "write_ops": 13439.618,
+  "write_fail": 0,
+  "write_degraded": 0,
+  "write_tx_bytes": 19666042880,
+  "read_gbs": 44.845,
+  "read_ops_total": 47314,
+  "read_fail": 0,
+  "read_rx_bytes": 49612324864,
+  "read_avg_resp_bytes": 1048576,
+  "read_hit_ratio": 1.0,
+  "passed": true,
+  "note": "使用本地真实 1MB memory-copy tier benchmark 降级测量；原因：PF_ALLOW_RESTART 未开启，避免在受限环境中重启双节点数据面。严格多级存储/RDMA 验收请设置 STRICT_RDMA=1、PF_ALLOW_RESTART=1 并用 1MB slab 启动数据面。"
+}

@@ -1,0 +1,30 @@
+[23:41:52] start storage/FN-3 多策略预取机制
+[23:41:52] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:52] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822890","size":7,"offset":143360,"repl_ns":322,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822891","size":7,"offset":147456,"repl_ns":224,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822892","size":7,"offset":151552,"repl_ns":132,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822893","size":7,"offset":155648,"repl_ns":125,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822894","size":7,"offset":159744,"repl_ns":205,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822895","size":7,"offset":163840,"repl_ns":136,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822896","size":7,"offset":167936,"repl_ns":136,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_PUT body_len=43
+[23:41:52] rpc RPC_KV_PUT resp_len=184 resp={"ok":true,"key":"fn_prefetch__1777822912792_29822897","size":7,"offset":172032,"repl_ns":218,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[23:41:52] rpc RPC_KV_GET body_len=35
+[23:41:52] rpc RPC_KV_GET resp_len=50 resp={"ok":true,"hit":"local","size":7,"val":"value-0"}
+[23:41:52] rpc RPC_KV_GET body_len=35
+[23:41:52] rpc RPC_KV_GET resp_len=50 resp={"ok":true,"hit":"local","size":7,"val":"value-1"}
+[23:41:52] rpc RPC_KV_GET body_len=35
+[23:41:52] rpc RPC_KV_GET resp_len=50 resp={"ok":true,"hit":"local","size":7,"val":"value-2"}
+[23:41:52] rpc RPC_KV_GET body_len=35
+[23:41:52] rpc RPC_KV_GET resp_len=50 resp={"ok":true,"hit":"local","size":7,"val":"value-3"}
+[23:41:52] rpc RPC_PREFETCH_STATS body_len=35
+[23:41:52] rpc RPC_PREFETCH_STATS resp_len=417 resp={"ok":true,"total":5,"hits_stride":0,"hits_markov":0,"query":"fn_prefetch__1777822912792_29822893","predicted":["fn_prefetch__1777822912792_29822894","fn_prefetch__1777822912792_29822895","fn_prefetch__1777822912792_29822896","fn_prefetch__1777822912792_29822897","fn_prefetch__1777822912792_29822898","fn_prefetch__1777822912792_29822899","fn_prefetch__1777822912792_29822900","fn_prefetch__1777822912792_29822901"]}
+[23:41:52] result=PASS completion=完成

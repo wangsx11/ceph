@@ -1,0 +1,6 @@
+[23:41:53] start mempool/FN-3 内存池统一命名机制
+[23:41:53] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:53] rpc RPC_CLUSTER_STATUS body_len=0
+[23:41:53] rpc RPC_CLUSTER_STATUS resp_len=155 resp={"ok":true,"self":"A","peer_alive":false,"peer_slab_base":140506295586816,"peer_slab_rkey":71936,"peer_num_qp":32,"degraded_puts":17,"degraded_bytes":4221}
+[23:41:53] result=SKIP completion=未完成

@@ -1,0 +1,8 @@
+[23:41:53] start mempool/FN-2 分布式内存池 API
+[23:41:53] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:53] rpc RPC_KV_PUT body_len=60
+[23:41:53] rpc RPC_KV_PUT resp_len=196 resp={"ok":true,"key":"fn_pool_api_1777822913874_2982476","size":26,"offset":200704,"repl_ns":233,"degraded":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[23:41:53] rpc RPC_KV_GET body_len=33
+[23:41:53] rpc RPC_KV_GET resp_len=70 resp={"ok":true,"hit":"local","size":26,"val":"distributed-pool-api-value"}
+[23:41:53] result=PASS completion=完成

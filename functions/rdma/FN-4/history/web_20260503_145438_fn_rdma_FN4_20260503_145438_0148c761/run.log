@@ -1,0 +1,4 @@
+rdma/FN-4 WAIVED - CPU 与 GPU 高速直通访问
+- 当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED
+summary: /home/wangshouxin/ceph-web/functions/rdma/FN-4/history/web_20260503_145438_fn_rdma_FN4_20260503_145438_0148c761/summary.md
+log: /home/wangshouxin/ceph-web/functions/rdma/FN-4/history/web_20260503_145438_fn_rdma_FN4_20260503_145438_0148c761/logs/run_20260503_145438.log

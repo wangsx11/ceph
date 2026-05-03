@@ -1,0 +1,234 @@
+{
+  "generated_at": "2026-05-03T19:43:27+0800",
+  "run_log": "/home/wangshouxin/ceph-web/functions/logs/run_all_20260503_194326.log",
+  "rows": [
+    {
+      "module": "storage",
+      "fn_id": "FN-1",
+      "function": "仿真引擎异构存储统一访问接口",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-1/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-2",
+      "function": "多层感知、冷热分离与调度",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-2/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "对象 fn_storage_tier_1777808606528_2608310 写入后 demote->nvme 成功，GET hit=nvme_promote"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-3",
+      "function": "多策略预取机制",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-3/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "顺序访问触发 stride 预测: expected=fn_prefetch__1777808606596_26083244 predicted_count=8"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-4",
+      "function": "可配置压缩与去重",
+      "status": "PASS",
+      "completion": "部分完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-4/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "压缩统计增加: objects 0->1, saved_bytes 0->4077",
+        "dedup.cpp/dedup.h 存在且纳入 nr_storage 构建口径: True"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-5",
+      "function": "IO 调度与优先级管理",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-5/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/ceph-web/native_rdma/logs/dp_A.log"
+      ]
+    },
+    {
+      "module": "storage",
+      "fn_id": "FN-6",
+      "function": "仿真数据运行中采集",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/storage/FN-6/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/storage/FN-6/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "仿真采集成功: captured=200 pushed=200 flushed=200"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-1",
+      "function": "RDMA 与 TCP/IP 统一通信层",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-1/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "日志包含 RDMA QP 和 TCP fallback/OOB 证据: /home/wangshouxin/ceph-web/native_rdma/logs/dp_A.log",
+        "peer_num_qp=32 peer_alive=True"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-2",
+      "function": "聚合数据传输",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-2/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "RPC_KV_PUT_BATCH 成功: ok_n=4/4",
+        "BatchAggregator 启动日志存在: True"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-3",
+      "function": "流量优先级机制",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-3/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "高低优先级 PUT 均成功，QosSched 日志存在: /home/wangshouxin/ceph-web/native_rdma/logs/dp_A.log"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-4",
+      "function": "CPU 与 GPU 高速直通访问",
+      "status": "WAIVED",
+      "completion": "硬件/环境豁免",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-4/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED"
+      ]
+    },
+    {
+      "module": "rdma",
+      "fn_id": "FN-5",
+      "function": "分布式节点路由转发与负载均衡",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/rdma/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/rdma/FN-5/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "32 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 22}",
+        "replica 为空的样本数=16，当前 ObjectRouter 在副本 hash 命中 primary 时会置空"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-1",
+      "function": "RDMA 语义远程内存访问与零拷贝",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-1/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-1/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "PUT ok 且 repl_ns=26537 degraded=False",
+        "peer_slab_base=139770777452544 peer_slab_rkey=71936"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-2",
+      "function": "分布式内存池 API",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-2/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-2/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "PUT/GET 闭环成功: key=fn_pool_api_1777808607678_2608597 hit=local size=26"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-3",
+      "function": "内存池统一命名机制",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-3/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-3/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "peer slab 命名元数据有效: base=139770777452544 rkey=71936 qps=32"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-4",
+      "function": "跨节点内存自适应分配与热数据迁移",
+      "status": "PASS",
+      "completion": "部分完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-4/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-4/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "当前可观测热数据迁移闭环成功: demote->nvme, GET hit=nvme_promote",
+        "TierEngine 初始化日志存在: /home/wangshouxin/ceph-web/native_rdma/logs/dp_A.log"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-5",
+      "function": "任务级与用户级内存隔离",
+      "status": "PASS",
+      "completion": "完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-5/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-5/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "tenant=9607 完成拒绝->允许->读取->撤销->拒绝闭环"
+      ]
+    },
+    {
+      "module": "mempool",
+      "fn_id": "FN-6",
+      "function": "内存池高可靠机制",
+      "status": "PASS",
+      "completion": "部分完成",
+      "summary": "/home/wangshouxin/ceph-web/functions/mempool/FN-6/summary.md",
+      "raw": "/home/wangshouxin/ceph-web/functions/mempool/FN-6/raw.json",
+      "exit_code": 0,
+      "evidence": [
+        "HA 字段完备: peer_alive=True degraded_puts=0 degraded_bytes=0",
+        "默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH"
+      ]
+    }
+  ]
+}

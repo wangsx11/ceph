@@ -1,0 +1,71 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-2",
+  "function": "多层感知、冷热分离与调度",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 2 条",
+  "started_at": "2026-05-03T19:52:40+0800",
+  "finished_at": "2026-05-03T19:52:40+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "对象 fn_storage_tier_1777809160575_2624074 写入后 demote->nvme 成功，GET hit=nvme_promote"
+  ],
+  "details": {
+    "put": {
+      "ok": true,
+      "key": "fn_storage_tier_1777809160575_2624074",
+      "size": 21,
+      "offset": 139264,
+      "repl_ns": 61294,
+      "degraded": false,
+      "route": {
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true
+      }
+    },
+    "demote": {
+      "ok": true,
+      "key": "fn_storage_tier_1777809160575_2624074",
+      "to": "nvme"
+    },
+    "get": {
+      "ok": true,
+      "hit": "nvme_promote",
+      "size": 21,
+      "val": "tiering_probe_payload"
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/ceph-web/functions/storage/FN-2/history/web_20260503_195240_fn_storage_FN2_20260503_195240_434da0af/logs/run_20260503_195240.log",
+  "run_json": "/home/wangshouxin/ceph-web/functions/storage/FN-2/history/web_20260503_195240_fn_storage_FN2_20260503_195240_434da0af/logs/run_20260503_195240.json",
+  "raw_json": "/home/wangshouxin/ceph-web/functions/storage/FN-2/history/web_20260503_195240_fn_storage_FN2_20260503_195240_434da0af/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 202,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_1777809160575_2624074\",\"size\":21,\"offset\":139264,\"repl_ns\":61294,\"degraded\":false,\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 42,
+      "response_len": 69,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_1777809160575_2624074\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 37,
+      "response_len": 72,
+      "response_preview": "{\"ok\":true,\"hit\":\"nvme_promote\",\"size\":21,\"val\":\"tiering_probe_payload\"}"
+    }
+  ]
+}

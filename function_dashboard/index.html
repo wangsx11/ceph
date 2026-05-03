@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>功能验收控制台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="app-title">功能验收控制台</div>
+      <div class="app-subtitle">自研 RDMA 分布式共享数据系统</div>
+    </div>
+    <div class="header-actions">
+      <span id="global-status" class="status-pill muted">状态加载中</span>
+      <button id="refresh-btn" class="btn secondary" type="button">刷新</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="content-area">
+      <div id="module-nav" class="module-nav" aria-label="功能模块"></div>
+      <div class="content-head">
+        <div>
+          <h1 id="module-title">功能模块</h1>
+          <p id="module-summary">正在读取功能验收数据</p>
+        </div>
+        <button id="run-all-btn" class="btn primary" type="button">运行全部功能测试</button>
+      </div>
+      <nav id="fn-nav" class="fn-nav" aria-label="功能点"></nav>
+      <section id="detail-grid" class="detail-stack">
+        <section class="pane" id="requirement-pane"></section>
+        <section class="pane" id="implementation-pane"></section>
+        <section class="pane" id="runner-pane"></section>
+        <section class="pane" id="result-pane"></section>
+        <section class="pane" id="script-pane"></section>
+      </section>
+    </section>
+  </main>
+
+  <script src="utils.js"></script>
+  <script src="api.js"></script>
+  <script src="state.js"></script>
+  <script src="module_nav.js"></script>
+  <script src="fn_nav.js"></script>
+  <script src="fn_requirement.js"></script>
+  <script src="fn_implementation.js"></script>
+  <script src="fn_runner.js"></script>
+  <script src="fn_result.js"></script>
+  <script src="fn_script_viewer.js"></script>
+  <script src="layout.js"></script>
+</body>
+</html>

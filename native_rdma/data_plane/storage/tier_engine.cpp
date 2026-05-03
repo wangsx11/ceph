@@ -121,6 +121,36 @@ void TierEngine::put_meta(std::string_view key, uint64_t offset, uint32_t size) 
     }
 }
 
+void TierEngine::batch_reserve_or_reuse(BatchItem* items, size_t n) {
+    std::lock_guard<std::mutex> lk(mu_);
+    uint64_t now = now_ns();
+    for (size_t i = 0; i < n; ++i) {
+        auto& item = items[i];
+        auto it = index_.find(std::string(item.key));
+        if (it != index_.end()) {
+            item.existing_off = it->second.offset;
+            item.is_new = false;
+            ObjectMeta& m = it->second;
+            m.size = item.new_size;
+            m.tier = Tier::DRAM;
+            bump_score_locked(m, now);
+            m.dram_slot_free = false;
+        } else {
+            ObjectMeta& m = index_[std::string(item.key)];
+            m.offset      = item.new_off;
+            m.size        = item.new_size;
+            m.tier        = Tier::DRAM;
+            m.birth_ns    = now;
+            bump_score_locked(m, now);
+            m.dram_slot_free = false;
+            m.dram_offset = item.new_off;
+            ndram_.fetch_add(1);
+            item.is_new = true;
+            item.existing_off = item.new_off;
+        }
+    }
+}
+
 bool TierEngine::reserve_or_reuse_slot(std::string_view key,
                                        uint64_t* existing_off,
                                        uint32_t* existing_size,

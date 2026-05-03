@@ -1,0 +1,6 @@
+[19:40:52] start storage/FN-1 仿真引擎异构存储统一访问接口
+[19:40:52] repo_root=/home/wangshouxin/ceph-web
+[19:40:52] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[19:40:52] rpc RPC_TIER_STATS body_len=0
+[19:40:52] rpc RPC_TIER_STATS resp_len=81 resp={"ok":true,"dram":0,"nvme":0,"hdd":0,"demoted_d_n":0,"demoted_n_h":0,"events":[]}
+[19:40:52] result=PASS completion=完成

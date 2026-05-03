@@ -1,0 +1,4 @@
+storage/FN-3 PASS - 多策略预取机制
+- 顺序访问触发 stride 预测: expected=fn_prefetch__1777822912792_29822894 predicted_count=8
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260503_234152.log

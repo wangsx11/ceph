@@ -66,6 +66,7 @@ struct Args {
     uint64_t    score_grace_ms    = 2000;   // new-object protection window
     int         migrate_interval_ms = 1000;
     size_t      migrate_batch_limit = 16;    // max background demotes per tick
+    bool        async_repl = false;          // async replication: post WRITE but don't wait for completion
 };
 
 static void parse_args(int argc, char** argv, Args& a) {
@@ -94,7 +95,12 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--score-grace-ms")    a.score_grace_ms    = std::stoull(v);
         else if (k == "--migrate-interval-ms") a.migrate_interval_ms = std::stoi(v);
         else if (k == "--migrate-batch-limit") a.migrate_batch_limit = std::stoull(v);
+        else if (k == "--async-repl") a.async_repl = (v.empty() || v == "1" || v == "true");
     }
+    // Also check env var for convenience
+    const char* ar_env = std::getenv("NR_ASYNC_REPL");
+    if (ar_env && (std::string(ar_env) == "1" || std::string(ar_env) == "true"))
+        a.async_repl = true;
 }
 
 // ---------- RPC payload helpers ----------
@@ -143,28 +149,33 @@ static inline bool parse_put_body(const std::string& body,
 }
 
 // ---------- QP role map ----------
-// QP[0]: replication (RDMA WRITE primary -> backup)
-// QP[1]: remote-read (RDMA READ)
-// QP[7]: control/heartbeat (RDMA SEND/RECV)
+// QP[0]:     replication (RDMA WRITE primary -> backup)
+// QP[1]:     remote-read (RDMA READ)
+// QP[0..21]: hi-prio data QPs (managed by QosSched)
+// QP[22..28]:lo-prio data QPs (managed by QosSched)
+// QP[29]:    batch aggregator
+// QP[30]:    (reserved)
+// QP[31]:    control/heartbeat (RDMA SEND/RECV)
 static constexpr int QP_REPL = 0;
 static constexpr int QP_READ = 1;
-static constexpr int QP_HB   = 7;
+static constexpr int QP_HB   = 31;
 
 int main(int argc, char** argv) {
     std::signal(SIGINT,  on_sig);
     std::signal(SIGTERM, on_sig);
 
     Args args; parse_args(argc, argv, args);
-    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u self=%s peer=%s",
+    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u self=%s peer=%s async_repl=%s",
             args.role.c_str(), args.dev.c_str(), args.gid_idx,
-            args.self_ip.c_str(), args.peer_ip.c_str());
+            args.self_ip.c_str(), args.peer_ip.c_str(),
+            args.async_repl ? "true" : "false");
 
     // 1) RDMA core
     nr::RdmaCore core;
     nr::RdmaConfig rcfg;
     rcfg.dev_name  = args.dev;
     rcfg.gid_index = args.gid_idx;
-    rcfg.num_qp    = 8;
+    rcfg.num_qp    = 32;
     if (!core.init(rcfg)) {
         NR_ERROR("RdmaCore init failed; exiting.");
         return 1;
@@ -221,8 +232,8 @@ int main(int argc, char** argv) {
 
     // 4) QoS / Batch / Storage
     nr::QosSched qos;
-    nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 4;
-    qcfg.lo_qp_start = 4;     qcfg.lo_qp_count = 3;
+    nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 16;
+    qcfg.lo_qp_start = 16;    qcfg.lo_qp_count = 13;
     // Cap low-priority at 150 kops/s (per-process) so high-priority PUTs
     // reliably win >=22% throughput lead (docs §7 row #3). Override via
     // the NR_LO_RATE_KOPS env var at startup for ad-hoc demos.
@@ -250,7 +261,7 @@ int main(int argc, char** argv) {
     nr::ReplWaiter repl_waiter;
 
     nr::BatchAggregator batch;
-    nr::BatchAggregator::Config bcfg; bcfg.qp_idx = 4;
+    nr::BatchAggregator::Config bcfg; bcfg.qp_idx = 29;
     batch.init(core, bcfg);
 
     // In-run simulation capture: a background-flushed WAL that holds
@@ -729,9 +740,17 @@ int main(int argc, char** argv) {
                                      /*signaled*/true);
             repl_ok = (rc == 0);
             if (repl_ok) {
-                // Blocking wait for this specific WR's completion. The poller
-                // thread delivers true on WC_SUCCESS, false otherwise.
-                repl_ok = fut.get();
+                if (args.async_repl) {
+                    // Async mode: RDMA WRITE is posted and will complete in
+                    // the background. The poller thread will reap the WC and
+                    // fulfil the promise (cleaning up the waiter map entry).
+                    // We don't block on fut.get(), so the PUT response is
+                    // sent immediately after the local slab write.
+                    (void)fut;  // future destructor is non-blocking
+                } else {
+                    // Sync mode: block until RDMA completion.
+                    repl_ok = fut.get();
+                }
             } else {
                 // Post failed -- the poller will never see this wr_id's WC.
                 // Release the registered promise so the waiter map stays clean.
@@ -1261,6 +1280,113 @@ int main(int argc, char** argv) {
         else if (kind == "RPC_KV_PUT")     do_put(body, resp, /*high_prio*/true);
         else if (kind == "RPC_KV_PUT_HI")  do_put(body, resp, /*high_prio*/true);
         else if (kind == "RPC_KV_PUT_LO")  do_put(body, resp, /*high_prio*/false);
+        else if (kind == "RPC_KV_PUT_BATCH" || kind == "RPC_KV_PUT_BATCH_HI") {
+            // Batch PUT: body = [u32 count]([u16 klen][key][u32 vlen][val])*
+            // Three-phase batch: 1) parse all, 2) batch slab+tier, 3) RDMA.
+            if (body.size() < 4) { *resp = "{\"ok\":false,\"err\":\"short batch\"}"; }
+            else {
+                uint32_t count = 0;
+                std::memcpy(&count, body.data(), 4);
+                if (count > 4096) count = 4096; // safety cap
+
+                // Phase 1: parse all items from the wire buffer
+                struct ParsedItem { std::string_view key; const char* vdata; uint32_t vlen; };
+                std::vector<ParsedItem> parsed;
+                parsed.reserve(count);
+                size_t off = 4;
+                for (uint32_t i = 0; i < count && off + 6 <= body.size(); ++i) {
+                    uint16_t klen = 0;
+                    std::memcpy(&klen, body.data() + off, 2); off += 2;
+                    if (off + klen > body.size()) break;
+                    std::string_view key(body.data() + off, klen); off += klen;
+                    uint32_t vlen = 0;
+                    std::memcpy(&vlen, body.data() + off, 4); off += 4;
+                    if (off + vlen > body.size()) break;
+                    const char* vdata = body.data() + off; off += vlen;
+                    if (vlen <= slab.slot_size()) parsed.push_back({key, vdata, vlen});
+                }
+                uint32_t n_items = (uint32_t)parsed.size();
+
+                // Phase 2a: batch slab alloc (single lock)
+                std::vector<void*> slots(n_items);
+                size_t n_alloc = slab.alloc_batch(slots.data(), n_items);
+
+                // Phase 2b: batch tier reserve (single lock)
+                std::vector<nr::TierEngine::BatchItem> tier_items(n_alloc);
+                for (size_t i = 0; i < n_alloc; ++i) {
+                    uint64_t spec_off = (uint64_t)((char*)slots[i] - (char*)slab.base_addr());
+                    tier_items[i].key     = parsed[i].key;
+                    tier_items[i].new_off = spec_off;
+                    tier_items[i].new_size= parsed[i].vlen;
+                }
+                tier.batch_reserve_or_reuse(tier_items.data(), n_alloc);
+
+                // Phase 3: resolve slots, memcpy, collect reused slots for batch free
+                bool peer_alive = hb.peer_alive();
+                uint32_t ok_n = 0;
+                struct RdmaItem { void* slot; uint64_t slot_off; uint32_t vlen; };
+                std::vector<RdmaItem> rdma_items;
+                if (peer_alive) rdma_items.reserve(n_alloc);
+                std::vector<void*> free_slots;
+                free_slots.reserve(n_alloc);
+                for (size_t i = 0; i < n_alloc; ++i) {
+                    auto& ti = tier_items[i];
+                    void* slot;
+                    uint64_t slot_off;
+                    if (ti.is_new) {
+                        slot = slots[i];
+                        slot_off = ti.new_off;
+                    } else {
+                        free_slots.push_back(slots[i]);
+                        slot = (char*)slab.base_addr() + ti.existing_off;
+                        slot_off = ti.existing_off;
+                    }
+                    std::memcpy(slot, parsed[i].vdata, parsed[i].vlen);
+                    if (!peer_alive) {
+                        degraded_puts.fetch_add(1, std::memory_order_relaxed);
+                    } else {
+                        rdma_items.push_back({slot, slot_off, parsed[i].vlen});
+                    }
+                    ++ok_n;
+                }
+                // Batch free reused slots (single lock)
+                if (!free_slots.empty())
+                    slab.free_batch(free_slots.data(), free_slots.size());
+                ops_put.fetch_add(ok_n);
+                // Async replication: batch wr_id allocation + post all WRITEs
+                if (!rdma_items.empty() && args.async_repl) {
+                    std::vector<uint64_t> wr_ids(rdma_items.size());
+                    repl_waiter.reserve_wr_ids_async(wr_ids.data(), rdma_items.size());
+                    // Use a fixed QP for the entire batch to reduce round-robin overhead
+                    int qp_idx = qos.pick_qp(true);
+                    for (size_t i = 0; i < rdma_items.size(); ++i) {
+                        auto& ri = rdma_items[i];
+                        uint64_t remote_addr = peer.slab_base + ri.slot_off;
+                        int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
+                                                 slab.lkey(), remote_addr,
+                                                 peer.slab_rkey, 0, wr_ids[i], true);
+                        if (rc != 0) repl_waiter.cancel_wr_id(wr_ids[i]);
+                    }
+                } else if (!rdma_items.empty()) {
+                    // Sync mode: per-item replication
+                    for (auto& ri : rdma_items) {
+                        int qp_idx = qos.pick_qp(true);
+                        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+                        uint64_t remote_addr = peer.slab_base + ri.slot_off;
+                        int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
+                                                 slab.lkey(), remote_addr,
+                                                 peer.slab_rkey, 0, wr_id, true);
+                        if (rc == 0) fut.get();
+                        else repl_waiter.cancel_wr_id(wr_id);
+                    }
+                }
+                // Free slots for items we couldn't alloc
+                char buf[64];
+                int nb = std::snprintf(buf, sizeof(buf),
+                    "{\"ok\":true,\"n\":%u,\"ok_n\":%u}", count, ok_n);
+                resp->assign(buf, nb);
+            }
+        }
         else if (kind == "RPC_KV_GET")   do_get(body, resp);
         else if (kind == "RPC_KV_GET_RAW") do_get_raw(body, resp);
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);

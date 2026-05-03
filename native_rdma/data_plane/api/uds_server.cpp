@@ -54,6 +54,10 @@ void UdsServer::run() {
     while (running_.load(std::memory_order_relaxed)) {
         int fd = ::accept(lfd_, nullptr, nullptr);
         if (fd < 0) { if (running_.load()) continue; else break; }
+        // Increase socket buffers for large batch frames
+        int bufsz = 4 * 1024 * 1024;
+        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &bufsz, sizeof(bufsz));
+        setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufsz, sizeof(bufsz));
         std::thread([this, fd]() { handle_client(fd); }).detach();
     }
 }

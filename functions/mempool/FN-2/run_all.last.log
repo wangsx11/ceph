@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-2 PASS - 分布式内存池 API
+- PUT/GET 闭环成功: key=fn_pool_api_1777822913874_2982476 hit=local size=26
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/logs/run_20260503_234153.log
+
+
+## STDERR
+

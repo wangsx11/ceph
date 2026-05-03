@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-6 PASS - 仿真数据运行中采集
+- 仿真采集成功: captured=200 pushed=200 flushed=200
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260503_234152.log
+
+
+## STDERR
+

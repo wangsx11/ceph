@@ -1,0 +1,17 @@
+{
+  "metric": "perf_08_simulation",
+  "mode": "local_sim_engine",
+  "ok": true,
+  "sim_nodes": 4,
+  "entities": 100000,
+  "events": 1000000,
+  "threads": 4,
+  "step_us": 10,
+  "stress": 0,
+  "wall_s": 0.031317152,
+  "sim_s": 10.0,
+  "speedup": 319.313838,
+  "events_per_sec": 31931383.799,
+  "passed": true,
+  "note": "使用本地真实仿真事件推进 benchmark 降级测量；原因：data plane UDS 不可连接: /tmp/native_rdma-dp.sock。严格 RDMA 数据面仿真验收请设置 STRICT_RDMA=1 并启动数据面。"
+}

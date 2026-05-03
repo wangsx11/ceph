@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/ceph-web/functions/storage/FN-2/run.sh
+
+storage/FN-2 PASS - 多层感知、冷热分离与调度
+- 对象 fn_storage_tier_1777809160575_2624074 写入后 demote->nvme 成功，GET hit=nvme_promote
+summary: /home/wangshouxin/ceph-web/functions/storage/FN-2/history/web_20260503_195240_fn_storage_FN2_20260503_195240_434da0af/summary.md
+log: /home/wangshouxin/ceph-web/functions/storage/FN-2/history/web_20260503_195240_fn_storage_FN2_20260503_195240_434da0af/logs/run_20260503_195240.log

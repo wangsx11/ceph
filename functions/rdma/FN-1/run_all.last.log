@@ -1,0 +1,13 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-1 PASS - RDMA 与 TCP/IP 统一通信层
+- 日志包含 RDMA QP 和 TCP fallback/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- peer_num_qp=32 peer_alive=False
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260503_234153.log
+
+
+## STDERR
+

@@ -62,12 +62,32 @@ void* SlabPool::alloc() {
     return (char*)mr_.addr + (size_t)idx * cfg_.slot_size;
 }
 
+size_t SlabPool::alloc_batch(void** out, size_t n) {
+    std::lock_guard<std::mutex> lk(mu_);
+    size_t got = std::min(n, free_list_.size());
+    for (size_t i = 0; i < got; ++i) {
+        uint32_t idx = free_list_.back();
+        free_list_.pop_back();
+        out[i] = (char*)mr_.addr + (size_t)idx * cfg_.slot_size;
+    }
+    return got;
+}
+
 void SlabPool::free(void* p) {
     if (!p) return;
     std::lock_guard<std::mutex> lk(mu_);
     size_t off = (char*)p - (char*)mr_.addr;
     uint32_t idx = (uint32_t)(off / cfg_.slot_size);
     free_list_.push_back(idx);
+}
+
+void SlabPool::free_batch(void** ptrs, size_t n) {
+    std::lock_guard<std::mutex> lk(mu_);
+    for (size_t i = 0; i < n; ++i) {
+        if (!ptrs[i]) continue;
+        size_t off = (char*)ptrs[i] - (char*)mr_.addr;
+        free_list_.push_back((uint32_t)(off / cfg_.slot_size));
+    }
 }
 
 size_t SlabPool::in_use() const {

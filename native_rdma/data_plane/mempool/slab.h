@@ -22,7 +22,10 @@ public:
     void shutdown();
 
     void*    alloc();
+    // Allocate up to n slots in one lock acquisition. Returns actual count.
+    size_t   alloc_batch(void** out, size_t n);
     void     free(void* p);
+    void     free_batch(void** ptrs, size_t n);
 
     // Accessors
     uint32_t rkey()       const { return mr_.rkey; }

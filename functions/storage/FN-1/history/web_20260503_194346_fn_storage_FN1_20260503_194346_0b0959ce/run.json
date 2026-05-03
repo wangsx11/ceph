@@ -1,0 +1,157 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-1",
+  "function": "仿真引擎异构存储统一访问接口",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 1 条",
+  "started_at": "2026-05-03T19:43:46+0800",
+  "finished_at": "2026-05-03T19:43:46+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_TIER_STATS ok: dram=0 nvme=8 hdd=12"
+  ],
+  "details": {
+    "tier_stats": {
+      "ok": true,
+      "dram": 0,
+      "nvme": 8,
+      "hdd": 12,
+      "demoted_d_n": 22,
+      "demoted_n_h": 11,
+      "events": [
+        {
+          "ts_ns": 7438671933492609,
+          "key": "fn_zero_copy_1777808607611_2608584",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 20
+        },
+        {
+          "ts_ns": 7438671633429023,
+          "key": "fn_batch_1777808607338_2608503_1",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 13
+        },
+        {
+          "ts_ns": 7438671633421404,
+          "key": "fn_batch_1777808607338_2608503_2",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 13
+        },
+        {
+          "ts_ns": 7438671633418192,
+          "key": "fn_batch_1777808607338_2608503_0",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 13
+        },
+        {
+          "ts_ns": 7438671633414780,
+          "key": "fn_qos_hi_1777808607408_2608516",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 11
+        },
+        {
+          "ts_ns": 7438671633411127,
+          "key": "fn_qos_lo_1777808607408_2608516",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 11
+        },
+        {
+          "ts_ns": 7438671633406507,
+          "key": "fn_batch_1777808607338_2608503_3",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 13
+        },
+        {
+          "ts_ns": 7438671033284747,
+          "key": "fn_prefetch__1777808606596_26083247",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 7
+        },
+        {
+          "ts_ns": 7438671033281242,
+          "key": "fn_prefetch__1777808606596_26083245",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 7
+        },
+        {
+          "ts_ns": 7438671033277781,
+          "key": "fn_prefetch__1777808606596_26083246",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 7
+        },
+        {
+          "ts_ns": 7438671033271862,
+          "key": "fn_prefetch__1777808606596_26083244",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 7
+        },
+        {
+          "ts_ns": 7438667732603344,
+          "key": "fn_iso_1777808607882_2608637",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 13
+        },
+        {
+          "ts_ns": 7438667432545645,
+          "key": "fn_hot_migrate_1777808607814_2608622",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 21
+        },
+        {
+          "ts_ns": 7438667432543086,
+          "key": "fn_pool_api_1777808607678_2608597",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 26
+        },
+        {
+          "ts_ns": 7438666232314442,
+          "key": "fn_prefetch__1777808606596_26083242",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 7
+        },
+        {
+          "ts_ns": 7438666232312709,
+          "key": "fn_prefetch__1777808606596_26083241",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 7
+        }
+      ]
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194346_fn_storage_FN1_20260503_194346_0b0959ce/logs/run_20260503_194346.log",
+  "run_json": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194346_fn_storage_FN1_20260503_194346_0b0959ce/logs/run_20260503_194346.json",
+  "raw_json": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194346_fn_storage_FN1_20260503_194346_0b0959ce/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1765,
+      "response_preview": "{\"ok\":true,\"dram\":0,\"nvme\":8,\"hdd\":12,\"demoted_d_n\":22,\"demoted_n_h\":11,\"events\":[{\"ts_ns\":7438671933492609,\"key\":\"fn_zero_copy_1777808607611_2608584\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":20},{\"ts_ns\":7438671633429023,\"key\":\"fn_batch_1777808607338_2608503_1\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":13},{\"ts_ns\":7438671633421404,\"key\":\"fn_batch_1777808607338_2608503_2\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":13},{\"ts_ns\":7438671633418192,\"key\":\"fn_batch_1777808607338_2608503_0\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":13},"
+    }
+  ]
+}

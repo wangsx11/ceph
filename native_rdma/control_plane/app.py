@@ -3,15 +3,21 @@ native_rdma control plane (Flask).
 Non hot-path: cluster control, demo orchestration, metrics aggregation.
 Hot-path is handled by the C++ data plane via UDS.
 """
+from __future__ import annotations
 import os
+import re
 import struct
 import mmap
 import json
+import shutil
+import subprocess
 import time
 import socket
 import threading
 import urllib.request
 import urllib.error
+import uuid
+from pathlib import Path
 from typing import Any, Dict
 from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
@@ -34,6 +40,11 @@ CTRL_PORT   = int(os.environ.get("NR_CTRL_PORT", "5000"))
 DASH_DIR    = os.environ.get(
     "NR_DASH_DIR",
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "dashboard")))
+REPO_ROOT   = Path(__file__).resolve().parents[2]
+FUNCTIONS_DIR = Path(os.environ.get("NR_FUNCTIONS_DIR", str(REPO_ROOT / "functions"))).resolve()
+FUNCTION_DASH_DIR = os.environ.get(
+    "NR_FUNCTION_DASH_DIR",
+    str((REPO_ROOT / "function_dashboard").resolve()))
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
@@ -784,6 +795,615 @@ def sim_cap_wal_head():
                 "blob_hex":  blob.hex(),
             })
     return jsonify(out)
+
+# ---------- Function acceptance dashboard APIs ----------
+_FUNCTION_MODULES = {
+    "storage": {
+        "display_name": "多级异构的高效能存储模块",
+        "count": 6,
+        "functions": [
+            ("FN-1", "仿真引擎异构存储统一访问接口"),
+            ("FN-2", "多层感知、冷热分离与调度"),
+            ("FN-3", "多策略预取机制"),
+            ("FN-4", "可配置压缩与去重"),
+            ("FN-5", "IO 调度与优先级管理"),
+            ("FN-6", "仿真数据运行中采集"),
+        ],
+    },
+    "rdma": {
+        "display_name": "RDMA 分布式仿真计算模块",
+        "count": 5,
+        "functions": [
+            ("FN-1", "RDMA 与 TCP/IP 统一通信层"),
+            ("FN-2", "聚合数据传输"),
+            ("FN-3", "流量优先级机制"),
+            ("FN-4", "CPU 与 GPU 高速直通访问"),
+            ("FN-5", "分布式节点路由转发与负载均衡"),
+        ],
+    },
+    "mempool": {
+        "display_name": "一致性总线内存池化仿真计算模块",
+        "count": 6,
+        "functions": [
+            ("FN-1", "RDMA 语义远程内存访问与零拷贝"),
+            ("FN-2", "分布式内存池 API"),
+            ("FN-3", "内存池统一命名机制"),
+            ("FN-4", "跨节点内存自适应分配与热数据迁移"),
+            ("FN-5", "任务级与用户级内存隔离"),
+            ("FN-6", "内存池高可靠机制"),
+        ],
+    },
+}
+_FUNCTION_STATUS_TEXT = {
+    "PASS": "通过",
+    "FAIL": "失败",
+    "SKIP": "跳过",
+    "WAIVED": "豁免",
+}
+_FUNCTION_ALLOWED_ENV = {
+    "CTRL_URL",
+    "UDS",
+    "REQUIRE_PEER",
+    "ALLOW_DESTRUCTIVE",
+    "CURRENT_NODE",
+    "PEER_SSH",
+    "PEER_DP_PATH",
+    "PEER_START_CMD",
+}
+_FUNCTION_DEFAULT_ENV = {
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "REQUIRE_PEER": "1",
+    "ALLOW_DESTRUCTIVE": "0",
+    "CURRENT_NODE": ROLE,
+}
+_FUNCTION_JOBS: dict[str, dict[str, Any]] = {}
+_FUNCTION_JOB_LOCK = threading.Lock()
+_FUNCTION_RUN_LOCK = threading.Lock()
+
+
+def _display_name(module: str, fn_id: str) -> str:
+    for item_fn_id, name in _FUNCTION_MODULES[module]["functions"]:
+        if item_fn_id == fn_id:
+            return name
+    return fn_id
+
+
+def _validate_module(module: str) -> str:
+    if module not in _FUNCTION_MODULES:
+        raise ValueError("未知模块")
+    return module
+
+
+def _validate_fn(module: str, fn_id: str) -> str:
+    _validate_module(module)
+    if not re.fullmatch(r"FN-[0-9]+", fn_id or ""):
+        raise ValueError("未知功能点")
+    allowed = {item[0] for item in _FUNCTION_MODULES[module]["functions"]}
+    if fn_id not in allowed:
+        raise ValueError("未知功能点")
+    return fn_id
+
+
+def _safe_fn_dir(module: str, fn_id: str) -> Path:
+    module = _validate_module(module)
+    fn_id = _validate_fn(module, fn_id)
+    fn_dir = (FUNCTIONS_DIR / module / fn_id).resolve()
+    base = (FUNCTIONS_DIR / module).resolve()
+    if not str(fn_dir).startswith(str(base) + os.sep) or not fn_dir.is_dir():
+        raise ValueError("功能点目录不可用")
+    return fn_dir
+
+
+def _read_text(path: Path, limit: int = 1024 * 1024) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    with open(path, "rb") as f:
+        data = f.read(limit + 1)
+    text = data[:limit].decode("utf-8", errors="replace")
+    if len(data) > limit:
+        text += "\n\n[内容已截断]"
+    return text
+
+
+def _read_json(path: Path) -> Any:
+    text = _read_text(path)
+    if not text:
+        return {}
+    try:
+        return json.loads(text)
+    except Exception as exc:
+        return {"_parse_error": str(exc), "_raw": text[:2000]}
+
+
+def _rel_path(path: str | Path | None) -> str:
+    if not path:
+        return ""
+    try:
+        return str(Path(path).resolve().relative_to(REPO_ROOT))
+    except Exception:
+        return str(path)
+
+
+def _latest_child(parent: Path, prefix: str) -> Path | None:
+    if not parent.exists():
+        return None
+    candidates = [
+        p for p in parent.iterdir()
+        if p.is_dir() and p.name.startswith(prefix)
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def _summary_result_source(parent: Path, prefix: str, fallback_dir: Path) -> tuple[Path, str]:
+    hist = _latest_child(parent, prefix)
+    if hist and ((hist / "raw.json").exists() or (hist / "summary.md").exists()):
+        return hist, "前端执行历史"
+    return fallback_dir, "基线结果"
+
+
+def _status_text(status: Any) -> str:
+    return _FUNCTION_STATUS_TEXT.get(str(status or "").upper(), "未知")
+
+
+def _completion_attention(completion: Any) -> bool:
+    return str(completion or "") in {"部分完成", "未完成", "硬件/环境豁免"}
+
+
+def _latest_function_history(module: str, fn_id: str) -> tuple[dict[str, Any], str, str, str]:
+    fn_dir = FUNCTIONS_DIR / module / fn_id
+    hist_dir = _latest_child(fn_dir / "history", "web_")
+    if hist_dir and ((hist_dir / "raw.json").exists() or (hist_dir / "summary.md").exists()):
+        raw = _read_json(hist_dir / "raw.json")
+        return raw if isinstance(raw, dict) else {}, str(hist_dir), "前端执行历史", _read_text(hist_dir / "summary.md")
+    return {}, "", "", ""
+
+
+def _build_summary_payload() -> dict[str, Any]:
+    source_dir, result_source = _summary_result_source(
+        FUNCTIONS_DIR / "history", "web_all_", FUNCTIONS_DIR)
+    raw = _read_json(source_dir / "raw.json")
+    summary_md = _read_text(source_dir / "summary.md")
+    run_all_rows = raw.get("rows", []) if isinstance(raw, dict) else []
+    rows_by_key = {
+        (str(row.get("module")), str(row.get("fn_id"))): row
+        for row in run_all_rows if isinstance(row, dict)
+    }
+    totals = {"total": 0, "PASS": 0, "FAIL": 0, "SKIP": 0, "WAIVED": 0}
+    execution_totals = {"total": 0, "executed": 0, "pending": 0, "PASS": 0, "FAIL": 0, "SKIP": 0, "WAIVED": 0}
+    modules: dict[str, Any] = {}
+    output_rows = []
+    generated_at = str(raw.get("generated_at", "")) if isinstance(raw, dict) else ""
+    latest_mtime = 0.0
+    for module, info in _FUNCTION_MODULES.items():
+        counts = {"PASS": 0, "FAIL": 0, "SKIP": 0, "WAIVED": 0}
+        execution_counts = {"PASS": 0, "FAIL": 0, "SKIP": 0, "WAIVED": 0}
+        executed_count = 0
+        functions = []
+        for fn_id, name in info["functions"]:
+            row, history_dir, row_source, row_summary = _latest_function_history(module, fn_id)
+            if not row:
+                row = rows_by_key.get((module, fn_id), {})
+                if row:
+                    row_source = result_source
+                    history_dir = str(source_dir) if result_source == "前端执行历史" else ""
+                    row_summary = summary_md
+                else:
+                    fn_dir = FUNCTIONS_DIR / module / fn_id
+                    row = _read_json(fn_dir / "raw.json")
+                    row_source = "基线结果"
+                    history_dir = ""
+                    row_summary = _read_text(fn_dir / "summary.md")
+            status = str(row.get("status", "SKIP")).upper()
+            if status not in counts:
+                status = "FAIL"
+            completion = row.get("completion", "未完成")
+            counts[status] += 1
+            totals[status] += 1
+            totals["total"] += 1
+            execution_totals["total"] += 1
+            row_generated = str(row.get("finished_at") or row.get("generated_at") or "")
+            if row_generated > generated_at:
+                generated_at = row_generated
+            history_exists = bool(history_dir)
+            executed = row_source == "前端执行历史"
+            if executed:
+                executed_count += 1
+                execution_totals["executed"] += 1
+                execution_totals[status] += 1
+                execution_counts[status] += 1
+            else:
+                execution_totals["pending"] += 1
+            item = {
+                "module": module,
+                "fn_id": fn_id,
+                "function_display_name": name,
+                "status": status,
+                "status_text": _status_text(status),
+                "display_status_text": _status_text(status) if executed else "待页面执行",
+                "executed": executed,
+                "completion": completion,
+                "attention": executed and (status in {"FAIL", "SKIP", "WAIVED"} or _completion_attention(completion)),
+                "evidence": row.get("evidence", []),
+                "result_source": row_source,
+                "history_dir": _rel_path(history_dir) if history_dir else "",
+                "summary_md": row_summary,
+            }
+            functions.append(item)
+            output_rows.append(item)
+            if history_exists:
+                try:
+                    latest_mtime = max(latest_mtime, Path(history_dir).stat().st_mtime)
+                except Exception:
+                    pass
+        modules[module] = {
+            "display_name": info["display_name"],
+            "total": info["count"],
+            "status_counts": counts,
+            "status_counts_text": {_status_text(k): v for k, v in counts.items()},
+            "execution_counts": execution_counts,
+            "execution_counts_text": {_status_text(k): v for k, v in execution_counts.items()},
+            "executed": executed_count,
+            "pending": info["count"] - executed_count,
+            "functions": functions,
+        }
+    if not generated_at and latest_mtime:
+        generated_at = time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(latest_mtime))
+    elif not generated_at:
+        generated_at = raw.get("generated_at", "") if isinstance(raw, dict) else ""
+    return {
+        "ok": True,
+        "generated_at": generated_at,
+        "totals": totals,
+        "execution_totals": execution_totals,
+        "modules": modules,
+        "rows": output_rows,
+        "summary_md": summary_md,
+        "result_source": "前端执行历史" if any(item["history_dir"] for item in output_rows) or result_source == "前端执行历史" else "基线结果",
+        "history_dir": _rel_path(source_dir) if result_source == "前端执行历史" else "",
+    }
+
+
+@app.route("/api/functions/summary")
+def functions_summary():
+    return jsonify(_build_summary_payload())
+
+
+@app.route("/api/functions/fn/<module>/<fn_id>")
+def functions_fn(module, fn_id):
+    try:
+        fn_dir = _safe_fn_dir(module, fn_id)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    source_dir, result_source = _summary_result_source(fn_dir / "history", "web_", fn_dir)
+    raw = _read_json(source_dir / "raw.json")
+    logs_dir = fn_dir / "logs"
+    logs = []
+    if logs_dir.exists():
+        for p in sorted(logs_dir.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True)[:40]:
+            if p.is_file():
+                st = p.stat()
+                logs.append({"name": p.name, "size": st.st_size, "mtime": st.st_mtime})
+    status = str(raw.get("status", "SKIP")).upper() if isinstance(raw, dict) else "SKIP"
+    if status not in _FUNCTION_STATUS_TEXT:
+        status = "FAIL"
+    return jsonify({
+        "ok": True,
+        "module": module,
+        "fn_id": fn_id,
+        "module_display_name": _FUNCTION_MODULES[module]["display_name"],
+        "function_display_name": _display_name(module, fn_id),
+        "status": status,
+        "status_text": _status_text(status),
+        "completion": raw.get("completion", "") if isinstance(raw, dict) else "",
+        "fn_md": _read_text(fn_dir / f"{fn_id}.md"),
+        "summary_md": _read_text(source_dir / "summary.md"),
+        "raw": raw,
+        "run_sh": _read_text(fn_dir / "run.sh"),
+        "run_py": _read_text(fn_dir / "run.py"),
+        "result_source": result_source,
+        "history_dir": _rel_path(source_dir) if result_source == "前端执行历史" else "",
+        "logs": logs,
+    })
+
+
+@app.route("/api/functions/fn/<module>/<fn_id>/file")
+def functions_fn_file(module, fn_id):
+    try:
+        fn_dir = _safe_fn_dir(module, fn_id)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    name = request.args.get("name", "")
+    allowed = {f"{fn_id}.md", "summary.md", "raw.json", "run.sh", "run.py"}
+    if name not in allowed:
+        return jsonify({"ok": False, "error": "文件不在允许列表"}), 400
+    return jsonify({"ok": True, "name": name, "content": _read_text(fn_dir / name)})
+
+
+@app.route("/api/functions/fn/<module>/<fn_id>/log")
+def functions_fn_log(module, fn_id):
+    try:
+        fn_dir = _safe_fn_dir(module, fn_id)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    name = request.args.get("name", "")
+    if not name or "/" in name or "\\" in name:
+        return jsonify({"ok": False, "error": "日志名非法"}), 400
+    logs_dir = (fn_dir / "logs").resolve()
+    path = (logs_dir / name).resolve()
+    if not str(path).startswith(str(logs_dir) + os.sep) or not path.is_file():
+        return jsonify({"ok": False, "error": "日志不存在"}), 404
+    try:
+        tail_bytes = int(request.args.get("tail_bytes", "65536"))
+    except ValueError:
+        tail_bytes = 65536
+    tail_bytes = max(1, min(1024 * 1024, tail_bytes))
+    size = path.stat().st_size
+    with open(path, "rb") as f:
+        if size > tail_bytes:
+            f.seek(size - tail_bytes)
+        data = f.read()
+    return jsonify({
+        "ok": True,
+        "name": name,
+        "truncated": size > tail_bytes,
+        "content": data.decode("utf-8", errors="replace"),
+    })
+
+
+def _sanitize_function_env(body_env: Any, *, module: str = "", fn_id: str = "") -> dict[str, str]:
+    env = dict(_FUNCTION_DEFAULT_ENV)
+    if isinstance(body_env, dict):
+        for key, value in body_env.items():
+            if key in _FUNCTION_ALLOWED_ENV:
+                env[key] = str(value)
+    if env.get("ALLOW_DESTRUCTIVE") not in {"1", "true", "True"}:
+        env["ALLOW_DESTRUCTIVE"] = "0"
+    else:
+        complete_peer = all(env.get(k) for k in ("PEER_SSH", "PEER_DP_PATH", "PEER_START_CMD"))
+        if module != "mempool" or fn_id != "FN-6" or not complete_peer:
+            raise ValueError("破坏性 HA 演练默认禁用，且仅允许 mempool 高可靠功能点携带完整 peer 参数后执行")
+    return env
+
+
+def _new_job_id(prefix: str) -> str:
+    return f"{prefix}_{time.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
+
+def _write_job_metadata(job: dict[str, Any]) -> None:
+    meta = {
+        k: v for k, v in job.items()
+        if k not in {"thread", "process"}
+    }
+    try:
+        (Path(job["history_abs"]) / "metadata.json").write_text(
+            json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _active_function_job_exists() -> bool:
+    return any(job.get("state") in {"queued", "running"} for job in _FUNCTION_JOBS.values())
+
+
+def _prepare_job(kind: str, env: dict[str, str], module: str = "", fn_id: str = "") -> dict[str, Any]:
+    prefix = "fn_all" if kind == "run_all" else f"fn_{module}_{fn_id.replace('-', '')}"
+    job_id = _new_job_id(prefix)
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    if kind == "run_all":
+        history_abs = FUNCTIONS_DIR / "history" / f"web_all_{stamp}_{job_id}"
+    else:
+        history_abs = FUNCTIONS_DIR / module / fn_id / "history" / f"web_{stamp}_{job_id}"
+    history_abs.mkdir(parents=True, exist_ok=True)
+    job = {
+        "ok": True,
+        "job_id": job_id,
+        "kind": kind,
+        "module": module,
+        "fn_id": fn_id,
+        "state": "queued",
+        "exit_code": None,
+        "started_at": "",
+        "finished_at": None,
+        "error": "",
+        "history_abs": str(history_abs),
+        "history_dir": _rel_path(history_abs),
+        "job_log": _rel_path(history_abs / "stdout.log"),
+        "env": {k: env.get(k, "") for k in _FUNCTION_ALLOWED_ENV if k in env},
+    }
+    _FUNCTION_JOBS[job_id] = job
+    _write_job_metadata(job)
+    return job
+
+
+def _copy_if_exists(src: Path, dst: Path) -> None:
+    if src.exists() and src.is_file():
+        if src.resolve() == dst.resolve():
+            return
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+
+
+def _restore_baseline(saved: dict[Path, bytes | None]) -> None:
+    for path, data in saved.items():
+        if data is None:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+        else:
+            path.write_bytes(data)
+
+
+def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str],
+                      protected_files: list[Path], result_files: list[tuple[Path, str]]) -> None:
+    job = _FUNCTION_JOBS[job_id]
+    hist = Path(job["history_abs"])
+    stdout_log = hist / "stdout.log"
+    saved = {p: (p.read_bytes() if p.exists() else None) for p in protected_files}
+    run_env = os.environ.copy()
+    run_env.update(env)
+    run_env["REPO_ROOT"] = str(REPO_ROOT)
+    run_env.setdefault("PYTHONUNBUFFERED", "1")
+    with _FUNCTION_RUN_LOCK:
+        if job.get("state") == "failed":
+            return
+        with _FUNCTION_JOB_LOCK:
+            job["state"] = "running"
+            job["started_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+            _write_job_metadata(job)
+        try:
+            with open(stdout_log, "w", encoding="utf-8", errors="replace") as out:
+                out.write("Command: " + " ".join(cmd) + "\n\n")
+                out.flush()
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(cwd),
+                    env=run_env,
+                    stdout=out,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
+                job["process"] = proc
+                rc = proc.wait()
+            with _FUNCTION_JOB_LOCK:
+                job["exit_code"] = rc
+                job["state"] = "finished" if rc == 0 else "failed"
+            for src, name in result_files:
+                _copy_if_exists(src, hist / name)
+            if not (hist / "summary.md").exists():
+                for src in protected_files:
+                    if src.name == "summary.md":
+                        _copy_if_exists(src, hist / "summary.md")
+                        break
+            if not (hist / "raw.json").exists():
+                for src in protected_files:
+                    if src.name == "raw.json":
+                        _copy_if_exists(src, hist / "raw.json")
+                        break
+            for p in hist.glob("logs/run_*.log"):
+                _copy_if_exists(p, hist / "run.log")
+            for p in hist.glob("logs/run_*.json"):
+                _copy_if_exists(p, hist / "run.json")
+            for p in hist.glob("logs/run_all_*.log"):
+                _copy_if_exists(p, hist / "run_all.log")
+        except Exception as exc:
+            with _FUNCTION_JOB_LOCK:
+                job["state"] = "failed"
+                job["error"] = str(exc)
+            with open(stdout_log, "a", encoding="utf-8", errors="replace") as out:
+                out.write(f"\n[function-dashboard] job failed: {exc}\n")
+        finally:
+            _restore_baseline(saved)
+            with _FUNCTION_JOB_LOCK:
+                job["finished_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+                _write_job_metadata(job)
+
+
+@app.route("/api/functions/run_one", methods=["POST"])
+def functions_run_one():
+    body = request.get_json(force=True) or {}
+    module = str(body.get("module", ""))
+    fn_id = str(body.get("fn_id", ""))
+    try:
+        fn_dir = _safe_fn_dir(module, fn_id)
+        env = _sanitize_function_env(body.get("env", {}), module=module, fn_id=fn_id)
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    with _FUNCTION_JOB_LOCK:
+        if _active_function_job_exists():
+            return jsonify({"ok": False, "error": "已有功能验收任务正在执行"}), 409
+        job = _prepare_job("run_one", env, module, fn_id)
+    hist = Path(job["history_abs"])
+    run_env = dict(env)
+    run_env["OUT_DIR"] = str(hist)
+    run_env["LOG_DIR"] = str(hist / "logs")
+    run_env["RUN_TS"] = time.strftime("%Y%m%d_%H%M%S")
+    cmd = ["bash", str(fn_dir / "run.sh")]
+    protected = [fn_dir / "summary.md", fn_dir / "raw.json"]
+    results = [(hist / "summary.md", "summary.md"), (hist / "raw.json", "raw.json")]
+    th = threading.Thread(
+        target=_run_function_job,
+        args=(job["job_id"], cmd, fn_dir, run_env, protected, results),
+        daemon=True,
+    )
+    job["thread"] = th
+    th.start()
+    return jsonify({"ok": True, "job_id": job["job_id"], "history_dir": job["history_dir"]})
+
+
+@app.route("/api/functions/run_all", methods=["POST"])
+def functions_run_all():
+    body = request.get_json(force=True) or {}
+    try:
+        env = _sanitize_function_env(body.get("env", {}))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    with _FUNCTION_JOB_LOCK:
+        if _active_function_job_exists():
+            return jsonify({"ok": False, "error": "已有功能验收任务正在执行"}), 409
+        job = _prepare_job("run_all", env)
+    hist = Path(job["history_abs"])
+    run_env = dict(env)
+    run_all_ts = time.strftime("%Y%m%d_%H%M%S")
+    run_env["RUN_ALL_TS"] = run_all_ts
+    cmd = ["bash", str(FUNCTIONS_DIR / "run_all.sh")]
+    protected = [FUNCTIONS_DIR / "summary.md", FUNCTIONS_DIR / "raw.json"]
+    for module, info in _FUNCTION_MODULES.items():
+        for fn_id, _ in info["functions"]:
+            protected.extend([
+                FUNCTIONS_DIR / module / fn_id / "summary.md",
+                FUNCTIONS_DIR / module / fn_id / "raw.json",
+            ])
+    results = [
+        (FUNCTIONS_DIR / "summary.md", "summary.md"),
+        (FUNCTIONS_DIR / "raw.json", "raw.json"),
+        (FUNCTIONS_DIR / "logs" / f"run_all_{run_all_ts}.log", "run_all.log"),
+        (FUNCTIONS_DIR / "logs" / f"run_all_{run_all_ts}.stdio.log", "run_all.stdio.log"),
+    ]
+    th = threading.Thread(
+        target=_run_function_job,
+        args=(job["job_id"], cmd, FUNCTIONS_DIR, run_env, protected, results),
+        daemon=True,
+    )
+    job["thread"] = th
+    th.start()
+    return jsonify({"ok": True, "job_id": job["job_id"], "history_dir": job["history_dir"]})
+
+
+@app.route("/api/functions/jobs/<job_id>")
+def functions_job(job_id):
+    job = _FUNCTION_JOBS.get(job_id)
+    if not job:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    stdout_log = Path(job["history_abs"]) / "stdout.log"
+    stdout_tail = ""
+    if stdout_log.exists():
+        size = stdout_log.stat().st_size
+        with open(stdout_log, "rb") as f:
+            if size > 65536:
+                f.seek(size - 65536)
+            stdout_tail = f.read().decode("utf-8", errors="replace")
+    out = {
+        k: v for k, v in job.items()
+        if k not in {"thread", "process", "history_abs"}
+    }
+    out["stdout_tail"] = stdout_tail
+    return jsonify(out)
+
+
+# Must be declared before the dashboard catch-all route below.
+@app.route("/function-dashboard/")
+def function_dashboard_index():
+    return send_from_directory(FUNCTION_DASH_DIR, "index.html")
+
+
+@app.route("/function-dashboard/<path:p>")
+def function_dashboard_asset(p):
+    return send_from_directory(FUNCTION_DASH_DIR, p)
 
 # ---------- Dashboard static serving ----------
 @app.route("/")

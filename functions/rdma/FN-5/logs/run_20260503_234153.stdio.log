@@ -1,0 +1,5 @@
+rdma/FN-5 PASS - 分布式节点路由转发与负载均衡
+- 32 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 22}
+- replica 为空的样本数=16，当前 ObjectRouter 在副本 hash 命中 primary 时会置空
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260503_234153.log

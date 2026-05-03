@@ -17,8 +17,13 @@ ENV_FILE="$ROOT/deploy/node_${ROLE,,}.env"
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 
-BIN="$ROOT/build/bin/native_rdma_dp"
-[ -x "$BIN" ] || { echo "binary not built: $BIN (run: cmake -S . -B build && cmake --build build -j)"; exit 1; }
+BUILD_DIR="${NR_BUILD_DIR:-$ROOT/build-current}"
+BIN="$BUILD_DIR/bin/native_rdma_dp"
+if [ ! -x "$BIN" ] && [ -x "$ROOT/build/bin/native_rdma_dp" ]; then
+    BUILD_DIR="$ROOT/build"
+    BIN="$BUILD_DIR/bin/native_rdma_dp"
+fi
+[ -x "$BIN" ] || { echo "binary not built: $BIN (run: cmake -S . -B \"$BUILD_DIR\" && cmake --build \"$BUILD_DIR\" -j)"; exit 1; }
 
 LOG_DIR="$ROOT/logs"
 mkdir -p "$LOG_DIR"
@@ -33,7 +38,7 @@ if [ -e "${UDS_PATH:-/tmp/native_rdma-dp.sock}" ] && \
           "${METRICS_SHM:-/tmp/native_rdma-metrics.shm}" || true
 fi
 
-echo "[start_node] role=$ROLE self=$SELF_IP peer=$PEER_IP dev=$RDMA_DEV gid=$GID_IDX"
+echo "[start_node] role=$ROLE self=$SELF_IP peer=$PEER_IP dev=$RDMA_DEV gid=$GID_IDX build=$BUILD_DIR"
 
 exec "$BIN" \
     --role="$ROLE" \
@@ -55,4 +60,5 @@ exec "$BIN" \
     --score-grace-ms="${SCORE_GRACE_MS:-2000}" \
     --migrate-interval-ms="${MIGRATE_INTERVAL_MS:-1000}" \
     --migrate-batch-limit="${MIGRATE_BATCH_LIMIT:-16}" \
+    --async-repl="${NR_ASYNC_REPL:-0}" \
     2>&1 | tee -a "$LOG_DIR/dp_${ROLE}.log"

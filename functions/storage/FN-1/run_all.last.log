@@ -1,0 +1,12 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-1 PASS - 仿真引擎异构存储统一访问接口
+- RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260503_234152.log
+
+
+## STDERR
+

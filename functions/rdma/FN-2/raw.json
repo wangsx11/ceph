@@ -1,0 +1,49 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-2",
+  "function": "聚合数据传输",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 2 条",
+  "started_at": "2026-05-03T23:41:53+0800",
+  "finished_at": "2026-05-03T23:41:53+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_KV_PUT_BATCH 成功: ok_n=4/4",
+    "BatchAggregator 启动日志存在: True"
+  ],
+  "details": {
+    "batch": {
+      "ok": true,
+      "n": 4,
+      "ok_n": 4
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "log_found": true
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260503_234153.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260503_234153.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_KV_PUT_BATCH",
+      "body_len": 208,
+      "response_len": 26,
+      "response_preview": "{\"ok\":true,\"n\":4,\"ok_n\":4}"
+    },
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 155,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":false,\"peer_slab_base\":140506295586816,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"degraded_puts\":14,\"degraded_bytes\":4173}"
+    }
+  ]
+}

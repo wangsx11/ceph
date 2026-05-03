@@ -1,0 +1,4 @@
+[23:41:53] start rdma/FN-4 CPU 与 GPU 高速直通访问
+[23:41:53] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:53] result=WAIVED completion=硬件/环境豁免

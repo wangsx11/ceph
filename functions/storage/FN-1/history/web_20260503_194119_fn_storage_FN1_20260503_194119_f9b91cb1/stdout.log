@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/ceph-web/functions/storage/FN-1/run.sh
+
+storage/FN-1 PASS - 仿真引擎异构存储统一访问接口
+- RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0
+summary: /home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194119_fn_storage_FN1_20260503_194119_f9b91cb1/summary.md
+log: /home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194119_fn_storage_FN1_20260503_194119_f9b91cb1/logs/run_20260503_194119.log

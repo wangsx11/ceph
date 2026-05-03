@@ -1,0 +1,44 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-1",
+  "function": "仿真引擎异构存储统一访问接口",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 1 条",
+  "started_at": "2026-05-03T19:42:15+0800",
+  "finished_at": "2026-05-03T19:42:15+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0"
+  ],
+  "details": {
+    "tier_stats": {
+      "ok": true,
+      "dram": 0,
+      "nvme": 0,
+      "hdd": 0,
+      "demoted_d_n": 0,
+      "demoted_n_h": 0,
+      "events": []
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194215_fn_storage_FN1_20260503_194215_1834bcd1/logs/run_20260503_194215.log",
+  "run_json": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194215_fn_storage_FN1_20260503_194215_1834bcd1/logs/run_20260503_194215.json",
+  "raw_json": "/home/wangshouxin/ceph-web/functions/storage/FN-1/history/web_20260503_194215_fn_storage_FN1_20260503_194215_1834bcd1/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 81,
+      "response_preview": "{\"ok\":true,\"dram\":0,\"nvme\":0,\"hdd\":0,\"demoted_d_n\":0,\"demoted_n_h\":0,\"events\":[]}"
+    }
+  ]
+}

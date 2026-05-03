@@ -1,0 +1,7 @@
+[23:41:52] start storage/FN-5 IO 调度与优先级管理
+[23:41:52] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:52] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:52] rpc RPC_CLUSTER_STATUS body_len=0
+[23:41:52] rpc RPC_CLUSTER_STATUS resp_len=155 resp={"ok":true,"self":"A","peer_alive":false,"peer_slab_base":140506295586816,"peer_slab_rkey":71936,"peer_num_qp":32,"degraded_puts":10,"degraded_bytes":4173}
+[23:41:52] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=267494
+[23:41:52] result=PASS completion=完成

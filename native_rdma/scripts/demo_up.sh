@@ -60,11 +60,17 @@ fi
 mkdir -p "$HDD_PATH" 2>/dev/null || true
 
 # 3) 检查二进制
-[ -x "$ROOT/build/bin/native_rdma_dp" ] || die "build/bin/native_rdma_dp 不存在，请先 cmake --build build -j"
-[ -x "$ROOT/build/bin/nr_bench" ]       || warn "build/bin/nr_bench 不存在，m5 压测会失败"
+BUILD_DIR="${NR_BUILD_DIR:-$ROOT/build-current}"
+if [ ! -x "$BUILD_DIR/bin/native_rdma_dp" ] && [ -x "$ROOT/build/bin/native_rdma_dp" ]; then
+    BUILD_DIR="$ROOT/build"
+    export NR_BUILD_DIR="$BUILD_DIR"
+fi
+[ -x "$BUILD_DIR/bin/native_rdma_dp" ] || die "$BUILD_DIR/bin/native_rdma_dp 不存在，请先 cmake -S . -B \"$BUILD_DIR\" && cmake --build \"$BUILD_DIR\" -j"
+[ -x "$BUILD_DIR/bin/nr_bench" ]       || warn "$BUILD_DIR/bin/nr_bench 不存在，m5 压测会失败"
 
 # 4) 清理残留进程（精确匹配路径，避免误杀 ssh 会话）
 say "清理残留进程 / IPC"
+pkill -9 -f "$BUILD_DIR/bin/native_rdma_dp" 2>/dev/null || true
 pkill -9 -f "$ROOT/build/bin/native_rdma_dp" 2>/dev/null || true
 pkill -f  "python3 $ROOT/control_plane/app.py" 2>/dev/null || true
 # 端口上的 Flask 也可能是别的拷贝，显式终结

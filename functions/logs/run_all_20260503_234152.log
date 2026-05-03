@@ -1,0 +1,264 @@
+run_all start 2026-05-03T23:41:52+0800
+
+## storage/FN-1 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-1 PASS - 仿真引擎异构存储统一访问接口
+- RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## storage/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-2 PASS - 多层感知、冷热分离与调度
+- 对象 fn_storage_tier_1777822912725_2982275 写入后 demote->nvme 成功，GET hit=nvme_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## storage/FN-3 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-3/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-3 PASS - 多策略预取机制
+- 顺序访问触发 stride 预测: expected=fn_prefetch__1777822912792_29822894 predicted_count=8
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## storage/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-4 PASS - 可配置压缩与去重
+- 压缩统计增加: objects 0->1, saved_bytes 0->4077
+- dedup.cpp/dedup.h 存在且纳入 nr_storage 构建口径: True
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## storage/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-5 PASS - IO 调度与优先级管理
+- 数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## storage/FN-6 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-6 PASS - 仿真数据运行中采集
+- 仿真采集成功: captured=200 pushed=200 flushed=200
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260503_234152.log
+
+
+## STDERR
+
+
+
+## rdma/FN-1 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-1 PASS - RDMA 与 TCP/IP 统一通信层
+- 日志包含 RDMA QP 和 TCP fallback/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- peer_num_qp=32 peer_alive=False
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## rdma/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-2 PASS - 聚合数据传输
+- RPC_KV_PUT_BATCH 成功: ok_n=4/4
+- BatchAggregator 启动日志存在: True
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## rdma/FN-3 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-3 PASS - 流量优先级机制
+- 高低优先级 PUT 均成功，QosSched 日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## rdma/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-4 WAIVED - CPU 与 GPU 高速直通访问
+- 当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## rdma/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-5 PASS - 分布式节点路由转发与负载均衡
+- 32 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 22}
+- replica 为空的样本数=16，当前 ObjectRouter 在副本 hash 命中 primary 时会置空
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## mempool/FN-1 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-1 SKIP - RDMA 语义远程内存访问与零拷贝
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## mempool/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-2 PASS - 分布式内存池 API
+- PUT/GET 闭环成功: key=fn_pool_api_1777822913874_2982476 hit=local size=26
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## mempool/FN-3 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-3 SKIP - 内存池统一命名机制
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## mempool/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-4 PASS - 跨节点内存自适应分配与热数据迁移
+- 当前可观测热数据迁移闭环成功: demote->nvme, GET hit=nvme_promote
+- TierEngine 初始化日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260503_234153.log
+
+
+## STDERR
+
+
+
+## mempool/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-5 PASS - 任务级与用户级内存隔离
+- tenant=23914 完成拒绝->允许->读取->撤销->拒绝闭环
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260503_234154.log
+
+
+## STDERR
+
+
+
+## mempool/FN-6 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-6 PASS - 内存池高可靠机制
+- HA 字段完备: peer_alive=False degraded_puts=19 degraded_bytes=4255
+- 默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260503_234154.log
+
+
+## STDERR
+
+
+
+run_all finished 2026-05-03T23:41:54+0800

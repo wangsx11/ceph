@@ -1,0 +1,13 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-6 PASS - 内存池高可靠机制
+- HA 字段完备: peer_alive=False degraded_puts=19 degraded_bytes=4255
+- 默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260503_234154.log
+
+
+## STDERR
+

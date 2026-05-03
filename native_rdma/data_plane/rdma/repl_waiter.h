@@ -87,6 +87,20 @@ public:
         return {wr_id, std::move(f)};
     }
 
+    // Batch allocate N wr_ids under a single lock. Returns wr_ids only (no
+    // futures) for fire-and-forget async mode. The poller thread will still
+    // clean up the map entries when completions arrive.
+    void reserve_wr_ids_async(uint64_t* out, size_t n) {
+        std::lock_guard<std::mutex> lk(mu_);
+        for (size_t i = 0; i < n; ++i) {
+            uint64_t seq = wr_seq_.fetch_add(1, std::memory_order_relaxed);
+            uint64_t wr_id = cfg_.claim_val | (seq & ~cfg_.claim_mask);
+            std::promise<bool> p;
+            waiters_.emplace(wr_id, std::move(p));
+            out[i] = wr_id;
+        }
+    }
+
     // Called by workers when ibv_post_send itself failed: we never submitted
     // the WR, so no WC will ever arrive. Release the promise now so the
     // waiter map doesn't leak and fut.get() (if anyone still waits) returns
