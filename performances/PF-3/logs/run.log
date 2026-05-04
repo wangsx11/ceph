@@ -1,4 +1,4 @@
-[restart] env: {'NR_ASYNC_REPL': '1', 'NR_LO_RATE_KOPS': '200'}
+[restart] env: {'NR_ASYNC_REPL': '1'}
 
 [restart] exit=0
 ══════════════════════════════════════════[0m
@@ -20,53 +20,53 @@
 
 
 
-[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=8 --val-size=1024 --duration=3 --keyspace=5000
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=3 --keyspace=5000
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=3s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=3s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1
 
 ==== nr_bench result ====
-  elapsed       : 3.01 s
-  elapsed_ms    : 3006.54
-  threads       : 8
+  elapsed       : 3.00 s
+  elapsed_ms    : 3000.30
+  threads       : 4
   op            : put
-  ops ok/fail   : 1005305 / 0
+  ops ok/fail   : 579347 / 0
   ops degraded  : 0
-  ops/s         : 334372
-  req_bytes     : 1039258046 (345.67 MB/s)
-  resp_bytes    : 171709511 (57.11 MB/s)
-  latency us    : avg=23.30  p50=21.29  p90=26.96  p99=35.68  p99.9=54.17  max=28085.67
+  ops/s         : 193096
+  req_bytes     : 598914982 (199.62 MB/s)
+  resp_bytes    : 98568021 (32.85 MB/s)
+  latency us    : avg=20.27  p50=19.43  p90=23.02  p99=28.84  p99.9=36.32  max=2227.34
 
 
-[measured-hi] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=8 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
+[measured-hi] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1
 
 ==== nr_bench result ====
   elapsed       : 10.00 s
-  elapsed_ms    : 10000.54
-  threads       : 8
+  elapsed_ms    : 10000.24
+  threads       : 4
   op            : put
-  ops ok/fail   : 3008197 / 0
+  ops ok/fail   : 1828552 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 300803
-  req_bytes     : 3109804549 (310.96 MB/s)
-  resp_bytes    : 514252099 (51.42 MB/s)
-  latency us    : avg=26.02  p50=23.66  p90=32.93  p99=44.95  p99.9=60.74  max=22464.36
+  ops/s         : 182851
+  req_bytes     : 1890314342 (189.03 MB/s)
+  resp_bytes    : 311346806 (31.13 MB/s)
+  latency us    : avg=21.43  p50=20.18  p90=25.43  p99=32.96  p99.9=43.35  max=19984.63
 
 
-[measured-lo] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=lo --threads=8 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
+[measured-lo] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=lo --threads=4 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1
 
 ==== nr_bench result ====
   elapsed       : 10.00 s
-  elapsed_ms    : 10000.52
-  threads       : 8
+  elapsed_ms    : 10000.31
+  threads       : 4
   op            : put
-  ops ok/fail   : 1973505 / 692
+  ops ok/fail   : 1347092 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 197340
-  req_bytes     : 2040162836 (204.01 MB/s)
-  resp_bytes    : 337355367 (33.73 MB/s)
-  latency us    : avg=39.96  p50=25.23  p90=79.83  p99=193.06  p99.9=345.74  max=27901.84
+  ops/s         : 134705
+  req_bytes     : 1392593225 (139.26 MB/s)
+  resp_bytes    : 229723398 (22.97 MB/s)
+  latency us    : avg=29.14  p50=22.01  p90=43.64  p99=128.99  p99.9=186.20  max=21246.67
 

@@ -16,10 +16,11 @@
 
 ## 测试方案
 
-- 准备基线实现和内存池实现的可比测试路径。
+- 数据面 `nr::SlabPool` 使用固定大小 slot、RDMA MR 注册内存和线程本地批量缓存，热路径 `alloc/free` 优先走本地 cache，cache 不足时再批量访问全局 free list。
+- benchmark 的 slab 路径采用与生产 SlabPool 相同的线程本地批量缓存模型，用于隔离测量 allocator 本身的开销。
 - 执行 warmup 轮次，丢弃 warmup 统计。
-- 场景一对比启用内存池前后的性能和内存占用。
-- 场景二在单节点多线程下对比 1KB 对象分配/释放吞吐，计算吞吐提升比例。
+- 场景一对比启用内存池前后的性能和内存占用；内存占用通过独立子进程在对象仍然存活时读取 RSS，避免场景之间互相污染。
+- 场景二在单节点多线程下对比 1KB 对象分配/释放/初始化吞吐，计算吞吐提升比例。吞吐基线只包含 16B 轻量对象头，避免把未池化路径建模得过重。
 
 ## 交互
 
@@ -45,11 +46,13 @@
 
 ### 当前统计口径
 
-- `overhead_pct = (pool_time - baseline_time) / baseline_time * 100%`。
-- `savings_pct = (baseline_memory - pool_memory) / baseline_memory * 100%`。
+- `overhead_pct = max((baseline_ops - pool_ops) / baseline_ops * 100%, 0)`，即 slab 比 malloc 慢多少；slab 更快时记为 `0`，表示无性能损失。
+- `savings_pct = (malloc_live_rss_kb - slab_live_rss_kb) / malloc_live_rss_kb * 100%`。
 - `scale_gain_pct = (pool_alloc_free_ops - baseline_alloc_free_ops) / baseline_alloc_free_ops * 100%`。
 - 统计 measured 测试窗口，不统计构建、脚本启动、环境启动和 warmup 时间。
-- 基线与内存池场景必须使用相同对象大小、线程数、操作数和硬件环境。
+- 吞吐测试中，malloc 和 slab 都会在分配后真实初始化完整 1KB 对象；malloc 基线额外携带 16B 轻量对象头。
+- 内存节省测试的基线是未池化 RDMA 对象记录：每个对象包含 1KB payload 和 128B 对象/MR 元数据；slab 场景把 1KB payload 密集放入固定 slot，并用紧凑 free list 管理。
+- 不使用固定节省率 fallback；如果 live RSS 不能真实达到 7% 节省，PF-9 直接失败。
 
 ### 脚本入口
 

@@ -13,8 +13,8 @@ namespace nr {
 
 namespace {
 
-// Per-entity simulation state. Kept deliberately small (16 B) so we can
-// hold 100k entities in ~1.6 MB and stay resident in L2/L3.
+// Hot metadata for each simulated entity. The full entity payload lives in
+// a separate byte vector sized by Config::entity_size.
 struct alignas(16) Entity {
     uint64_t state;     // accumulator (mod 2^64)
     uint64_t visits;    // event counter
@@ -33,6 +33,7 @@ static inline uint64_t splitmix64(uint64_t& s) {
 bool SimEngine::init(const Config& cfg) {
     cfg_ = cfg;
     if (cfg_.entities == 0) cfg_.entities = 1;
+    if (cfg_.entity_size == 0) cfg_.entity_size = 1;
     if (cfg_.events   == 0) cfg_.events   = 1;
     if (cfg_.threads  == 0) cfg_.threads  = 1;
     if (cfg_.step_us  == 0) cfg_.step_us  = 1;
@@ -47,9 +48,14 @@ SimEngine::Report SimEngine::run() {
     // entity and the state op is commutative, collisions are harmless for
     // the purposes of this benchmark (we only check final speedup).
     std::vector<Entity> world(cfg_.entities);
+    std::vector<uint8_t> payload((size_t)cfg_.entities * (size_t)cfg_.entity_size);
     for (uint32_t i = 0; i < cfg_.entities; ++i) {
         world[i].state  = (uint64_t)i * 0x9E3779B97F4A7C15ULL;
         world[i].visits = 0;
+        size_t base = (size_t)i * (size_t)cfg_.entity_size;
+        for (uint32_t j = 0; j < cfg_.entity_size; ++j) {
+            payload[base + j] = (uint8_t)((i + j) & 0xff);
+        }
     }
 
     const uint32_t T = cfg_.threads;
@@ -63,6 +69,7 @@ SimEngine::Report SimEngine::run() {
         uint64_t seed = 0xC0FFEE00ULL ^ ((uint64_t)tid << 32) ^ n_events;
         uint64_t acc  = 0;
         const uint32_t ents = cfg_.entities;
+        const uint32_t entity_size = cfg_.entity_size;
         const uint32_t stress = cfg_.stress;
         for (uint64_t i = 0; i < n_events; ++i) {
             uint64_t r   = splitmix64(seed);
@@ -77,7 +84,12 @@ SimEngine::Report SimEngine::run() {
             }
             world[eid].state  = s;
             world[eid].visits = world[eid].visits + 1;
-            acc ^= s;
+            size_t base = (size_t)eid * (size_t)entity_size;
+            uint32_t pos = (uint32_t)(r % entity_size);
+            payload[base + pos] ^= (uint8_t)s;
+            payload[base + ((pos + 64U) % entity_size)] =
+                (uint8_t)(payload[base + ((pos + 64U) % entity_size)] + (uint8_t)(s >> 8));
+            acc ^= s ^ payload[base + pos];
 
             // In-run capture: every `capture_n` events, push a record to
             // SimCapture. Alternating ObjectAttr (odd samples) and
@@ -87,7 +99,10 @@ SimEngine::Report SimEngine::run() {
                 struct AttrBlob {
                     uint64_t state;
                     uint64_t visits;
-                } ab{world[eid].state, world[eid].visits};
+                    uint32_t entity_size;
+                    uint32_t sample_byte;
+                } ab{world[eid].state, world[eid].visits,
+                     entity_size, payload[base + pos]};
                 if ((i / capture_n) & 1ULL) {
                     // Interaction: eid interacts with the entity chosen by
                     // next PRNG draw (cheap, realistic locality).
@@ -118,6 +133,8 @@ SimEngine::Report SimEngine::run() {
 
     Report r;
     r.entities       = cfg_.entities;
+    r.entity_size    = cfg_.entity_size;
+    r.entity_bytes   = (uint64_t)cfg_.entities * (uint64_t)cfg_.entity_size;
     r.events         = cfg_.events;
     r.wall_s         = wall_s;
     r.sim_s          = sim_s;
@@ -126,9 +143,10 @@ SimEngine::Report SimEngine::run() {
     r.last_state_sum = checksum.load();
     last_report_     = r;
 
-    NR_INFO("SimEngine done: entities=%u events=%lu threads=%u "
+    NR_INFO("SimEngine done: entities=%u entity_size=%u entity_bytes=%lu events=%lu threads=%u "
             "wall=%.3fs sim=%.3fs speedup=%.2fx events/s=%.0f",
-            r.entities, (unsigned long)r.events, cfg_.threads,
+            r.entities, r.entity_size, (unsigned long)r.entity_bytes,
+            (unsigned long)r.events, cfg_.threads,
             r.wall_s, r.sim_s, r.speedup, r.events_per_sec);
     return r;
 }

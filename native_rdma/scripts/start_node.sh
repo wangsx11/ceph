@@ -39,6 +39,7 @@ if [ -e "${UDS_PATH:-/tmp/native_rdma-dp.sock}" ] && \
 fi
 
 echo "[start_node] role=$ROLE self=$SELF_IP peer=$PEER_IP dev=$RDMA_DEV gid=$GID_IDX build=$BUILD_DIR"
+echo "[start_node] gdr=${NR_GDR_ENABLE:-0} cuda_device=${NR_CUDA_DEVICE:-0} gdr_bytes=${NR_GDR_BYTES:-67108864}"
 
 exec "$BIN" \
     --role="$ROLE" \
@@ -47,8 +48,13 @@ exec "$BIN" \
     --dev="$RDMA_DEV" \
     --gid-idx="$GID_IDX" \
     --data-port="$DATA_PORT" \
+    --tcp-data-port="${TCP_DATA_PORT:-18516}" \
+    --transport="${NR_TRANSPORT:-rdma}" \
     --uds="$UDS_PATH" \
     --metrics-shm="$METRICS_SHM" \
+    --backup-path="${BACKUP_PATH:-$ROOT/../performances/PF-7/pf7_backup.dat}" \
+    --backup-ring-bytes="${BACKUP_RING_BYTES:-134217728}" \
+    --backup-fsync="${BACKUP_FSYNC:-0}" \
     --slab-slot-size="${SLAB_SLOT_SIZE:-1024}" \
     --slab-total-bytes="${SLAB_TOTAL_BYTES:-1073741824}" \
     --nvme-path="${NVME_PATH:-/dev/shm/native_rdma_warm}" \
@@ -61,4 +67,7 @@ exec "$BIN" \
     --migrate-interval-ms="${MIGRATE_INTERVAL_MS:-1000}" \
     --migrate-batch-limit="${MIGRATE_BATCH_LIMIT:-16}" \
     --async-repl="${NR_ASYNC_REPL:-0}" \
+    --gdr-enable="${NR_GDR_ENABLE:-0}" \
+    --cuda-device="${NR_CUDA_DEVICE:-0}" \
+    --gdr-bytes="${NR_GDR_BYTES:-67108864}" \
     2>&1 | tee -a "$LOG_DIR/dp_${ROLE}.log"

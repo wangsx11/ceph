@@ -1,0 +1,4 @@
+rdma/FN-4 SKIP - CPU 与 GPU 高速直通访问
+- UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 111] Connection refused
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260504_144223.log

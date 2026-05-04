@@ -5,10 +5,10 @@ namespace nr {
 
 // Discrete-event simulation engine: one instance per data-plane process.
 //
-// Models an N-entity, M-event workload where every event updates an
-// entity's numeric state and validates it. Matches docs/自研实施清单.md
-// §7 row #8 requirement: "100 万 events across 10 万 entities >= 1x
-// realtime".
+// Models an N-entity, M-event workload where each entity owns a configurable
+// payload (default 1KB) and every event updates both numeric state and the
+// entity payload. Matches docs/性能要求.md row #8: 100k 1KB entities,
+// 1M events, >=1x realtime.
 //
 // ----- Semantics of the numbers reported -----
 // wall_s         : actual CPU wall-clock time to execute all events.
@@ -30,6 +30,7 @@ class SimEngine {
 public:
     struct Config {
         uint32_t entities = 100000;     // default: spec row #8 target
+        uint32_t entity_size = 1024;     // bytes per simulated entity
         uint64_t events   = 1000000;
         uint32_t step_us  = 10;         // simulated us per event
         uint32_t threads  = 4;          // parallel workers
@@ -44,6 +45,8 @@ public:
     };
     struct Report {
         uint32_t entities       = 0;
+        uint32_t entity_size    = 0;
+        uint64_t entity_bytes   = 0;
         uint64_t events         = 0;
         double   wall_s         = 0.0;
         double   sim_s          = 0.0;

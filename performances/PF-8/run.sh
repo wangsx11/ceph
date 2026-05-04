@@ -8,9 +8,10 @@ CTRL_URL="${CTRL_URL:-http://127.0.0.1:5000}"
 UDS="${UDS:-/tmp/native_rdma-dp.sock}"
 SIM_NODES="${SIM_NODES:-4}"
 ENTITIES="${ENTITIES:-100000}"
+ENTITY_SIZE="${ENTITY_SIZE:-1024}"
 EVENTS="${EVENTS:-1000000}"
 
-export REPO_ROOT OUT_DIR CTRL_URL UDS SIM_NODES ENTITIES EVENTS
+export REPO_ROOT OUT_DIR CTRL_URL UDS SIM_NODES ENTITIES ENTITY_SIZE EVENTS
 
 echo "[PF-8] output directory: ${OUT_DIR}"
 echo "[PF-8] running performance test and updating summary.md"

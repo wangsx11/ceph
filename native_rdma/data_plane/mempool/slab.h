@@ -2,6 +2,7 @@
 #include "../rdma/rdma_core.h"
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 #include <vector>
 #include <mutex>
 
@@ -41,6 +42,8 @@ private:
     std::vector<uint32_t> free_list_; // indices of free slots (stack)
     mutable std::mutex mu_;
     RdmaCore*        core_ = nullptr;
+    std::atomic<size_t> local_cached_{0};
+    std::atomic<uint64_t> cache_epoch_{1};
 };
 
 } // namespace nr

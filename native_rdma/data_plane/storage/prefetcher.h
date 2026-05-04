@@ -43,7 +43,8 @@ public:
     void on_access(std::string_view key);
 
     // Return a list of predicted next keys (may be empty).
-    std::vector<std::string> predict(std::string_view key) const;
+    std::vector<std::string> predict(std::string_view key,
+                                     bool record_strategy_hit = true) const;
 
     // For simple yes/no queries.
     bool should_prefetch(std::string_view key) const {

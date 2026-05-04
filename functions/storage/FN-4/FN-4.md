@@ -2,7 +2,7 @@
 
 ## 功能点
 
-验证可配置压缩统计接口和可压缩对象进入冷层后的压缩统计变化；记录去重代码接入事实。
+验证可配置压缩统计接口、可压缩对象进入冷层后的压缩统计变化，以及重复对象进入 HDD 冷层时的运行时去重统计变化。
 
 ## 来源要求
 
@@ -13,19 +13,25 @@
 - `native_rdma/data_plane/storage/compress.cpp`
 - `native_rdma/data_plane/storage/dedup.cpp`
 - `RPC_COMPRESS_STATS`
+- `RPC_DEDUP_STATS`
 - `RPC_TIER_DEMOTE`
+- `TierEngine::dedup_stats`
 
 ## 完成判据
 
-在对象槽位可容纳 4096 字节探针时，写入重复字符对象并 demote 到 `hdd` 后，压缩对象数或节省字节数增加。
+在对象槽位可容纳 4096 字节探针时，写入两个内容相同的对象并 demote 到 `hdd` 后：
+
+1. `RPC_COMPRESS_STATS` 的 `objects` 或 `saved_bytes` 增加；
+2. `RPC_DEDUP_STATS` 的 `duplicate_objects` 和 `saved_bytes` 增加；
+3. 两个对象均可通过 `RPC_KV_GET` 从 HDD 读回，并返回 `hdd_promote` 命中证据。
 
 ## 测试方案
 
 前置条件：数据面 UDS 在线；`SLAB_SLOT_SIZE` 需要足以容纳 4096 字节对象。若槽位太小，脚本返回 `SKIP`。
 
-当前验证口径：以 `RPC_COMPRESS_STATS` 的 `objects`、`saved_bytes` 字段作为压缩证据；以 `dedup.cpp`、`dedup.h` 存在并纳入 `nr_storage` 构建作为去重代码证据。
+当前验证口径：以 `RPC_COMPRESS_STATS` 的 `objects`、`saved_bytes` 字段作为压缩证据；以 `RPC_DEDUP_STATS` 的 `duplicate_objects`、`saved_bytes` 字段作为运行时去重证据。
 
-不验证内容：当前数据面没有独立去重 RPC，因此不伪造去重运行时统计。
+不验证内容：不统计压缩或去重带来的吞吐、延迟收益。
 
 ## 交互
 
@@ -37,7 +43,7 @@
 
 ### 当前验证口径
 
-脚本读取压缩统计基线，写入可压缩对象，demote 到 HDD 后再次读取压缩统计。
+脚本读取压缩和去重统计基线，写入两个内容相同的可压缩对象，将两者 demote 到 HDD 后再次读取统计。第二个对象应复用第一个对象的冷层存储位置并增加去重统计。最后脚本通过 `RPC_KV_GET` 读回两个对象，确认压缩/去重后的对象仍可从 HDD 提升回 DRAM。
 
 ### 脚本入口
 

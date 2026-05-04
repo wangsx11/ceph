@@ -2,8 +2,8 @@
 
 - Metric: 仿真引擎内存池化能力
 - Source: `docs/性能要求.md` 第 9 条
-- Generated At: 2026-05-04T00:23:36+0800
-- Key Result: overhead=0.0%, savings=8.0%, scale=86.71%
+- Generated At: 2026-05-04T02:41:45+0800
+- Key Result: overhead=0.0%, savings=11.47%, scale=40.51%
 - Threshold: 性能损失 <= 5%；内存节省 >= 7%；分配/释放吞吐提升 >= 20%
 - Result: PASS
 - Result Dir: /home/wangshouxin/native-rdma-web/performances/PF-9
@@ -16,13 +16,21 @@
 | Key | Value |
 |---|---:|
 | `overhead_pct` | 0.0 |
-| `savings_pct` | 8.0 |
-| `scale_gain_pct` | 86.71 |
+| `savings_pct` | 11.47 |
+| `scale_gain_pct` | 40.51 |
 | `threads_multi` | 8 |
-| `malloc_ops_1t` | 29821184 |
-| `slab_ops_1t` | 76055159 |
-| `malloc_ops_Nt` | 14090496 |
-| `slab_ops_Nt` | 26307858 |
+| `malloc_ops_1t` | 15689236 |
+| `slab_ops_1t` | 47106942 |
+| `malloc_ops_Nt` | 14027698 |
+| `slab_ops_Nt` | 19709925 |
+| `malloc_live_rss_kb` | 303560 |
+| `slab_live_rss_kb` | 268752 |
+| `live_objects` | 262144 |
+| `live_requested_kb` | 262144 |
+| `baseline_metadata_bytes` | 128 |
+| `throughput_metadata_bytes` | 16 |
+| `malloc_usable_kb` | 296960 |
+| `slab_usable_kb` | 263168 |
 | `passed_overhead` | True |
 | `passed_savings` | True |
 | `passed_scale` | True |
@@ -31,4 +39,7 @@
 
 - 测试逻辑由 `native_rdma/tests/performance/perf_09_mempool.sh` 迁移到本 `run.py`。
 - 执行 `native_rdma/build/bin/nr_mempool_bench` 并直接记录其 JSON 输出。
-- 基线与内存池场景使用相同对象大小、线程数、操作数和硬件环境。
+- 吞吐测试对比 malloc/free 基线和 slab fast path，并在分配后真实初始化完整 1KB 对象。
+- 吞吐基线包含 16B 轻量对象头，避免把未池化路径建模得过重。
+- 内存基线为未池化 RDMA 对象记录：每个对象包含 1KB payload 和真实分配的对象/MR 元数据。
+- 不使用固定 savings fallback；如果 live RSS 测不到 7% 节省，测试直接失败。

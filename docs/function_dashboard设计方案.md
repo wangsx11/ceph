@@ -218,8 +218,8 @@ RDMA 分布式仿真计算模块：
   - `未完成`
   - `硬件/环境豁免`
 - 对特殊项必须明确说明：
-  - CPU 与 GPU 高速直通访问：当前因 GPU Direct 硬件/环境限制标记为豁免。
-  - 可配置压缩与去重：压缩已验证，去重当前为代码接入事实。
+  - CPU 与 GPU 高速直通访问：已通过 xfusion4 GPU MR、xfusion3 RDMA WRITE/READ 和 xfusion4 CUDA kernel 校验闭环；展示时说明 CPU 只提交 WR，payload 由 RNIC 直接进入 GPU 显存。
+  - 可配置压缩与去重：压缩和运行时去重均已通过数据面闭环验证。
   - 跨节点内存自适应分配与热数据迁移：当前可观测 TierEngine 迁移闭环。
   - 内存池高可靠机制：默认非破坏性 HA 字段检查。
 
@@ -501,10 +501,10 @@ GET /function-dashboard/<path>
   "generated_at": "2026-05-03T12:55:42+0800",
   "totals": {
     "total": 17,
-    "PASS": 16,
+    "PASS": 15,
     "FAIL": 0,
-    "SKIP": 0,
-    "WAIVED": 1
+    "SKIP": 2,
+    "WAIVED": 0
   },
   "modules": {
     "storage": {
@@ -515,12 +515,12 @@ GET /function-dashboard/<path>
     "rdma": {
       "display_name": "RDMA 分布式仿真计算模块",
       "total": 5,
-      "status_counts_text": {"通过": 4, "失败": 0, "跳过": 0, "豁免": 1}
+      "status_counts_text": {"通过": 5, "失败": 0, "跳过": 0, "豁免": 0}
     },
     "mempool": {
       "display_name": "一致性总线内存池化仿真计算模块",
       "total": 6,
-      "status_counts_text": {"通过": 6, "失败": 0, "跳过": 0, "豁免": 0}
+      "status_counts_text": {"通过": 4, "失败": 0, "跳过": 2, "豁免": 0}
     }
   },
   "rows": [],

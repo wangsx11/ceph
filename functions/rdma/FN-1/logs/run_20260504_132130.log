@@ -1,0 +1,43 @@
+[13:21:30] start rdma/FN-1 RDMA 与 TCP/IP 统一通信层
+[13:21:30] repo_root=/home/wangshouxin/native-rdma-web
+[13:21:30] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[13:21:30] rpc RPC_CLUSTER_STATUS body_len=0
+[13:21:30] rpc RPC_CLUSTER_STATUS resp_len=275 resp={"ok":true,"self":"A","peer_alive":true,"peer_slab_base":140467278639104,"peer_slab_rkey":87040,"peer_num_qp":32,"degraded_puts":0,"degraded_bytes":0,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"tcp_data_port":18516,"tcp_puts_received":0,"tcp_gets_received":0}
+[13:21:30] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=531174
+[13:21:30] rpc RPC_KV_PUT body_len=57
+[13:21:30] rpc RPC_KV_PUT resp_len=251 resp={"ok":true,"key":"fn_tcp_transport_1777872090756_267932","size":19,"offset":2093056,"repl_ns":341126,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[13:21:30] rpc RPC_TCP_GET_PEER body_len=37
+[13:21:30] rpc RPC_TCP_GET_PEER resp_len=129 resp={"ok":true,"transport":"tcp","key":"fn_tcp_transport_1777872090756_267932","size":19,"tcp_ns":249414,"val":"tcp-transport-probe"}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_0","size":20,"offset":3141632,"repl_ns":54934,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_1","size":20,"offset":4190208,"repl_ns":21657,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_2","size":20,"offset":5238784,"repl_ns":14829,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_3","size":20,"offset":6287360,"repl_ns":18957,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=252 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_4","size":20,"offset":7335936,"repl_ns":18267,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=252 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_5","size":20,"offset":8384512,"repl_ns":19675,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090757_267932_6","size":20,"offset":9433088,"repl_ns":15940,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT_RDMA body_len=60
+[13:21:30] rpc RPC_KV_PUT_RDMA resp_len=267 resp={"ok":true,"key":"fn_rdmavtcp_rdma_1777872090758_267932_7","size":20,"offset":10481664,"repl_ns":19788,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090758_267932_0","size":19,"offset":11530240,"repl_ns":215146,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090758_267932_1","size":19,"offset":12578816,"repl_ns":202481,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=265 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090758_267932_2","size":19,"offset":13627392,"repl_ns":182722,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=266 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090759_267932_3","size":19,"offset":14675968,"repl_ns":202415,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=266 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090759_267932_4","size":19,"offset":15724544,"repl_ns":228678,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=266 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090759_267932_5","size":19,"offset":16773120,"repl_ns":187123,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=266 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090759_267932_6","size":19,"offset":17821696,"repl_ns":178516,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[13:21:30] rpc RPC_KV_PUT body_len=58
+[13:21:30] rpc RPC_KV_PUT resp_len=252 resp={"ok":true,"key":"fn_rdmavtcp_tcp_1777872090760_267932_7","size":19,"offset":18870272,"repl_ns":198371,"degraded":false,"transport":"tcp","async_repl":false,"tcp_data_ready":true,"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[13:21:30] result=PASS completion=完成

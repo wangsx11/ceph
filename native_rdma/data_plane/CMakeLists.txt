@@ -17,6 +17,7 @@ add_library(nr_rdma STATIC
     rdma/cm_handler.cpp
     rdma/poller.cpp
     rdma/tcp_fallback.cpp
+    rdma/tcp_data_channel.cpp
     rdma/oob.cpp
 )
 target_link_libraries(nr_rdma PUBLIC
@@ -49,6 +50,26 @@ add_library(nr_batch STATIC
     batch/batch_aggregator.cpp
 )
 target_link_libraries(nr_batch PUBLIC nr_rdma)
+
+# ---------- gpu direct ----------
+if(NR_USE_CUDA)
+    add_library(nr_gpu STATIC
+        gpu/gpu_direct.cu
+    )
+    target_link_libraries(nr_gpu PUBLIC
+        nr_rdma
+        CUDA::cudart
+    )
+    target_compile_definitions(nr_gpu PUBLIC NR_USE_CUDA=1)
+    set_target_properties(nr_gpu PROPERTIES
+        CUDA_ARCHITECTURES 80
+    )
+else()
+    add_library(nr_gpu STATIC
+        gpu/gpu_direct_stub.cpp
+    )
+    target_link_libraries(nr_gpu PUBLIC nr_rdma)
+endif()
 
 # ---------- router ----------
 add_library(nr_router STATIC
@@ -116,6 +137,7 @@ target_link_libraries(native_rdma_dp PRIVATE
     nr_mempool
     nr_qos
     nr_batch
+    nr_gpu
     nr_router
     nr_storage
     nr_replication
@@ -141,9 +163,9 @@ if(NR_BUILD_TESTS)
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
     )
 
-    # nr_mempool_bench: standalone malloc-vs-slab micro-benchmark for
-    # docs/自研实施清单.md §7 row #9. Does NOT link the RDMA stack, so it can
-    # run anywhere (even without a working RDMA device).
+    # nr_mempool_bench: standalone malloc-vs-slab micro-benchmark for PF-9.
+    # It mirrors the production SlabPool thread-local batching model but does
+    # not link the RDMA stack, so allocator measurements stay isolated.
     add_executable(nr_mempool_bench tests_unit/nr_mempool_bench.cpp)
     target_link_libraries(nr_mempool_bench PRIVATE Threads::Threads)
     set_target_properties(nr_mempool_bench PROPERTIES

@@ -1,0 +1,23 @@
+[12:05:43] start storage/FN-5 IO 调度与优先级管理
+[12:05:43] repo_root=/home/wangshouxin/native-rdma-web
+[12:05:43] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:05:43] rpc RPC_CLUSTER_STATUS body_len=0
+[12:05:43] rpc RPC_CLUSTER_STATUS resp_len=150 resp={"ok":true,"self":"A","peer_alive":true,"peer_slab_base":140189880688640,"peer_slab_rkey":87040,"peer_num_qp":32,"degraded_puts":0,"degraded_bytes":0}
+[12:05:43] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=511540
+[12:05:43] rpc RPC_IO_STATS body_len=0
+[12:05:43] rpc RPC_IO_STATS resp_len=151 resp={"ok":true,"fg_read_ops":0,"fg_write_ops":0,"fg_read_bytes":0,"fg_write_bytes":0,"bg_read_ops":0,"bg_write_ops":0,"bg_read_bytes":0,"bg_write_bytes":0}
+[12:05:43] rpc RPC_KV_PUT body_len=59
+[12:05:43] rpc RPC_KV_PUT resp_len=187 resp={"ok":true,"key":"fn_io_fg_nvme_1777867543324_142306","size":24,"offset":2093056,"repl_ns":8656,"degraded":false,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:05:43] rpc RPC_TIER_DEMOTE body_len=39
+[12:05:43] rpc RPC_TIER_DEMOTE resp_len=66 resp={"ok":true,"key":"fn_io_fg_nvme_1777867543324_142306","to":"nvme"}
+[12:05:43] rpc RPC_KV_GET body_len=34
+[12:05:43] rpc RPC_KV_GET resp_len=75 resp={"ok":true,"hit":"nvme_promote","size":24,"val":"foreground-nvme-io-probe"}
+[12:05:43] rpc RPC_KV_PUT body_len=57
+[12:05:43] rpc RPC_KV_PUT resp_len=198 resp={"ok":true,"key":"fn_io_bg_hdd_1777867543324_142306","size":23,"offset":4190208,"repl_ns":8484,"degraded":false,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[12:05:43] rpc RPC_TIER_DEMOTE body_len=37
+[12:05:43] rpc RPC_TIER_DEMOTE resp_len=64 resp={"ok":true,"key":"fn_io_bg_hdd_1777867543324_142306","to":"hdd"}
+[12:05:43] rpc RPC_KV_GET body_len=33
+[12:05:43] rpc RPC_KV_GET resp_len=73 resp={"ok":true,"hit":"hdd_promote","size":23,"val":"background-hdd-io-probe"}
+[12:05:43] rpc RPC_IO_STATS body_len=0
+[12:05:43] rpc RPC_IO_STATS resp_len=155 resp={"ok":true,"fg_read_ops":1,"fg_write_ops":1,"fg_read_bytes":24,"fg_write_bytes":24,"bg_read_ops":1,"bg_write_ops":1,"bg_read_bytes":23,"bg_write_bytes":23}
+[12:05:43] result=PASS completion=完成

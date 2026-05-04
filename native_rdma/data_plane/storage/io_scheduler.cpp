@@ -37,6 +37,10 @@ struct RingCtx {
     std::mutex                                           cb_mu;
     std::unordered_map<uint64_t, IoScheduler::OnDone>    cbs;
     std::atomic<uint64_t>                                next_id{1};
+    std::atomic<uint64_t>                                read_ops{0};
+    std::atomic<uint64_t>                                write_ops{0};
+    std::atomic<uint64_t>                                read_bytes{0};
+    std::atomic<uint64_t>                                write_bytes{0};
 };
 
 } // namespace
@@ -167,6 +171,18 @@ static RingCtx* pick(IoScheduler::Prio p) {
     return p == IoScheduler::Prio::FG ? &g_impl->fg : &g_impl->bg;
 }
 
+static void account_read(RingCtx* rc, int rc_val) {
+    if (!rc || rc_val <= 0) return;
+    rc->read_ops.fetch_add(1, std::memory_order_relaxed);
+    rc->read_bytes.fetch_add((uint64_t)rc_val, std::memory_order_relaxed);
+}
+
+static void account_write(RingCtx* rc, int rc_val) {
+    if (!rc || rc_val <= 0) return;
+    rc->write_ops.fetch_add(1, std::memory_order_relaxed);
+    rc->write_bytes.fetch_add((uint64_t)rc_val, std::memory_order_relaxed);
+}
+
 int IoScheduler::async_write(Prio p, const void* buf, size_t len,
                              uint64_t offset, OnDone cb) {
     RingCtx* rc = pick(p);
@@ -190,12 +206,18 @@ int IoScheduler::async_write(Prio p, const void* buf, size_t len,
         }
         io_uring_prep_write(sqe, rc->fd, buf, (unsigned)len, offset);
         io_uring_sqe_set_data(sqe, (void*)id);
-        return io_uring_submit(&rc->ring);
+        int submitted = io_uring_submit(&rc->ring);
+        if (submitted > 0) {
+            rc->write_ops.fetch_add(1, std::memory_order_relaxed);
+            rc->write_bytes.fetch_add(len, std::memory_order_relaxed);
+        }
+        return submitted;
     }
 #endif
     // Fallback: sync pwrite.
     ssize_t r = ::pwrite(rc->fd, buf, len, offset);
     int rc_val = (r < 0) ? -errno : (int)r;
+    account_write(rc, rc_val);
     if (cb) cb(rc_val);
     return rc_val;
 }
@@ -223,11 +245,17 @@ int IoScheduler::async_read(Prio p, void* buf, size_t len,
         }
         io_uring_prep_read(sqe, rc->fd, buf, (unsigned)len, offset);
         io_uring_sqe_set_data(sqe, (void*)id);
-        return io_uring_submit(&rc->ring);
+        int submitted = io_uring_submit(&rc->ring);
+        if (submitted > 0) {
+            rc->read_ops.fetch_add(1, std::memory_order_relaxed);
+            rc->read_bytes.fetch_add(len, std::memory_order_relaxed);
+        }
+        return submitted;
     }
 #endif
     ssize_t r = ::pread(rc->fd, buf, len, offset);
     int rc_val = (r < 0) ? -errno : (int)r;
+    account_read(rc, rc_val);
     if (cb) cb(rc_val);
     return rc_val;
 }
@@ -236,14 +264,32 @@ int IoScheduler::sync_write(Prio p, const void* buf, size_t len, uint64_t offset
     RingCtx* rc = pick(p);
     if (!rc || rc->fd < 0) return -EBADF;
     ssize_t r = ::pwrite(rc->fd, buf, len, offset);
-    return (r < 0) ? -errno : (int)r;
+    int rc_val = (r < 0) ? -errno : (int)r;
+    account_write(rc, rc_val);
+    return rc_val;
 }
 
 int IoScheduler::sync_read(Prio p, void* buf, size_t len, uint64_t offset) {
     RingCtx* rc = pick(p);
     if (!rc || rc->fd < 0) return -EBADF;
     ssize_t r = ::pread(rc->fd, buf, len, offset);
-    return (r < 0) ? -errno : (int)r;
+    int rc_val = (r < 0) ? -errno : (int)r;
+    account_read(rc, rc_val);
+    return rc_val;
+}
+
+IoScheduler::Stats IoScheduler::stats() const {
+    Stats s;
+    if (!g_impl) return s;
+    s.fg_read_ops = g_impl->fg.read_ops.load(std::memory_order_relaxed);
+    s.fg_write_ops = g_impl->fg.write_ops.load(std::memory_order_relaxed);
+    s.fg_read_bytes = g_impl->fg.read_bytes.load(std::memory_order_relaxed);
+    s.fg_write_bytes = g_impl->fg.write_bytes.load(std::memory_order_relaxed);
+    s.bg_read_ops = g_impl->bg.read_ops.load(std::memory_order_relaxed);
+    s.bg_write_ops = g_impl->bg.write_ops.load(std::memory_order_relaxed);
+    s.bg_read_bytes = g_impl->bg.read_bytes.load(std::memory_order_relaxed);
+    s.bg_write_bytes = g_impl->bg.write_bytes.load(std::memory_order_relaxed);
+    return s;
 }
 
 } // namespace nr

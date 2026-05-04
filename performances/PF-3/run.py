@@ -3,10 +3,9 @@
 
 Threshold: gain_pct = (hi_ops - lo_ops) / lo_ops * 100% >= 22%
 
-The QoS scheduler uses a token-bucket rate limiter on low-priority traffic.
-The test restarts the data plane with NR_LO_RATE_KOPS tuned so the rate
-limiter actively constrains low-priority, giving high-priority a measurable
-throughput advantage.
+The data plane uses adaptive QoS: high-priority traffic records recent
+pressure, and low-priority traffic is token-bucket shaped only during that
+contention window. This test does not inject a PF-3-specific rate limit.
 """
 from __future__ import annotations
 
@@ -25,7 +24,8 @@ from common import resolve_cmake_bin
 PF_ID = "PF-3"
 PF_NAME = "RDMA 网络环境下 QoS 事件优先级传输能力"
 SOURCE_NO = 3
-THRESHOLD = "高优先级相对低优先级处理效率提升 >= 22%"
+MIN_GAIN_PCT = 22.0
+THRESHOLD = f"高优先级相对低优先级处理效率提升 >= {MIN_GAIN_PCT}%"
 NUM = r"[-+]?\d+(?:\.\d+)?"
 
 
@@ -76,6 +76,31 @@ def write_json(path: Path, data: dict) -> None:
 
 
 def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> None:
+    hi_ops = result.get("hi_ops")
+    lo_ops = result.get("lo_ops")
+    gain_pct = result.get("gain_pct")
+    threshold_gain_pct = result.get("threshold_gain_pct", MIN_GAIN_PCT)
+    ratio_text = "N/A"
+    margin_text = "N/A"
+    if isinstance(hi_ops, (int, float)) and isinstance(lo_ops, (int, float)) and lo_ops > 0:
+        ratio_text = f"{hi_ops / lo_ops:.2f}x"
+    if isinstance(gain_pct, (int, float)) and isinstance(threshold_gain_pct, (int, float)):
+        margin_text = f"{gain_pct - threshold_gain_pct:.2f} 个百分点"
+    fail_reason = ""
+    hi_fail = result.get("hi_fail")
+    lo_fail = result.get("lo_fail")
+    hi_degraded = result.get("hi_degraded")
+    lo_degraded = result.get("lo_degraded")
+    if not result.get("passed") and any(
+        isinstance(v, int) and v > 0
+        for v in (hi_fail, lo_fail, hi_degraded, lo_degraded)
+    ):
+        fail_reason = (
+            f"- 失败原因：吞吐提升已达到要求，但 hi_fail={hi_fail}、"
+            f"lo_fail={lo_fail}、hi_degraded={hi_degraded}、lo_degraded={lo_degraded}，"
+            "存在失败或降级请求，因此不能按真实数据验收通过。"
+        )
+
     lines = [
         f"# {PF_ID} Summary",
         "",
@@ -89,14 +114,28 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         f"- Raw JSON: {raw_json.resolve()}",
         f"- Run Log: {run_log.resolve()}",
         "",
+        "## 测试结论",
+        "",
+        f"- 高优先级吞吐：{hi_ops if hi_ops is not None else 'N/A'} ops/s。",
+        f"- 低优先级吞吐：{lo_ops if lo_ops is not None else 'N/A'} ops/s。",
+        f"- 高优先级吞吐是低优先级的 {ratio_text}，相对低优先级提升 {gain_pct if gain_pct is not None else 'N/A'}%。",
+        f"- 验收要求：提升比例 >= {threshold_gain_pct}%；本次超过阈值 {margin_text}。",
+        f"- 判定：{'PASS' if result.get('passed') else 'FAIL'}。",
+    ]
+    if fail_reason:
+        lines.append(fail_reason)
+    lines.extend([
+        "",
         "## 关键统计值",
         "",
         "| Key | Value |",
         "|---|---:|",
-    ]
+    ])
     for key in ("hi_ops", "lo_ops", "gain_pct", "threshold_gain_pct",
                 "hi_fail", "lo_fail", "hi_degraded", "lo_degraded",
-                "hi_p99_us", "lo_p99_us", "lo_rate_limit_kops"):
+                "hi_p99_us", "lo_p99_us", "qos_mode",
+                "configured_lo_rate_limit_kops", "configured_hi_window_us",
+                "configured_lo_burst_ms"):
         lines.append(f"| `{key}` | {result.get(key, 'N/A')} |")
     lines.extend([
         "",
@@ -104,7 +143,7 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "",
         "- `gain_pct = (hi_ops - lo_ops) / lo_ops * 100%`。",
         "- 高、低优先级并发压测，分别统计 measured 窗口内完成效率。",
-        "- QoS 通过 token-bucket 限速器约束低优先级吞吐，高优先级不限速。",
+        "- QoS 由数据面自适应触发：检测到高优先级压力时，低优先级进入 token-bucket 保护；没有高优先级压力时，低优先级不被额外限速。",
         "- 不统计构建、脚本启动、环境启动和 warmup 时间。",
     ])
     note = result.get("error") or result.get("note")
@@ -113,13 +152,19 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
     (path / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def fail_early(path: Path, message: str, code: int = 2) -> int:
+def fail_early(path: Path, message: str, code: int = 2, run_lines: list[str] | None = None) -> int:
     logs = log_dir()
     result = {"metric": "perf_03_qos", "passed": False, "error": message}
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
     write_json(raw_json, result)
-    run_log.write_text(message + "\n", encoding="utf-8")
+    content = ""
+    if run_lines:
+        content = "\n".join(run_lines)
+        if content and not content.endswith("\n"):
+            content += "\n"
+    content += message + "\n"
+    run_log.write_text(content, encoding="utf-8")
     write_summary(path, result, run_log, raw_json)
     return code
 
@@ -146,10 +191,9 @@ def main() -> int:
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
     dur = os.environ.get("DUR", "10")
-    threads = os.environ.get("THREADS", "8")
+    threads = os.environ.get("THREADS", "4")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
-    lo_rate_kops = os.environ.get("NR_LO_RATE_KOPS", "200")
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -158,15 +202,15 @@ def main() -> int:
 
     run_lines: list[str] = []
 
-    # Restart data plane with tuned lo-priority rate limit
+    # Restart data plane with its default adaptive QoS settings. Any externally
+    # supplied NR_QOS_* / NR_LO_RATE_KOPS values still pass through start.sh via
+    # the inherited environment, but PF-3 itself does not tune them.
     restart_ok = restart_stack(native_root, {
         "NR_ASYNC_REPL": async_repl,
-        "NR_LO_RATE_KOPS": lo_rate_kops,
     }, run_lines)
 
     if not restart_ok:
-        run_log.write_text("\n".join(run_lines), encoding="utf-8")
-        return fail_early(path, "Failed to restart data plane")
+        return fail_early(path, "Failed to restart data plane", run_lines=run_lines)
 
     for _ in range(30):
         if Path(uds).is_socket():
@@ -175,8 +219,7 @@ def main() -> int:
     time.sleep(3)  # heartbeat stabilization
 
     if not Path(uds).is_socket():
-        run_log.write_text("\n".join(run_lines), encoding="utf-8")
-        return fail_early(path, f"data plane not running (no {uds})")
+        return fail_early(path, f"data plane not running (no {uds})", run_lines=run_lines)
 
     # Warmup (not measured): stabilize connections and slab
     warmup_cmd = [
@@ -217,16 +260,14 @@ def main() -> int:
     hi_degr = int(hi.get("ops_degraded", 0))
     lo_degr = int(lo.get("ops_degraded", 0))
 
-    hi_ok = int(hi.get("ops_ok", 0))
-    lo_ok = int(lo.get("ops_ok", 0))
-    hi_total = hi_ok + hi_fail
-    lo_total = lo_ok + lo_fail
-    hi_fail_pct = (hi_fail / hi_total * 100.0) if hi_total > 0 else 0.0
-    lo_fail_pct = (lo_fail / lo_total * 100.0) if lo_total > 0 else 0.0
+    parsed_ok = hi_ops > 0 and lo_ops > 0
+    procs_ok = p_hi.returncode == 0 and p_lo.returncode == 0
     passed = bool(
-        gain_pct >= 22.0
-        and hi_fail_pct < 10.0
-        and lo_fail_pct < 10.0
+        parsed_ok
+        and procs_ok
+        and gain_pct >= MIN_GAIN_PCT
+        and hi_fail == 0
+        and lo_fail == 0
         and hi_degr == 0
         and lo_degr == 0
     )
@@ -236,14 +277,19 @@ def main() -> int:
         "hi_ops": hi_ops,
         "lo_ops": lo_ops,
         "gain_pct": round(gain_pct, 2),
-        "threshold_gain_pct": 22.0,
+        "threshold_gain_pct": MIN_GAIN_PCT,
         "hi_fail": hi_fail,
         "lo_fail": lo_fail,
         "hi_degraded": hi_degr,
         "lo_degraded": lo_degr,
         "hi_p99_us": hi.get("lat_p99_us", 0),
         "lo_p99_us": lo.get("lat_p99_us", 0),
-        "lo_rate_limit_kops": int(lo_rate_kops),
+        "qos_mode": "adaptive_data_plane",
+        "configured_lo_rate_limit_kops": os.environ.get("NR_LO_RATE_KOPS", "data-plane-default"),
+        "configured_hi_window_us": os.environ.get("NR_QOS_HI_WINDOW_US", "data-plane-default"),
+        "configured_lo_burst_ms": os.environ.get("NR_QOS_LO_BURST_MS", "data-plane-default"),
+        "hi_exit": p_hi.returncode,
+        "lo_exit": p_lo.returncode,
         "passed": passed,
         "raw_hi": hi,
         "raw_lo": lo,

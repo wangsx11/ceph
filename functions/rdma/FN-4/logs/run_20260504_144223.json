@@ -1,0 +1,27 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-4",
+  "function": "CPU 与 GPU 高速直通访问",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 4 条",
+  "started_at": "2026-05-04T14:42:23+0800",
+  "finished_at": "2026-05-04T14:42:23+0800",
+  "status": "SKIP",
+  "passed": false,
+  "completion": "未完成",
+  "evidence": [
+    "UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 111] Connection refused"
+  ],
+  "details": {},
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": ""
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260504_144223.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260504_144223.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/raw.json",
+  "rpc_calls": []
+}

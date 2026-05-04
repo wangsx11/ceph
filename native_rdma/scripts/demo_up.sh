@@ -47,6 +47,7 @@ PEER_IP=$(awk -F= '/^PEER_IP=/{print $2}' "$ENV_FILE")
 
 say "ROLE=$ROLE  SELF=$SELF_IP  PEER=$PEER_IP  FLASK_PORT=$FLASK_PORT"
 say "SLAB_SLOT_SIZE=$SLAB_SLOT_SIZE  SLAB_TOTAL_BYTES=$SLAB_TOTAL_BYTES"
+say "NR_GDR_ENABLE=${NR_GDR_ENABLE:-0}  NR_CUDA_DEVICE=${NR_CUDA_DEVICE:-0}  NR_GDR_BYTES=${NR_GDR_BYTES:-67108864}"
 
 # 1) 日志目录
 mkdir -p logs
@@ -73,6 +74,10 @@ say "清理残留进程 / IPC"
 pkill -9 -f "$BUILD_DIR/bin/native_rdma_dp" 2>/dev/null || true
 pkill -9 -f "$ROOT/build/bin/native_rdma_dp" 2>/dev/null || true
 pkill -f  "python3 $ROOT/control_plane/app.py" 2>/dev/null || true
+# 同一台机器上可能残留来自旧 checkout 的 native_rdma_dp，占用相同 UDS。
+# 只清理监听当前 UDS 的 native_rdma_dp，避免误杀其它无关进程。
+UDS_OWNER_PID=$(ss -xlp 2>/dev/null | awk -v s="${UDS_PATH:-/tmp/native_rdma-dp.sock}" '$0 ~ s && $0 ~ /native_rdma_dp/ { if (match($0, /pid=[0-9]+/)) { print substr($0, RSTART+4, RLENGTH-4); exit } }')
+[ -n "${UDS_OWNER_PID:-}" ] && kill -9 "$UDS_OWNER_PID" 2>/dev/null || true
 # 端口上的 Flask 也可能是别的拷贝，显式终结
 PORT_PID=$(ss -tlnp 2>/dev/null | awk -v p=":$FLASK_PORT" '$4 ~ p {print $0}' \
            | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)

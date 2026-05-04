@@ -31,8 +31,11 @@ bool SimCapture::init(const Config& cfg) {
     std::error_code ec;
     std::filesystem::create_directories(cfg_.capture_dir, ec);
     log_path_ = cfg_.capture_dir + "/sim_" + cfg_.tag + ".log";
-    log_.close();
-    log_.open(log_path_, std::ios::binary | std::ios::app);
+    {
+        std::lock_guard<std::mutex> log_lk(log_mu_);
+        log_.close();
+        log_.open(log_path_, std::ios::binary | std::ios::app);
+    }
     if (!log_) {
         NR_ERROR("SimCapture: cannot open WAL %s", log_path_.c_str());
         return false;
@@ -64,7 +67,10 @@ void SimCapture::stop() {
         s_.flushed_bytes  += drain_.size();
         drain_.clear();
     }
-    if (log_.is_open()) log_.flush();
+    {
+        std::lock_guard<std::mutex> log_lk(log_mu_);
+        if (log_.is_open()) log_.flush();
+    }
 }
 
 void SimCapture::reset() {
@@ -72,6 +78,7 @@ void SimCapture::reset() {
     ring_.clear();
     drain_.clear();
     s_ = Stats{};
+    std::lock_guard<std::mutex> log_lk(log_mu_);
     log_.close();
     // Truncate the WAL: reopen without append.
     log_.open(log_path_, std::ios::binary | std::ios::trunc);
@@ -114,12 +121,20 @@ bool SimCapture::push_raw(uint16_t type, uint64_t entity_id,
     if (blob_len) std::memcpy(&ring_[pos + sizeof(hdr)], blob, blob_len);
     s_.pushed_events++;
     s_.pushed_bytes += total;
+    if (type == TYPE_OBJECT_ATTR) s_.object_attr_events++;
+    else if (type == TYPE_INTERACTION) s_.interaction_events++;
     return true;
 }
 
 SimCapture::Stats SimCapture::stats() const {
     std::lock_guard<std::mutex> lk(mu_);
-    return s_;
+    Stats s = s_;
+    s.wal_path = log_path_;
+    std::error_code ec;
+    if (!log_path_.empty() && std::filesystem::exists(log_path_, ec)) {
+        s.wal_bytes = std::filesystem::file_size(log_path_, ec);
+    }
+    return s;
 }
 
 void SimCapture::run() {
@@ -152,9 +167,12 @@ void SimCapture::run() {
 }
 
 bool SimCapture::write_sink(const void* buf, size_t len) {
+    std::lock_guard<std::mutex> log_lk(log_mu_);
     if (!log_.is_open() || len == 0) return true;
     log_.write(reinterpret_cast<const char*>(buf), (std::streamsize)len);
-    if (cfg_.fsync_on_flush) log_.flush();
+    // Make the WAL immediately visible to stats/tests. fsync_on_flush still
+    // controls durability beyond the process and OS page cache.
+    log_.flush();
     return (bool)log_;
 }
 

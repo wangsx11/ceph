@@ -1,0 +1,40 @@
+[11:21:42] start storage/FN-2 多层感知、冷热分离与调度
+[11:21:42] repo_root=/home/wangshouxin/native-rdma-web
+[11:21:42] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[11:21:42] rpc RPC_KV_PUT body_len=64
+[11:21:42] rpc RPC_KV_PUT resp_len=205 resp={"ok":true,"key":"fn_storage_tier_manual_1777864902811_60186","size":21,"offset":6287360,"repl_ns":146,"degraded":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[11:21:42] rpc RPC_TIER_DEMOTE body_len=47
+[11:21:42] rpc RPC_TIER_DEMOTE resp_len=74 resp={"ok":true,"key":"fn_storage_tier_manual_1777864902811_60186","to":"nvme"}
+[11:21:42] rpc RPC_KV_GET body_len=42
+[11:21:42] rpc RPC_KV_GET resp_len=72 resp={"ok":true,"hit":"nvme_promote","size":21,"val":"tiering_probe_payload"}
+[11:21:42] rpc RPC_KV_PUT body_len=66
+[11:21:42] rpc RPC_KV_PUT resp_len=203 resp={"ok":true,"key":"fn_storage_tier_cold_1777864902812_60186","size":25,"offset":8384512,"repl_ns":148,"degraded":true,"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[11:21:42] rpc RPC_KV_PUT body_len=64
+[11:21:42] rpc RPC_KV_PUT resp_len=203 resp={"ok":true,"key":"fn_storage_tier_hot_1777864902812_60186","size":24,"offset":9433088,"repl_ns":150,"degraded":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[11:21:42] rpc RPC_KV_GET body_len=39
+[11:21:42] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:42] rpc RPC_TIER_STATS body_len=0
+[11:21:42] rpc RPC_TIER_STATS resp_len=989 resp={"ok":true,"dram":3,"nvme":2,"hdd":0,"demoted_d_n":5,"demoted_n_h":0,"events":[{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20},{"ts_ns":7494263463143284,"key":"fn_storage_iface_hdd_1777864203650_41686","f
+[11:21:43] rpc RPC_KV_GET body_len=39
+[11:21:43] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:43] rpc RPC_TIER_STATS body_len=0
+[11:21:43] rpc RPC_TIER_STATS resp_len=989 resp={"ok":true,"dram":3,"nvme":2,"hdd":0,"demoted_d_n":5,"demoted_n_h":0,"events":[{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20},{"ts_ns":7494263463143284,"key":"fn_storage_iface_hdd_1777864203650_41686","f
+[11:21:44] rpc RPC_KV_GET body_len=39
+[11:21:44] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:44] rpc RPC_TIER_STATS body_len=0
+[11:21:44] rpc RPC_TIER_STATS resp_len=989 resp={"ok":true,"dram":3,"nvme":2,"hdd":0,"demoted_d_n":5,"demoted_n_h":0,"events":[{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20},{"ts_ns":7494263463143284,"key":"fn_storage_iface_hdd_1777864203650_41686","f
+[11:21:45] rpc RPC_KV_GET body_len=39
+[11:21:45] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:45] rpc RPC_TIER_STATS body_len=0
+[11:21:45] rpc RPC_TIER_STATS resp_len=989 resp={"ok":true,"dram":3,"nvme":2,"hdd":0,"demoted_d_n":5,"demoted_n_h":0,"events":[{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20},{"ts_ns":7494263463143284,"key":"fn_storage_iface_hdd_1777864203650_41686","f
+[11:21:46] rpc RPC_KV_GET body_len=39
+[11:21:46] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:46] rpc RPC_TIER_STATS body_len=0
+[11:21:46] rpc RPC_TIER_STATS resp_len=1102 resp={"ok":true,"dram":2,"nvme":3,"hdd":0,"demoted_d_n":6,"demoted_n_h":0,"events":[{"ts_ns":7494960195439897,"key":"fn_storage_tier_cold_1777864902812_60186","from":"dram","to":"nvme","bytes":25},{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","f
+[11:21:46] rpc RPC_TIER_STATS body_len=0
+[11:21:46] rpc RPC_TIER_STATS resp_len=1102 resp={"ok":true,"dram":2,"nvme":3,"hdd":0,"demoted_d_n":6,"demoted_n_h":0,"events":[{"ts_ns":7494960195439897,"key":"fn_storage_tier_cold_1777864902812_60186","from":"dram","to":"nvme","bytes":25},{"ts_ns":7494957001403152,"key":"fn_storage_tier_manual_1777864902811_60186","from":"nvme","to":"dram","bytes":21},{"ts_ns":7494957001301491,"key":"fn_storage_tier_manual_1777864902811_60186","from":"dram","to":"nvme","bytes":21},{"ts_ns":7494263463160743,"key":"fn_storage_iface_nvme_1777864203650_41686","f
+[11:21:46] rpc RPC_KV_GET body_len=40
+[11:21:46] rpc RPC_KV_GET resp_len=76 resp={"ok":true,"hit":"nvme_promote","size":25,"val":"auto-cold-tiering-payload"}
+[11:21:46] rpc RPC_KV_GET body_len=39
+[11:21:46] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[11:21:46] result=PASS completion=完成

@@ -1,0 +1,8 @@
+[15:26:14] start mempool/FN-3 内存池统一命名机制
+[15:26:14] repo_root=/home/wangshouxin/native-rdma-web
+[15:26:14] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[15:26:14] rpc RPC_CLUSTER_STATUS body_len=0
+[15:26:14] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":139821345460224,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":139870082629632,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[15:26:14] rpc RPC_MEMPOOL_POOLS body_len=0
+[15:26:14] rpc RPC_MEMPOOL_POOLS resp_len=316 resp={"ok":true,"self":"A","peer_id":"192.168.0.214","local":{"ok":true,"pool_id":1,"name":"default/slab1k","base":139821345460224,"len":4294967296,"lkey":96256,"rkey":96256,"tenant_id":0,"numa":-1},"remote":{"ok":true,"name":"default/slab1k","base":139870082629632,"len":4294967296,"rkey":71936,"tenant_id":0,"numa":-1}}
+[15:26:14] result=PASS completion=完成

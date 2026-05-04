@@ -58,7 +58,14 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "| Key | Value |",
         "|---|---:|",
     ]
-    for key in ("overhead_pct", "savings_pct", "scale_gain_pct", "threads_multi", "malloc_ops_1t", "slab_ops_1t", "malloc_ops_Nt", "slab_ops_Nt", "passed_overhead", "passed_savings", "passed_scale"):
+    for key in (
+        "overhead_pct", "savings_pct", "scale_gain_pct", "threads_multi",
+        "malloc_ops_1t", "slab_ops_1t", "malloc_ops_Nt", "slab_ops_Nt",
+        "malloc_live_rss_kb", "slab_live_rss_kb", "live_objects",
+        "live_requested_kb", "baseline_metadata_bytes",
+        "throughput_metadata_bytes", "malloc_usable_kb", "slab_usable_kb",
+        "passed_overhead", "passed_savings", "passed_scale",
+    ):
         lines.append(f"| `{key}` | {result.get(key, 'N/A')} |")
     lines.extend([
         "",
@@ -66,7 +73,10 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "",
         "- 测试逻辑由 `native_rdma/tests/performance/perf_09_mempool.sh` 迁移到本 `run.py`。",
         "- 执行 `native_rdma/build/bin/nr_mempool_bench` 并直接记录其 JSON 输出。",
-        "- 基线与内存池场景使用相同对象大小、线程数、操作数和硬件环境。",
+        "- 吞吐测试对比 malloc/free 基线和 slab fast path，并在分配后真实初始化完整 1KB 对象。",
+        "- 吞吐基线包含 16B 轻量对象头，避免把未池化路径建模得过重。",
+        "- 内存基线为未池化 RDMA 对象记录：每个对象包含 1KB payload 和真实分配的对象/MR 元数据。",
+        "- 不使用固定 savings fallback；如果 live RSS 测不到 7% 节省，测试直接失败。",
     ])
     note = result.get("error") or result.get("note")
     if note:

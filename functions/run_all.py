@@ -52,6 +52,8 @@ def _write_summary(rows: list[dict[str, Any]], run_log: Path, finished_at: str) 
     total_counts = {status: sum(counts.get(status, 0) for counts in module_counts.values()) for status in STATUSES}
     total = len(rows)
     incomplete = [row for row in rows if row.get("status") in {"FAIL", "SKIP"}]
+    overall_pass = total_counts["FAIL"] == 0 and total_counts["SKIP"] == 0
+    result = "PASS" if overall_pass else "FAIL"
     lines = [
         f"# Functions Summary ({finished_at})",
         "",
@@ -60,7 +62,7 @@ def _write_summary(rows: list[dict[str, Any]], run_log: Path, finished_at: str) 
         f"- FAIL: {total_counts['FAIL']}",
         f"- SKIP: {total_counts['SKIP']}",
         f"- WAIVED: {total_counts['WAIVED']}",
-        f"- Result: {'PASS' if total_counts['FAIL'] == 0 else 'FAIL'}",
+        f"- Result: {result}",
         f"- Run All Log: {run_log}",
         "",
         "## 模块汇总",
@@ -156,10 +158,9 @@ def main() -> int:
     }
     (ROOT / "raw.json").write_text(json.dumps(matrix, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     _write_summary(rows, run_log, finished_at)
-    fail_count = sum(1 for row in rows if row["status"] == "FAIL")
-    return 0 if fail_count == 0 else 1
+    fail_or_skip_count = sum(1 for row in rows if row["status"] in {"FAIL", "SKIP"})
+    return 0 if fail_or_skip_count == 0 else 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

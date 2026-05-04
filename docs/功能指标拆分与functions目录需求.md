@@ -249,7 +249,7 @@ functions/<module>/FN-N/
 | `FN-1` | 1 | RDMA 与 TCP/IP 统一通信层 | RDMA QP 初始化日志、`TcpFallback` | `functions/rdma/FN-1/` |
 | `FN-2` | 2 | 聚合数据传输 | `BatchAggregator`、批处理 RPC 或日志 | `functions/rdma/FN-2/` |
 | `FN-3` | 3 | 流量优先级机制 | `QosSched`、高低优先级队列或日志 | `functions/rdma/FN-3/` |
-| `FN-4` | 4 | CPU 与 GPU 高速直通访问 | 当前硬件环境下暂按 `WAIVED` 处理，后续最后解决 | `functions/rdma/FN-4/` |
+| `FN-4` | 4 | CPU 与 GPU 高速直通访问 | `RPC_GDR_STATUS`、`RPC_GDR_WRITE`、`RPC_GDR_VALIDATE`、`RPC_GDR_READBACK` | `functions/rdma/FN-4/` |
 | `FN-5` | 5 | 分布式节点路由转发与负载均衡 | `RPC_ROUTE_QUERY`、一致性哈希路由 | `functions/rdma/FN-5/` |
 
 ### 5.3 一致性总线内存池化仿真计算模块
@@ -321,10 +321,11 @@ functions/<module>/FN-N/
 
 ### RDMA FN-4 CPU 与 GPU 高速直通访问
 
-- 当前硬件环境下暂时按 `WAIVED` 处理，最后再解决该功能点。
-- `run.py` 应直接生成 `WAIVED` 结果，并在 `summary.md` 中写明豁免原因和后续待补条件。
-- 后续完整验证前提：存在可用 GPU、CUDA、GPU Direct RDMA 或项目定义的等效直通路径。
-- 如果后续实现降级验证，应明确降级路径不能等同于完整 GPU Direct 验收。
+- 验证 xfusion4 存在可用 NVIDIA GPU、CUDA、`nvidia_peermem` 或 `nv_peer_mem`、RDMA 设备 `mlx5_0`。
+- 验证 xfusion4 数据面使用 `cudaMalloc` 分配 GPU buffer，并通过 `ibv_reg_mr` 注册为 RDMA MR，暴露有效 base/len/rkey。
+- 验证 xfusion3 通过 RDMA WRITE 直接写入 xfusion4 的 GPU MR，并由 xfusion4 CUDA kernel 校验 GPU buffer 内容正确。
+- 可选但建议验证 xfusion3 再通过 RDMA READ 从 xfusion4 GPU MR 读回，并校验 pattern 一致。
+- 必须说明边界：CPU 只提交 WR，数据 payload 由 RNIC 直接进入 GPU 显存；不能用普通 CPU buffer、TCP、全量 `cudaMemcpy` payload 或脚本 JSON 代替 GPU Direct 验收。
 
 ### RDMA FN-5 路由转发与负载均衡
 
@@ -497,7 +498,7 @@ docs/functions实现完成度.md
 2. `FN-N` 编号在每个模块内独立从 `FN-1` 开始。
 3. 每个 `FN-N/summary.md` 只保留最近一次执行结果，不保留历史统计。
 4. `functions/summary.md` 只保留最近一次批量执行结果，不保留历史统计。
-5. RDMA 模块 `FN-4` 的 GPU 直通功能当前按 `WAIVED` 处理，最后再解决。
+5. RDMA 模块 `FN-4` 的 GPU 直通功能已按 xfusion3 无 GPU、xfusion4 暴露 GPU MR 的拓扑实现真实 GPU Direct RDMA 验收。
 6. 内存池高可靠功能允许在显式开启时主动 kill peer，但必须默认非破坏性。
 7. `functions/` 根目录需要创建 `run_all.sh`、`run_all.py` 和总 `summary.md`。
 8. 功能测试必须独立于 `native_rdma/scripts/`，可以复用其 UDS/HTTP 调用思路，但不能依赖其脚本文件存在。

@@ -2,7 +2,7 @@
 
 ## 功能点
 
-验证 key 到 primary/replica 节点的一致性哈希路由查询，并观察批量分布。
+验证 key 到 primary/replica 节点的一致性哈希路由查询、批量分布，以及 remote-primary key 的跨节点 routed PUT 转发闭环。
 
 ## 来源要求
 
@@ -12,30 +12,38 @@
 
 - `native_rdma/data_plane/router/object_router.cpp`
 - `RPC_ROUTE_QUERY`
+- `native_rdma/data_plane/main.cpp` 的 `RPC_ROUTE_PUT`
+- `RPC_TCP_GET_PEER` 作为 peer 读回验证通道
 
 ## 完成判据
 
-批量 `RPC_ROUTE_QUERY` 均返回 `ok=true`，`primary` 非空，并观察到至少两个 primary 分布桶。`replica` 为空时记录为当前路由策略细节。
+默认 `REQUIRE_PEER=1` 时，`peer_alive` 必须为 `true`；否则只能证明路由表查询，不能证明跨节点转发。
+
+批量 `RPC_ROUTE_QUERY` 均返回 `ok=true`，`primary` 非空，并观察到至少两个 primary 分布桶。脚本必须同时找到本地 primary key 和远端 primary key。
+
+`RPC_ROUTE_PUT` 对本地 primary key 必须返回 `route_forwarded=false`，并可由本地 `RPC_KV_GET` 读回；对远端 primary key 必须返回 `route_forwarded=true`、`forward_transport=tcp_data_channel`，并可由 `RPC_TCP_GET_PEER` 从 xfusion4 读回同一 value。
+
+`replica` 为空时记录为当前路由策略细节，不单独判失败。
 
 ## 测试方案
 
-前置条件：数据面 UDS 在线。
+前置条件：数据面 UDS 在线；xfusion4 peer 在线；TCP data channel 在线。
 
-当前验证口径：对 32 个 key 执行路由查询，统计 primary 分布；不把单个 key 的 `replica` 为空直接判为失败。
+当前验证口径：对至少 64 个 key 执行路由查询，统计 primary 分布；随后分别执行本地 primary routed PUT 和远端 primary routed PUT，验证本地读回与 peer 读回。
 
-不验证内容：不验证多跳网络转发性能。
+不验证内容：不验证多跳网络转发性能；当前 routed PUT 的 remote-primary 转发通道使用 TCP data channel，不表述为纯 RDMA 远端 primary 写入。
 
 ## 交互
 
-1. 启动数据面。
+1. 启动双节点数据面。
 2. 执行 `bash functions/rdma/FN-5/run.sh`。
-3. 查看批量路由统计。
+3. 查看 `summary.md`、`raw.json` 和过程日志。
 
 ## 实现
 
 ### 当前验证口径
 
-脚本直接调用 `RPC_ROUTE_QUERY` 并统计 primary 节点出现次数。
+脚本调用 `RPC_CLUSTER_STATUS`、`RPC_ROUTE_QUERY`、`RPC_ROUTE_PUT`、`RPC_KV_GET` 和 `RPC_TCP_GET_PEER`。旧口径只证明路由查询与分布；当前口径额外验证 remote-primary key 的真实跨节点转发和读回闭环。
 
 ### 脚本入口
 
@@ -47,5 +55,14 @@
 ## 命令
 
 ```bash
+cd native_rdma
+bash start.sh
+cd ..
 bash functions/rdma/FN-5/run.sh
+```
+
+可选增加路由采样 key 数：
+
+```bash
+FN5_ROUTE_KEYS=128 bash functions/rdma/FN-5/run.sh
 ```

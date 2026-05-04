@@ -4,7 +4,7 @@
 # 执行策略:
 #   PF-1: 自动重启数据面（1MB slab → 4KB slab），需要 NR_ASYNC_REPL=1
 #   PF-2: 依赖数据面已运行（PF-1 结束后 4KB slab 已就位）
-#   PF-3: 自动重启数据面（设置 QoS 限速），需要 NR_ASYNC_REPL=1
+#   PF-3: 自动重启数据面（默认自适应 QoS），需要 NR_ASYNC_REPL=1
 #   PF-4: 依赖数据面已运行
 #   PF-5: 依赖数据面已运行
 #   PF-6: 自动重启数据面（1MB slab），需要 NR_ASYNC_REPL=1
@@ -95,10 +95,10 @@ run_pf PF-1
 # PF-2: 依赖 PF-1 留下的数据面
 run_pf PF-2
 
-# PF-3: 自动重启（设置 NR_LO_RATE_KOPS）
+# PF-3: 自动重启（使用数据面默认自适应 QoS）
 run_pf PF-3
 
-# PF-3 改了 QoS 参数，重启恢复默认配置给 PF-4/5
+# PF-3 会并发施压 QoS，重启一次给 PF-4/5 留出干净数据面
 restart_dp
 
 # PF-4/5: 依赖默认数据面

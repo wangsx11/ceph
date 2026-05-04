@@ -1,0 +1,5 @@
+[14:42:23] start rdma/FN-4 CPU 与 GPU 高速直通访问
+[14:42:23] repo_root=/home/wangshouxin/native-rdma-web
+[14:42:23] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[14:42:23] rpc RPC_CLUSTER_STATUS body_len=0
+[14:42:23] result=SKIP completion=未完成

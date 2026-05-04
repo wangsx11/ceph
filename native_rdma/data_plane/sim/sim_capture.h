@@ -65,6 +65,10 @@ public:
         uint64_t flushed_events = 0;
         uint64_t flushed_bytes  = 0;
         uint64_t dropped_events = 0;   // ring full
+        uint64_t object_attr_events = 0;
+        uint64_t interaction_events = 0;
+        uint64_t wal_bytes = 0;
+        std::string wal_path;
     };
 
     // Built-in event type codes.
@@ -115,6 +119,7 @@ private:
     std::vector<uint8_t> drain_;  // private buffer the flusher consumes
 
     // Sink: file handle for the WAL.
+    mutable std::mutex log_mu_;
     std::ofstream   log_;
     std::string     log_path_;
 

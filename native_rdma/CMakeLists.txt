@@ -29,6 +29,7 @@ option(NR_BUILD_TESTS     "Build unit tests"         ON)
 option(NR_USE_IO_URING    "Enable io_uring backend"  ON)
 option(NR_USE_ZSTD        "Enable zstd compression"  ON)
 option(NR_USE_LZ4         "Enable lz4 compression"   ON)
+option(NR_USE_CUDA        "Enable CUDA/GPU Direct RDMA support" OFF)
 
 # ---------- Dependencies ----------
 find_package(Threads REQUIRED)
@@ -56,6 +57,14 @@ endif()
 pkg_check_modules(XXHASH libxxhash)
 find_package(OpenSSL REQUIRED)
 
+# CUDA is optional because node A has no NVIDIA GPU/CUDA toolchain.
+if(NR_USE_CUDA)
+    enable_language(CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    set(CMAKE_CUDA_STANDARD 17)
+    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+endif()
+
 # ---------- Subprojects ----------
 add_subdirectory(proto)
 add_subdirectory(data_plane)
@@ -67,5 +76,6 @@ message(STATUS "  C++ std      : ${CMAKE_CXX_STANDARD}")
 message(STATUS "  io_uring     : ${NR_USE_IO_URING}")
 message(STATUS "  zstd         : ${NR_USE_ZSTD}")
 message(STATUS "  lz4          : ${NR_USE_LZ4}")
+message(STATUS "  cuda/gdr     : ${NR_USE_CUDA}")
 message(STATUS "  tests        : ${NR_BUILD_TESTS}")
 message(STATUS "==================================")

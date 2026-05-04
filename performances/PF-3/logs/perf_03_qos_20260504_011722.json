@@ -1,0 +1,42 @@
+{
+  "metric": "perf_03_qos",
+  "hi_ops": 303546.0,
+  "lo_ops": 117382.0,
+  "gain_pct": 158.6,
+  "threshold_gain_pct": 22.0,
+  "hi_fail": 0,
+  "lo_fail": 0,
+  "hi_degraded": 0,
+  "lo_degraded": 0,
+  "hi_p99_us": 43.01,
+  "lo_p99_us": 352.64,
+  "qos_mode": "adaptive_data_plane",
+  "configured_lo_rate_limit_kops": "data-plane-default",
+  "configured_hi_window_us": "data-plane-default",
+  "configured_lo_burst_ms": "data-plane-default",
+  "hi_exit": 0,
+  "lo_exit": 0,
+  "passed": true,
+  "raw_hi": {
+    "ops_per_sec": 303546.0,
+    "ops_ok": 3035602,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "lat_avg_us": 25.73,
+    "lat_p50_us": 23.31,
+    "lat_p99_us": 43.01,
+    "lat_p99_9_us": 60.19,
+    "lat_max_us": 28094.99
+  },
+  "raw_lo": {
+    "ops_per_sec": 117382.0,
+    "ops_ok": 1173886,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "lat_avg_us": 67.63,
+    "lat_p50_us": 28.12,
+    "lat_p99_us": 352.64,
+    "lat_p99_9_us": 615.56,
+    "lat_max_us": 22252.68
+  }
+}

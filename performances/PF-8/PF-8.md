@@ -52,9 +52,10 @@
 
 - `speedup = simulated_seconds / wall_seconds`。
 - `events_per_sec = completed_events / wall_seconds`。
+- 数据面按 `entity_size` 为每个仿真实体分配 payload，默认 `entity_size=1024`，即 10 万实体约 100MB 仿真实体载荷。
 - 统计 measured 仿真运行窗口，不统计构建、脚本启动、环境启动和 warmup 时间。
 - 必须记录节点口径：真实 4 节点、模拟 4 节点或双节点降级。
-- 失败事件、丢弃事件和未完成事件必须单独记录。
+- 失败事件、丢弃事件和未完成事件必须单独记录；当前脚本要求 `captured_dropped=0`。
 
 ### 脚本入口
 

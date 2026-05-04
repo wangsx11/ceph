@@ -6,6 +6,8 @@
 #include "rdma/rdma_core.h"
 #include "rdma/oob.h"
 #include "rdma/repl_waiter.h"
+#include "rdma/tcp_data_channel.h"
+#include "gpu/gpu_direct.h"
 #include "mempool/slab.h"
 #include "mempool/pool_registry.h"
 #include "mempool/isolation.h"
@@ -27,6 +29,7 @@
 #include <string>
 #include <cstring>
 #include <cstdlib>
+#include <cerrno>
 #include <thread>
 #include <chrono>
 #include <fstream>
@@ -34,6 +37,8 @@
 #include <mutex>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -49,11 +54,16 @@ struct Args {
     std::string dev        = "mlx5_0";
     uint8_t     gid_idx    = 3;
     uint16_t    data_port  = 18515;      // OOB TCP port
+    uint16_t    tcp_data_port = 18516;   // TCP data-plane fallback port
+    std::string transport  = "rdma";     // rdma | tcp | auto
     std::string uds_path   = "/tmp/native_rdma-dp.sock";
     std::string metrics_shm= "/tmp/native_rdma-metrics.shm";
     size_t      slab_bytes_1k = 1ULL * 1024 * 1024 * 1024;  // 1GB slab
     size_t      slab_slot_size = 1024;                      // W4 bw: configurable slot size
     std::string snap_dir   = "/dev/shm/native_rdma_snap";
+    std::string backup_path= "/tmp/native_rdma_backup/pf7_backup.dat";
+    uint64_t    backup_ring_bytes = 128ULL * 1024 * 1024;
+    bool        backup_fsync = false;
     // W4: multi-tier storage backing paths.
     std::string nvme_path  = "/dev/shm/native_rdma_warm";
     std::string hdd_path   = "/dev/shm/native_rdma_cold";
@@ -67,6 +77,9 @@ struct Args {
     int         migrate_interval_ms = 1000;
     size_t      migrate_batch_limit = 16;    // max background demotes per tick
     bool        async_repl = false;          // async replication: post WRITE but don't wait for completion
+    bool        gdr_enable = false;           // enable GPUDirect RDMA endpoint on GPU-capable node
+    size_t      gdr_bytes = 64ULL * 1024 * 1024;
+    int         cuda_device = 0;
 };
 
 static void parse_args(int argc, char** argv, Args& a) {
@@ -81,9 +94,14 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--dev")         a.dev = v;
         else if (k == "--gid-idx")     a.gid_idx = (uint8_t)std::stoi(v);
         else if (k == "--data-port")   a.data_port = (uint16_t)std::stoi(v);
+        else if (k == "--tcp-data-port") a.tcp_data_port = (uint16_t)std::stoi(v);
+        else if (k == "--transport")   a.transport = v;
         else if (k == "--uds")         a.uds_path = v;
         else if (k == "--metrics-shm")a.metrics_shm = v;
         else if (k == "--snap-dir")    a.snap_dir = v;
+        else if (k == "--backup-path") a.backup_path = v;
+        else if (k == "--backup-ring-bytes") a.backup_ring_bytes = std::stoull(v);
+        else if (k == "--backup-fsync") a.backup_fsync = (v.empty() || v == "1" || v == "true");
         else if (k == "--slab-slot-size") a.slab_slot_size = std::stoull(v);
         else if (k == "--slab-total-bytes") a.slab_bytes_1k = std::stoull(v);
         else if (k == "--nvme-path")  a.nvme_path = v;
@@ -96,11 +114,43 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--migrate-interval-ms") a.migrate_interval_ms = std::stoi(v);
         else if (k == "--migrate-batch-limit") a.migrate_batch_limit = std::stoull(v);
         else if (k == "--async-repl") a.async_repl = (v.empty() || v == "1" || v == "true");
+        else if (k == "--gdr-enable") a.gdr_enable = (v.empty() || v == "1" || v == "true");
+        else if (k == "--gdr-bytes") a.gdr_bytes = std::stoull(v);
+        else if (k == "--cuda-device") a.cuda_device = std::stoi(v);
     }
     // Also check env var for convenience
     const char* ar_env = std::getenv("NR_ASYNC_REPL");
     if (ar_env && (std::string(ar_env) == "1" || std::string(ar_env) == "true"))
         a.async_repl = true;
+    const char* tr_env = std::getenv("NR_TRANSPORT");
+    if (tr_env && *tr_env) a.transport = tr_env;
+    const char* tcp_port_env = std::getenv("NR_TCP_DATA_PORT");
+    if (tcp_port_env && *tcp_port_env) a.tcp_data_port = (uint16_t)std::stoi(tcp_port_env);
+    const char* gdr_env = std::getenv("NR_GDR_ENABLE");
+    if (gdr_env && (std::string(gdr_env) == "1" || std::string(gdr_env) == "true"))
+        a.gdr_enable = true;
+    const char* gdr_bytes_env = std::getenv("NR_GDR_BYTES");
+    if (gdr_bytes_env && *gdr_bytes_env) a.gdr_bytes = std::stoull(gdr_bytes_env);
+    const char* cuda_dev_env = std::getenv("NR_CUDA_DEVICE");
+    if (cuda_dev_env && *cuda_dev_env) a.cuda_device = std::stoi(cuda_dev_env);
+    if (a.transport != "rdma" && a.transport != "tcp" && a.transport != "auto")
+        a.transport = "rdma";
+}
+
+static void append_json_escaped(std::string* out, const std::string& v,
+                                size_t max_len = 512) {
+    size_t n = std::min(max_len, v.size());
+    for (size_t i = 0; i < n; ++i) {
+        char c = v[i];
+        if (c == '"' || c == '\\') {
+            out->push_back('\\');
+            out->push_back(c);
+        } else if ((unsigned char)c < 0x20) {
+            out->push_back('?');
+        } else {
+            out->push_back(c);
+        }
+    }
 }
 
 // ---------- RPC payload helpers ----------
@@ -126,6 +176,12 @@ static uint32_t parse_tenant_prefix(const std::string& body,
     }
     *start_off = colon + 1;
     return tid;
+}
+
+static std::string tenant_storage_key(uint32_t tenant_id,
+                                      const std::string& logical_key) {
+    if (tenant_id == 0) return logical_key;
+    return "__tenant_" + std::to_string(tenant_id) + "__:" + logical_key;
 }
 
 // RPC_KV_PUT body: [key]\0[val]
@@ -165,10 +221,13 @@ int main(int argc, char** argv) {
     std::signal(SIGTERM, on_sig);
 
     Args args; parse_args(argc, argv, args);
-    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u self=%s peer=%s async_repl=%s",
+    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u self=%s peer=%s async_repl=%s transport=%s tcp_data_port=%u gdr_enable=%s cuda_device=%d gdr_bytes=%zu",
             args.role.c_str(), args.dev.c_str(), args.gid_idx,
             args.self_ip.c_str(), args.peer_ip.c_str(),
-            args.async_repl ? "true" : "false");
+            args.async_repl ? "true" : "false",
+            args.transport.c_str(), (unsigned)args.tcp_data_port,
+            args.gdr_enable ? "true" : "false",
+            args.cuda_device, args.gdr_bytes);
 
     // 1) RDMA core
     nr::RdmaCore core;
@@ -200,6 +259,24 @@ int main(int argc, char** argv) {
     pi.rkey      = slab.rkey();
     pi.lkey      = slab.lkey();
     nr::PoolRegistry::instance().register_local(pi);
+
+    // Optional GPUDirect RDMA endpoint. In the current lab topology only node
+    // B has NVIDIA GPUs, so B exposes a CUDA-allocated GPU MR and node A uses
+    // the OOB metadata to RDMA WRITE/READ that MR.
+    nr::GpuDirectBuffer gdr;
+    bool gdr_requested_on_this_node = args.gdr_enable && args.role == "B";
+    if (gdr_requested_on_this_node) {
+        if (!nr::gpu_direct_compiled()) {
+            NR_ERROR("NR_GDR_ENABLE=1 on role=B but binary was built with NR_USE_CUDA=OFF");
+            return 4;
+        }
+        if (!gdr.init(core, args.cuda_device, args.gdr_bytes)) {
+            NR_ERROR("GpuDirectBuffer init failed: %s", gdr.info().error.c_str());
+            return 4;
+        }
+    } else if (args.gdr_enable) {
+        NR_INFO("GDR requested but local role=%s does not expose a GPU MR", args.role.c_str());
+    }
 
     // 3b) ObjectRouter: consistent-hash ring over the 2-node cluster.
     //
@@ -234,11 +311,17 @@ int main(int argc, char** argv) {
     nr::QosSched qos;
     nr::QosSched::Config qcfg; qcfg.hi_qp_start = 0; qcfg.hi_qp_count = 16;
     qcfg.lo_qp_start = 16;    qcfg.lo_qp_count = 13;
-    // Cap low-priority at 150 kops/s (per-process) so high-priority PUTs
-    // reliably win >=22% throughput lead (docs §7 row #3). Override via
-    // the NR_LO_RATE_KOPS env var at startup for ad-hoc demos.
+    // Adaptive QoS: low-priority traffic runs freely when there is no recent
+    // high-priority pressure. Once high-priority PUTs arrive, low-priority is
+    // shaped by a token bucket so it cannot occupy the replication path.
+    // Optional env vars are kept for controlled experiments, not required by
+    // the PF-3 acceptance script.
     const char* lo_env = std::getenv("NR_LO_RATE_KOPS");
-    qcfg.lo_rate_limit_kops = lo_env ? (uint32_t)std::atoi(lo_env) : 150;
+    qcfg.lo_rate_limit_kops = lo_env ? (uint32_t)std::atoi(lo_env) : 160;
+    const char* hi_win_env = std::getenv("NR_QOS_HI_WINDOW_US");
+    qcfg.hi_activity_window_us = hi_win_env ? (uint32_t)std::atoi(hi_win_env) : 200000;
+    const char* burst_env = std::getenv("NR_QOS_LO_BURST_MS");
+    qcfg.lo_burst_ms = burst_env ? (uint32_t)std::atoi(burst_env) : 50;
     qos.init(core, qcfg);
 
     // W5 write-path upgrade: a single dedicated poller thread drains all
@@ -252,7 +335,7 @@ int main(int argc, char** argv) {
     //   WRs were ever in-flight at a time.
     // After: the poller has exclusive ownership of these CQs (all
     //   post paths elsewhere don't poll these QPs -- HB is on QP_HB, batch
-    //   aggregator uses QP 4 in the lo group but posts to its own CQ).
+    //   aggregator uses QP 29 and posts to its own CQ).
     //   Workers reserve a wr_id + future, post_write, then future.wait().
     //   This unlocks true post_send concurrency: at 1MB payload we go from
     //   ~7 GB/s with 8 threads to saturating the 100Gbps link.
@@ -301,6 +384,13 @@ int main(int argc, char** argv) {
     // Prefetcher (W4 M1-3): stride + Markov-1 prediction over GET accesses.
     nr::Prefetcher prefetcher;
     prefetcher.init();
+    std::atomic<uint64_t> prefetch_issued{0};
+    std::atomic<uint64_t> prefetch_loaded{0};
+    std::atomic<uint64_t> prefetch_hits{0};
+    std::atomic<uint64_t> prefetch_already_hot{0};
+    std::atomic<uint64_t> prefetch_skipped{0};
+    std::mutex prefetched_mu;
+    std::unordered_set<std::string> prefetched_keys;
 
     // IoScheduler: FG (NVMe warm) + BG (HDD cold), both via io_uring.
     // Backing directories must exist; create if missing.
@@ -323,16 +413,32 @@ int main(int argc, char** argv) {
     // 5) OOB handshake: role=B listens, role=A connects.
     const bool is_listener = (args.role == "B");
     nr::RemoteEndpoint peer;
+    const auto& local_gpu = gdr.info();
     bool oob_ok = nr::oob_handshake(core,
         args.self_ip, args.peer_ip, args.data_port, is_listener,
         (uint64_t)slab.base_addr(),
         slab.capacity() * slab.slot_size(),
         slab.rkey(),
+        local_gpu.enabled,
+        local_gpu.base_addr,
+        local_gpu.len,
+        local_gpu.rkey,
         &peer);
     if (!oob_ok) {
         NR_ERROR("OOB handshake failed; exiting.");
         return 2;
     }
+
+    // Register the peer's exported slab under the same logical pool name.
+    // This gives the mempool namespace a concrete local+remote binding that
+    // can be queried by functional tests instead of inferring naming solely
+    // from raw OOB fields.
+    nr::PoolInfo remote_pi;
+    remote_pi.name      = "default/slab1k";
+    remote_pi.base_addr = peer.slab_base;
+    remote_pi.length    = peer.slab_len;
+    remote_pi.rkey      = peer.slab_rkey;
+    nr::PoolRegistry::instance().register_remote(args.peer_ip, remote_pi);
 
     // Now that QPs are in RTS, start the replication poller thread.
     {
@@ -410,6 +516,37 @@ int main(int argc, char** argv) {
     // comes back, subsequent PUTs resume full replication automatically.
     std::atomic<uint64_t> degraded_puts{0};
     std::atomic<uint64_t> degraded_bytes{0};
+
+    // Mempool FN-4: adaptive remote/local placement metadata. Cold objects
+    // inserted through RPC_MEMPOOL_ADAPT_PUT are placed in the peer slab by
+    // RDMA WRITE first. Repeated reads cross a hot threshold and trigger an
+    // RDMA READ into a local slab slot, after which normal RPC_KV_GET can
+    // serve the object from local DRAM through TierEngine.
+    struct AdaptiveObject {
+        uint64_t remote_off = 0;
+        uint64_t local_off = 0;
+        uint32_t size = 0;
+        uint32_t access_count = 0;
+        bool localized = false;
+        uint64_t write_ns = 0;
+        uint64_t migrate_ns = 0;
+    };
+    constexpr uint32_t kAdaptiveHotThreshold = 3;
+    std::mutex adaptive_mu;
+    std::mutex adaptive_alloc_mu;
+    std::unordered_map<std::string, AdaptiveObject> adaptive_index;
+    uint64_t adaptive_next_remote_off = 0;
+    std::atomic<uint64_t> adaptive_remote_puts{0};
+    std::atomic<uint64_t> adaptive_remote_reads{0};
+    std::atomic<uint64_t> adaptive_local_hits{0};
+    std::atomic<uint64_t> adaptive_migrations{0};
+    {
+        uint64_t preferred = 64ULL * 1024 * 1024;
+        if (peer.slab_len > preferred + slab.slot_size()) {
+            adaptive_next_remote_off =
+                (preferred / slab.slot_size()) * slab.slot_size();
+        }
+    }
 
     // Latency ring: lock-free atomic counter + modulo indexing.
     // Keeps the most recent kLatRing samples; metrics thread snapshots to compute
@@ -645,8 +782,89 @@ int main(int argc, char** argv) {
         }
     });
 
+    auto apply_local_put = [&](const std::string& k, const std::string& v,
+                               uint64_t* off_out, std::string* err) -> bool {
+        if (v.size() > slab.slot_size()) {
+            if (err) *err = "value too large";
+            return false;
+        }
+        uint64_t off = 0; uint32_t old_sz = 0;
+        void* spec_slot = slab.alloc();
+        if (!spec_slot) {
+            if (err) *err = "slab oom";
+            return false;
+        }
+        uint64_t spec_off = (uint64_t)((char*)spec_slot - (char*)slab.base_addr());
+        bool is_new = tier.reserve_or_reuse_slot(
+            k, &off, &old_sz, spec_off, (uint32_t)v.size());
+        void* slot = nullptr;
+        if (is_new) {
+            slot = spec_slot;
+            off = spec_off;
+        } else {
+            slab.free(spec_slot);
+            slot = (char*)slab.base_addr() + off;
+        }
+        std::memcpy(slot, v.data(), v.size());
+        if (off_out) *off_out = off;
+        return true;
+    };
+
+    auto read_local_value = [&](const std::string& k, std::string* value) -> bool {
+        nr::ObjectMeta meta{};
+        if (!tier.get_meta_full(k, &meta)) return false;
+        if (meta.tier != nr::Tier::DRAM) {
+            void* slot = slab.alloc();
+            if (!slot) return false;
+            uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());
+            if (!tier.promote(k, slot, dram_off)) {
+                slab.free(slot);
+                return false;
+            }
+            meta.offset = dram_off;
+        } else {
+            tier.on_access(k);
+        }
+        value->assign(meta.size, '\0');
+        std::memcpy(value->data(), (char*)slab.base_addr() + meta.offset, meta.size);
+        ops_get.fetch_add(1);
+        bytes_rx_1s.fetch_add(meta.size);
+        return true;
+    };
+
+    nr::TcpDataChannel tcp_data;
+    nr::TcpDataChannel::Config tcp_cfg;
+    tcp_cfg.self_ip = args.self_ip;
+    tcp_cfg.peer_ip = args.peer_ip;
+    tcp_cfg.port = args.tcp_data_port;
+    bool tcp_data_ready = tcp_data.start(
+        tcp_cfg,
+        [&](const std::string& k, const std::string& v, std::string* err) -> bool {
+            uint64_t off = 0;
+            bool ok = apply_local_put(k, v, &off, err);
+            if (ok) {
+                ops_put.fetch_add(1);
+                bytes_rx_1s.fetch_add(v.size());
+                NR_INFO("TcpDataChannel PUT_REPL key=%s size=%zu off=%lu",
+                        k.c_str(), v.size(), (unsigned long)off);
+            }
+            return ok;
+        },
+        [&](const std::string& k, std::string* value) -> bool {
+            bool ok = read_local_value(k, value);
+            if (ok) {
+                NR_INFO("TcpDataChannel GET_REQ key=%s size=%zu",
+                        k.c_str(), value->size());
+            }
+            return ok;
+        });
+    if (!tcp_data_ready) {
+        NR_WARN("TcpDataChannel unavailable; TCP transport probes will fail");
+    }
+
     // 9) UDS RPC handlers
-    auto do_put = [&](const std::string& body, std::string* resp, bool high_prio) {
+    auto do_put = [&](const std::string& body, std::string* resp, bool high_prio,
+                      const char* forced_transport) {
         // Parse optional tenant prefix ("T<id>:..."); default tenant=0.
         // We keep `body` unchanged and just remember where the "real" body
         // begins, so a 1 MB PUT does NOT pay the cost of copying the whole
@@ -669,35 +887,20 @@ int main(int argc, char** argv) {
         if (!parse_put_body(body, body_off, &k, &v)) {
             *resp = "{\"ok\":false,\"err\":\"bad put body\"}"; return;
         }
-        if (v.size() > slab.slot_size()) {
-            *resp = "{\"ok\":false,\"err\":\"value too large\"}"; return;
-        }
-        // QoS accounting: refill low-prio tokens (actual throttling happens
-        // via QP selection + separate poll core).
+        std::string storage_k = tenant_storage_key(tid, k);
+        // QoS accounting: high-priority PUTs mark a recent pressure window;
+        // low-priority PUTs are throttled only while that window is active.
         qos.on_submit(high_prio);
-        // Fast path: try to speculatively allocate a slab slot for a new
-        // key, then commit under a single TierEngine critical section. If
-        // the key already existed, we just free back the speculation and
-        // reuse the slot reported by reserve_or_reuse_slot.
-        uint64_t off = 0; uint32_t old_sz = 0;
-        void* spec_slot = slab.alloc();
-        if (!spec_slot) {
-            *resp = "{\"ok\":false,\"err\":\"slab oom\"}"; return;
+        uint64_t off = 0;
+        std::string local_err;
+        if (!apply_local_put(storage_k, v, &off, &local_err)) {
+            char buf[160];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"%s\"}", local_err.c_str());
+            resp->assign(buf, n);
+            return;
         }
-        uint64_t spec_off = (uint64_t)((char*)spec_slot - (char*)slab.base_addr());
-        bool is_new = tier.reserve_or_reuse_slot(
-            k, &off, &old_sz, spec_off, (uint32_t)v.size());
-        void* slot = nullptr;
-        if (is_new) {
-            // Took ownership of the speculated slot.
-            slot = spec_slot;
-            off  = spec_off;
-        } else {
-            // Key already had a slot -> return speculation, use old offset.
-            slab.free(spec_slot);
-            slot = (char*)slab.base_addr() + off;
-        }
-        std::memcpy(slot, v.data(), v.size());
+        void* slot = (char*)slab.base_addr() + off;
 
         // Replicate to peer at the SAME offset so primary & backup indices align.
         uint64_t remote_addr = peer.slab_base + off;
@@ -719,9 +922,21 @@ int main(int argc, char** argv) {
         // full replication automatically -- no queueing, no bookkeeping,
         // per the project's "simple consistency" envelope. Durability
         // during the outage relies on the local slab + NVMe demote path.
-        bool repl_ok;
+        bool repl_ok = false;
+        bool used_tcp = false;
+        std::string tcp_err;
+        std::string desired_transport = forced_transport && *forced_transport
+            ? forced_transport : args.transport;
         bool degraded = !hb.peer_alive();
-        if (degraded) {
+        if (desired_transport == "tcp" || (desired_transport == "auto" && degraded)) {
+            used_tcp = true;
+            repl_ok = tcp_data_ready && tcp_data.put_peer(storage_k, v, &tcp_err);
+            degraded = !repl_ok;
+            if (!repl_ok) {
+                degraded_puts.fetch_add(1, std::memory_order_relaxed);
+                degraded_bytes.fetch_add(v.size(), std::memory_order_relaxed);
+            }
+        } else if (degraded) {
             // Local-only: no post, no wait, no wr_id reservation.
             repl_ok = true;
             degraded_puts.fetch_add(1, std::memory_order_relaxed);
@@ -765,8 +980,10 @@ int main(int argc, char** argv) {
             // Push index to peer so backup can serve local GET -- but only
             // when the peer is actually up; in degraded mode the SEND would
             // just fail and spam the log.
-            if (!degraded) {
-                send_kv_index(k, off, (uint32_t)v.size());
+            if (!degraded && !used_tcp) {
+                send_kv_index(storage_k, off, (uint32_t)v.size());
+                bytes_tx_1s.fetch_add(v.size());
+            } else if (used_tcp && repl_ok) {
                 bytes_tx_1s.fetch_add(v.size());
             }
             ops_put.fetch_add(1);
@@ -775,20 +992,40 @@ int main(int argc, char** argv) {
             // physical write path is currently "write local + replicate to
             // peer" regardless, but the router provides the sharding view
             // the demo needs to talk about load balance.
-            auto rd = router.route(k);
-            char buf[512];
+            auto rd = router.route(storage_k);
+            char buf[896];
             int n = std::snprintf(buf, sizeof(buf),
-                "{\"ok\":true,\"key\":\"%s\",\"size\":%zu,"
+                "{\"ok\":true,\"key\":\"%s\",\"tenant_id\":%u,\"size\":%zu,"
                 "\"offset\":%lu,\"repl_ns\":%lu,\"degraded\":%s,"
+                "\"transport\":\"%s\",\"async_repl\":%s,\"tcp_data_ready\":%s,"
+                "\"qos\":{\"priority\":\"%s\",\"qp_idx\":%d,"
+                "\"hi_qp_start\":%d,\"hi_qp_count\":%d,"
+                "\"lo_qp_start\":%d,\"lo_qp_count\":%d},"
                 "\"route\":{\"primary\":\"%s\",\"replica\":\"%s\","
                 "\"local_is_primary\":%s}}",
-                k.c_str(), v.size(), (unsigned long)off, (unsigned long)dt,
+                k.c_str(), tid, v.size(), (unsigned long)off, (unsigned long)dt,
                 degraded ? "true" : "false",
+                used_tcp ? "tcp" : "rdma",
+                args.async_repl ? "true" : "false",
+                tcp_data_ready ? "true" : "false",
+                high_prio ? "hi" : "lo",
+                qp_idx,
+                qcfg.hi_qp_start, qcfg.hi_qp_count,
+                qcfg.lo_qp_start, qcfg.lo_qp_count,
                 rd.primary.c_str(), rd.replica.c_str(),
                 rd.local_is_primary ? "true" : "false");
             resp->assign(buf, n);
         } else {
-            *resp = "{\"ok\":false,\"err\":\"replicate failed\"}";
+            if (used_tcp) {
+                char buf[256];
+                int n = std::snprintf(buf, sizeof(buf),
+                    "{\"ok\":false,\"err\":\"tcp replicate failed: %s\","
+                    "\"transport\":\"tcp\",\"tcp_data_ready\":%s}",
+                    tcp_err.c_str(), tcp_data_ready ? "true" : "false");
+                resp->assign(buf, n);
+            } else {
+                *resp = "{\"ok\":false,\"err\":\"replicate failed\",\"transport\":\"rdma\"}";
+            }
         }
     };
 
@@ -809,20 +1046,36 @@ int main(int argc, char** argv) {
         // std::string), but it only copies the key bytes (usually <64 B)
         // rather than the whole request body.
         std::string k = body.substr(body_off);
+        std::string storage_k = tenant_storage_key(tid, k);
         nr::ObjectMeta meta{};
-        if (!tier.get_meta_full(k, &meta)) {
+        if (!tier.get_meta_full(storage_k, &meta)) {
             *resp = "{\"ok\":false,\"err\":\"not found\"}";
             return;
         }
+        {
+            std::lock_guard<std::mutex> lk(prefetched_mu);
+            auto it = prefetched_keys.find(storage_k);
+            if (it != prefetched_keys.end()) {
+                if (meta.tier == nr::Tier::DRAM) {
+                    prefetched_keys.erase(it);
+                    prefetch_hits.fetch_add(1, std::memory_order_relaxed);
+                } else {
+                    // The object was prefetched earlier but has since moved
+                    // down again; drop the stale marker.
+                    prefetched_keys.erase(it);
+                }
+            }
+        }
         // Feed access history to prefetcher (before any promote).
-        prefetcher.on_access(k);
+        prefetcher.on_access(storage_k);
+        auto prefetch_candidates = prefetcher.predict(storage_k);
         uint32_t sz = meta.size;
         const char* hit_kind = "local";
         if (meta.tier == nr::Tier::DRAM) {
             // DRAM hits are still real user reads.  They must refresh
             // heat_score/read_cnt; otherwise the M6 demo's hot/warm reads are
             // invisible to the tier migrator and every object looks cold.
-            tier.on_access(k);
+            tier.on_access(storage_k);
         } else {
             // Cold hit: object lives on NVMe/HDD, promote it back to DRAM first.
             void* slot = slab.alloc();
@@ -831,7 +1084,7 @@ int main(int argc, char** argv) {
                 return;
             }
             uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());
-            if (!tier.promote(k, slot, dram_off)) {
+            if (!tier.promote(storage_k, slot, dram_off)) {
                 slab.free(slot);
                 *resp = "{\"ok\":false,\"err\":\"promote failed\"}";
                 return;
@@ -857,6 +1110,43 @@ int main(int argc, char** argv) {
             else resp->push_back(c);
         }
         resp->append("\"}");
+
+        // Execute multi-strategy prefetch synchronously after the response has
+        // been assembled. The predictor may return stride or Markov candidates;
+        // for any candidate that currently lives below DRAM, we promote it into
+        // a fresh slab slot so the next real GET can hit local memory.
+        for (const auto& pk : prefetch_candidates) {
+            if (pk.empty() || pk == storage_k) {
+                prefetch_skipped.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            prefetch_issued.fetch_add(1, std::memory_order_relaxed);
+            nr::ObjectMeta pm{};
+            if (!tier.get_meta_full(pk, &pm)) {
+                prefetch_skipped.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            if (pm.tier == nr::Tier::DRAM) {
+                prefetch_already_hot.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            void* pslot = slab.alloc();
+            if (!pslot) {
+                prefetch_skipped.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            uint64_t poff = (uint64_t)((char*)pslot - (char*)slab.base_addr());
+            if (!tier.promote(pk, pslot, poff)) {
+                slab.free(pslot);
+                prefetch_skipped.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
+            {
+                std::lock_guard<std::mutex> lk(prefetched_mu);
+                prefetched_keys.insert(pk);
+            }
+            prefetch_loaded.fetch_add(1, std::memory_order_relaxed);
+        }
     };
 
     // RPC_KV_GET_RAW: like RPC_KV_GET but returns the full payload verbatim
@@ -875,20 +1165,21 @@ int main(int argc, char** argv) {
             return;
         }
         std::string k = body.substr(body_off);
+        std::string storage_k = tenant_storage_key(tid, k);
         nr::ObjectMeta meta{};
-        if (!tier.get_meta_full(k, &meta)) {
+        if (!tier.get_meta_full(storage_k, &meta)) {
             resp->assign(5, '\0');  // status=0, size=0
             return;
         }
-        prefetcher.on_access(k);
+        prefetcher.on_access(storage_k);
         uint32_t sz = meta.size;
         if (meta.tier == nr::Tier::DRAM) {
-            tier.on_access(k);
+            tier.on_access(storage_k);
         } else {
             void* slot = slab.alloc();
             if (!slot) { resp->assign(5, '\0'); return; }
             uint64_t dram_off = (uint64_t)((char*)slot - (char*)slab.base_addr());
-            if (!tier.promote(k, slot, dram_off)) {
+            if (!tier.promote(storage_k, slot, dram_off)) {
                 slab.free(slot); resp->assign(5, '\0'); return;
             }
             meta.offset = dram_off;
@@ -1029,15 +1320,23 @@ int main(int argc, char** argv) {
 
     auto do_prefetch_stats = [&](const std::string& body, std::string* resp) {
         auto st = prefetcher.stats();
-        auto preds = prefetcher.predict(body);
+        auto preds = prefetcher.predict(body, false);
         std::string out;
-        char hdr[200];
+        char hdr[512];
         int n = std::snprintf(hdr, sizeof(hdr),
             "{\"ok\":true,\"total\":%lu,\"hits_stride\":%lu,\"hits_markov\":%lu,"
+            "\"prefetch_issued\":%lu,\"prefetch_loaded\":%lu,"
+            "\"prefetch_hits\":%lu,\"prefetch_already_hot\":%lu,"
+            "\"prefetch_skipped\":%lu,"
             "\"query\":\"%s\",\"predicted\":[",
             (unsigned long)st.total_access,
             (unsigned long)st.hits_stride,
             (unsigned long)st.hits_markov,
+            (unsigned long)prefetch_issued.load(),
+            (unsigned long)prefetch_loaded.load(),
+            (unsigned long)prefetch_hits.load(),
+            (unsigned long)prefetch_already_hot.load(),
+            (unsigned long)prefetch_skipped.load(),
             body.c_str());
         out.assign(hdr, n);
         bool first = true;
@@ -1071,6 +1370,38 @@ int main(int argc, char** argv) {
         resp->assign(buf, n);
     };
 
+    auto do_dedup_stats = [&](std::string* resp) {
+        auto s = tier.dedup_stats();
+        char buf[256];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"unique_objects\":%lu,\"duplicate_objects\":%lu,"
+            "\"saved_bytes\":%lu,\"logical_bytes\":%lu}",
+            (unsigned long)s.unique_objects,
+            (unsigned long)s.duplicate_objects,
+            (unsigned long)s.saved_bytes,
+            (unsigned long)s.logical_bytes);
+        resp->assign(buf, n);
+    };
+
+    auto do_io_stats = [&](std::string* resp) {
+        auto s = io.stats();
+        char buf[512];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"fg_read_ops\":%lu,\"fg_write_ops\":%lu,"
+            "\"fg_read_bytes\":%lu,\"fg_write_bytes\":%lu,"
+            "\"bg_read_ops\":%lu,\"bg_write_ops\":%lu,"
+            "\"bg_read_bytes\":%lu,\"bg_write_bytes\":%lu}",
+            (unsigned long)s.fg_read_ops,
+            (unsigned long)s.fg_write_ops,
+            (unsigned long)s.fg_read_bytes,
+            (unsigned long)s.fg_write_bytes,
+            (unsigned long)s.bg_read_ops,
+            (unsigned long)s.bg_write_ops,
+            (unsigned long)s.bg_read_bytes,
+            (unsigned long)s.bg_write_bytes);
+        resp->assign(buf, n);
+    };
+
     // Admin: wipe the in-memory KV index, free all DRAM slab slots, reset
     // counters (ops/tier/migration/compression). Lets the operator recover
     // from bench-test residue (e.g. 300k bk_* keys occupying the slab) without
@@ -1091,6 +1422,15 @@ int main(int argc, char** argv) {
         mig_n_h_.store(0);
         // Reset prefetcher history/stats too.
         prefetcher.reset();
+        prefetch_issued.store(0);
+        prefetch_loaded.store(0);
+        prefetch_hits.store(0);
+        prefetch_already_hot.store(0);
+        prefetch_skipped.store(0);
+        {
+            std::lock_guard<std::mutex> lk(prefetched_mu);
+            prefetched_keys.clear();
+        }
         char buf[128];
         int n = std::snprintf(buf, sizeof(buf),
             "{\"ok\":true,\"freed_slabs\":%zu}", dram_offs.size());
@@ -1105,6 +1445,7 @@ int main(int argc, char** argv) {
     auto do_sim_run = [&](const std::string& body, std::string* resp) {
         nr::SimEngine::Config c;
         c.entities = 100000;
+        c.entity_size = 1024;
         c.events   = 1000000;
         c.threads  = 4;
         c.step_us  = 10;
@@ -1120,6 +1461,7 @@ int main(int argc, char** argv) {
         };
         long long x;
         if ((x = parse_int("entities")) > 0) c.entities = (uint32_t)x;
+        if ((x = parse_int("entity_size")) > 0) c.entity_size = (uint32_t)x;
         if ((x = parse_int("events"))   > 0) c.events   = (uint64_t)x;
         if ((x = parse_int("threads"))  > 0) c.threads  = (uint32_t)x;
         if ((x = parse_int("step_us"))  > 0) c.step_us  = (uint32_t)x;
@@ -1141,12 +1483,14 @@ int main(int argc, char** argv) {
 
         char buf[640];
         int n = std::snprintf(buf, sizeof(buf),
-            "{\"ok\":true,\"entities\":%u,\"events\":%lu,\"threads\":%u,"
+            "{\"ok\":true,\"entities\":%u,\"entity_size\":%u,\"entity_bytes\":%lu,"
+            "\"events\":%lu,\"threads\":%u,"
             "\"step_us\":%u,\"stress\":%u,\"wall_s\":%.6f,\"sim_s\":%.6f,"
             "\"speedup\":%.4f,\"events_per_sec\":%.0f,"
             "\"capture_every_n\":%u,\"captured_events\":%lu,"
             "\"captured_dropped\":%lu}",
-            r.entities, (unsigned long)r.events, c.threads, c.step_us,
+            r.entities, r.entity_size, (unsigned long)r.entity_bytes,
+            (unsigned long)r.events, c.threads, c.step_us,
             c.stress, r.wall_s, r.sim_s, r.speedup, r.events_per_sec,
             c.capture_every_n,
             (unsigned long)cap_pushed, (unsigned long)cap_dropped);
@@ -1170,23 +1514,396 @@ int main(int argc, char** argv) {
         resp->assign(buf, n);
     };
 
+    auto do_route_put = [&](const std::string& body, std::string* resp) {
+        std::string k, v;
+        if (!parse_put_body(body, &k, &v)) {
+            *resp = "{\"ok\":false,\"err\":\"bad route put body\"}";
+            return;
+        }
+        auto rd = router.route(k);
+        uint64_t t0 = nr::now_ns();
+        if (rd.local_is_primary) {
+            uint64_t off = 0;
+            std::string err;
+            bool ok = apply_local_put(k, v, &off, &err);
+            uint64_t dt = nr::now_ns() - t0;
+            if (ok) {
+                ops_put.fetch_add(1);
+                char buf[512];
+                int n = std::snprintf(buf, sizeof(buf),
+                    "{\"ok\":true,\"key\":\"%s\",\"route_forwarded\":false,"
+                    "\"forward_transport\":\"local\",\"primary\":\"%s\","
+                    "\"replica\":\"%s\",\"local_is_primary\":true,"
+                    "\"size\":%zu,\"offset\":%lu,\"route_ns\":%lu}",
+                    k.c_str(), rd.primary.c_str(), rd.replica.c_str(),
+                    v.size(), (unsigned long)off, (unsigned long)dt);
+                resp->assign(buf, n);
+            } else {
+                char buf[256];
+                int n = std::snprintf(buf, sizeof(buf),
+                    "{\"ok\":false,\"err\":\"%s\",\"route_forwarded\":false,"
+                    "\"forward_transport\":\"local\",\"primary\":\"%s\"}",
+                    err.c_str(), rd.primary.c_str());
+                resp->assign(buf, n);
+            }
+            return;
+        }
+
+        std::string err;
+        bool ok = tcp_data_ready && tcp_data.put_peer(k, v, &err);
+        uint64_t dt = nr::now_ns() - t0;
+        if (ok) {
+            bytes_tx_1s.fetch_add(v.size());
+            char buf[512];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":true,\"key\":\"%s\",\"route_forwarded\":true,"
+                "\"forward_transport\":\"tcp_data_channel\",\"primary\":\"%s\","
+                "\"replica\":\"%s\",\"local_is_primary\":false,"
+                "\"size\":%zu,\"route_ns\":%lu}",
+                k.c_str(), rd.primary.c_str(), rd.replica.c_str(),
+                v.size(), (unsigned long)dt);
+            resp->assign(buf, n);
+        } else {
+            char buf[320];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"route forward failed: %s\","
+                "\"route_forwarded\":true,\"forward_transport\":\"tcp_data_channel\","
+                "\"primary\":\"%s\",\"tcp_data_ready\":%s}",
+                err.c_str(), rd.primary.c_str(),
+                tcp_data_ready ? "true" : "false");
+            resp->assign(buf, n);
+        }
+    };
+
+    auto append_json_preview = [](std::string* out, const std::string& v) {
+        size_t n = std::min<size_t>(64, v.size());
+        for (size_t i = 0; i < n; ++i) {
+            char c = v[i];
+            if (c == '"' || c == '\\') { out->push_back('\\'); out->push_back(c); }
+            else if ((unsigned char)c < 0x20) out->push_back('?');
+            else out->push_back(c);
+        }
+    };
+
+    auto do_tcp_get_peer = [&](const std::string& body, std::string* resp) {
+        std::string value;
+        std::string err;
+        uint64_t t0 = nr::now_ns();
+        bool ok = tcp_data_ready && tcp_data.get_peer(body, &value, &err);
+        uint64_t dt = nr::now_ns() - t0;
+        if (!ok) {
+            std::string out = "{\"ok\":false,\"transport\":\"tcp\",\"err\":\"";
+            append_json_preview(&out, err.empty() ? "tcp get peer failed" : err);
+            out += "\",\"tcp_ns\":" + std::to_string(dt) + "}";
+            *resp = std::move(out);
+            return;
+        }
+        std::string out = "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"";
+        append_json_preview(&out, body);
+        out += "\",\"size\":" + std::to_string(value.size()) + ",\"tcp_ns\":";
+        out += std::to_string(dt);
+        out += ",\"val\":\"";
+        append_json_preview(&out, value);
+        out += "\"}";
+        *resp = std::move(out);
+    };
+
+    auto alloc_adaptive_remote = [&](uint32_t sz, uint64_t* remote_off) -> bool {
+        if (sz == 0 || sz > slab.slot_size() || peer.slab_len == 0) {
+            return false;
+        }
+        std::lock_guard<std::mutex> lk(adaptive_alloc_mu);
+        uint64_t slot = slab.slot_size();
+        uint64_t off = ((adaptive_next_remote_off + slot - 1) / slot) * slot;
+        if (off + slot > peer.slab_len) {
+            return false;
+        }
+        adaptive_next_remote_off = off + slot;
+        *remote_off = off;
+        return true;
+    };
+
+    auto rdma_read_peer_slab = [&](uint64_t remote_off, void* dst, uint32_t sz,
+                                   uint64_t* read_ns) -> bool {
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+        uint64_t t0 = nr::now_ns();
+        int rc = core.post_read(QP_READ, dst, sz, slab.lkey(),
+                                peer.slab_base + remote_off,
+                                peer.slab_rkey, wr_id);
+        bool ok = false;
+        if (rc == 0) {
+            ok = fut.get();
+        } else {
+            repl_waiter.cancel_wr_id(wr_id);
+        }
+        *read_ns = nr::now_ns() - t0;
+        return ok;
+    };
+
+    auto do_mempool_adapt_put = [&](const std::string& body, std::string* resp) {
+        std::string k, v;
+        if (!parse_put_body(body, &k, &v)) {
+            *resp = "{\"ok\":false,\"err\":\"bad adaptive put body\"}";
+            return;
+        }
+        if (!hb.peer_alive()) {
+            *resp = "{\"ok\":false,\"err\":\"peer heartbeat is not alive\","
+                    "\"placement\":\"local\",\"degraded\":true}";
+            return;
+        }
+        if (v.empty() || v.size() > slab.slot_size()) {
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"value size must be in 1..slab_slot_size\","
+                "\"size\":%zu,\"slab_slot_size\":%zu}",
+                v.size(), slab.slot_size());
+            resp->assign(buf, n);
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lk(adaptive_mu);
+            if (adaptive_index.find(k) != adaptive_index.end()) {
+                *resp = "{\"ok\":false,\"err\":\"adaptive key already exists\"}";
+                return;
+            }
+        }
+        uint64_t remote_off = 0;
+        if (!alloc_adaptive_remote((uint32_t)v.size(), &remote_off)) {
+            *resp = "{\"ok\":false,\"err\":\"adaptive remote slab allocation failed\"}";
+            return;
+        }
+        void* src = slab.alloc();
+        if (!src) {
+            *resp = "{\"ok\":false,\"err\":\"slab oom for adaptive source\"}";
+            return;
+        }
+        std::memcpy(src, v.data(), v.size());
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+        uint64_t t0 = nr::now_ns();
+        int rc = core.post_write(QP_REPL, src, v.size(), slab.lkey(),
+                                 peer.slab_base + remote_off,
+                                 peer.slab_rkey, 0, wr_id, true);
+        bool ok = false;
+        if (rc == 0) {
+            ok = fut.get();
+        } else {
+            repl_waiter.cancel_wr_id(wr_id);
+        }
+        uint64_t dt = nr::now_ns() - t0;
+        slab.free(src);
+        if (!ok) {
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"adaptive RDMA WRITE failed\","
+                "\"post_rc\":%d,\"transport\":\"rdma\",\"degraded\":true}",
+                rc);
+            resp->assign(buf, n);
+            return;
+        }
+        send_kv_index(k, remote_off, (uint32_t)v.size());
+        {
+            std::lock_guard<std::mutex> lk(adaptive_mu);
+            adaptive_index[k] = AdaptiveObject{
+                remote_off,
+                0,
+                (uint32_t)v.size(),
+                0,
+                false,
+                dt,
+                0,
+            };
+        }
+        adaptive_remote_puts.fetch_add(1, std::memory_order_relaxed);
+        ops_put.fetch_add(1, std::memory_order_relaxed);
+        bytes_tx_1s.fetch_add(v.size(), std::memory_order_relaxed);
+        last_repl_ns.store(dt);
+        lat_push(dt);
+        busy_ns_1s.fetch_add(dt);
+        char buf[640];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"key\":\"%s\",\"policy\":\"cold_remote_first\","
+            "\"placement\":\"remote\",\"placement_reason\":\"cold_object\","
+            "\"transport\":\"rdma\",\"degraded\":false,\"local_cached\":false,"
+            "\"size\":%zu,\"remote_offset\":%lu,\"remote_addr\":%lu,"
+            "\"peer_slab_base\":%lu,\"peer_slab_rkey\":%u,"
+            "\"write_ns\":%lu,\"hot_threshold\":%u}",
+            k.c_str(), v.size(), (unsigned long)remote_off,
+            (unsigned long)(peer.slab_base + remote_off),
+            (unsigned long)peer.slab_base, peer.slab_rkey,
+            (unsigned long)dt, kAdaptiveHotThreshold);
+        resp->assign(buf, n);
+    };
+
+    auto do_mempool_adapt_get = [&](const std::string& body, std::string* resp) {
+        const std::string& k = body;
+        AdaptiveObject obj{};
+        bool migrate = false;
+        {
+            std::lock_guard<std::mutex> lk(adaptive_mu);
+            auto it = adaptive_index.find(k);
+            if (it == adaptive_index.end()) {
+                *resp = "{\"ok\":false,\"err\":\"adaptive key not found\"}";
+                return;
+            }
+            it->second.access_count++;
+            obj = it->second;
+            migrate = !obj.localized && obj.access_count >= kAdaptiveHotThreshold;
+        }
+        if (obj.localized) {
+            std::string val(obj.size, '\0');
+            std::memcpy(val.data(), (char*)slab.base_addr() + obj.local_off, obj.size);
+            tier.on_access(k);
+            adaptive_local_hits.fetch_add(1, std::memory_order_relaxed);
+            ops_get.fetch_add(1, std::memory_order_relaxed);
+            bytes_rx_1s.fetch_add(obj.size, std::memory_order_relaxed);
+            std::string out = "{\"ok\":true,\"key\":\"";
+            append_json_preview(&out, k);
+            out += "\",\"hit\":\"local_hot\",\"placement_before\":\"local\","
+                   "\"placement_after\":\"local\",\"migrated\":false,"
+                   "\"local_offset\":";
+            out += std::to_string(obj.local_off);
+            out += ",\"remote_offset\":";
+            out += std::to_string(obj.remote_off);
+            out += ",\"size\":";
+            out += std::to_string(obj.size);
+            out += ",\"access_count\":";
+            out += std::to_string(obj.access_count);
+            out += ",\"hot_threshold\":";
+            out += std::to_string(kAdaptiveHotThreshold);
+            out += ",\"val\":\"";
+            append_json_preview(&out, val);
+            out += "\"}";
+            *resp = std::move(out);
+            return;
+        }
+
+        void* dst = slab.alloc();
+        if (!dst) {
+            *resp = "{\"ok\":false,\"err\":\"slab oom for adaptive read\"}";
+            return;
+        }
+        uint64_t read_ns = 0;
+        bool ok = rdma_read_peer_slab(obj.remote_off, dst, obj.size, &read_ns);
+        if (!ok) {
+            slab.free(dst);
+            *resp = "{\"ok\":false,\"err\":\"adaptive RDMA READ failed\","
+                    "\"transport\":\"rdma\",\"degraded\":true}";
+            return;
+        }
+        std::string val(obj.size, '\0');
+        std::memcpy(val.data(), dst, obj.size);
+        adaptive_remote_reads.fetch_add(1, std::memory_order_relaxed);
+        ops_get.fetch_add(1, std::memory_order_relaxed);
+        bytes_rx_1s.fetch_add(obj.size, std::memory_order_relaxed);
+
+        if (!migrate) {
+            slab.free(dst);
+            std::string out = "{\"ok\":true,\"key\":\"";
+            append_json_preview(&out, k);
+            out += "\",\"hit\":\"remote_rdma_read\","
+                   "\"placement_before\":\"remote\",\"placement_after\":\"remote\","
+                   "\"migrated\":false,\"transport\":\"rdma\","
+                   "\"remote_offset\":";
+            out += std::to_string(obj.remote_off);
+            out += ",\"size\":";
+            out += std::to_string(obj.size);
+            out += ",\"access_count\":";
+            out += std::to_string(obj.access_count);
+            out += ",\"hot_threshold\":";
+            out += std::to_string(kAdaptiveHotThreshold);
+            out += ",\"rdma_read_ns\":";
+            out += std::to_string(read_ns);
+            out += ",\"val\":\"";
+            append_json_preview(&out, val);
+            out += "\"}";
+            *resp = std::move(out);
+            return;
+        }
+
+        uint64_t local_off = (uint64_t)((char*)dst - (char*)slab.base_addr());
+        tier.put_meta(k, local_off, obj.size);
+        {
+            std::lock_guard<std::mutex> lk(adaptive_mu);
+            auto it = adaptive_index.find(k);
+            if (it != adaptive_index.end()) {
+                it->second.localized = true;
+                it->second.local_off = local_off;
+                it->second.migrate_ns = read_ns;
+                obj = it->second;
+            }
+        }
+        adaptive_migrations.fetch_add(1, std::memory_order_relaxed);
+        std::string out = "{\"ok\":true,\"key\":\"";
+        append_json_preview(&out, k);
+        out += "\",\"hit\":\"remote_to_local_migrate\","
+               "\"placement_before\":\"remote\",\"placement_after\":\"local\","
+               "\"migrated\":true,\"transport\":\"rdma\","
+               "\"remote_offset\":";
+        out += std::to_string(obj.remote_off);
+        out += ",\"local_offset\":";
+        out += std::to_string(local_off);
+        out += ",\"size\":";
+        out += std::to_string(obj.size);
+        out += ",\"access_count\":";
+        out += std::to_string(obj.access_count);
+        out += ",\"hot_threshold\":";
+        out += std::to_string(kAdaptiveHotThreshold);
+        out += ",\"rdma_read_ns\":";
+        out += std::to_string(read_ns);
+        out += ",\"val\":\"";
+        append_json_preview(&out, val);
+        out += "\"}";
+        *resp = std::move(out);
+    };
+
+    auto do_mempool_adapt_stats = [&](std::string* resp) {
+        uint64_t remote_objects = 0;
+        uint64_t local_objects = 0;
+        {
+            std::lock_guard<std::mutex> lk(adaptive_mu);
+            for (const auto& kv : adaptive_index) {
+                if (kv.second.localized) ++local_objects;
+                else ++remote_objects;
+            }
+        }
+        char buf[384];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"hot_threshold\":%u,\"remote_objects\":%lu,"
+            "\"local_objects\":%lu,\"remote_puts\":%lu,"
+            "\"remote_reads\":%lu,\"local_hits\":%lu,\"migrations\":%lu}",
+            kAdaptiveHotThreshold,
+            (unsigned long)remote_objects,
+            (unsigned long)local_objects,
+            (unsigned long)adaptive_remote_puts.load(),
+            (unsigned long)adaptive_remote_reads.load(),
+            (unsigned long)adaptive_local_hits.load(),
+            (unsigned long)adaptive_migrations.load());
+        resp->assign(buf, n);
+    };
+
     // ---------- SimCapture RPCs ----------
     // RPC_SIM_CAPTURE_STATS  body: (empty)
-    //   -> returns counters (pushed / flushed / dropped).
+    //   -> returns counters, event-type counts, WAL size and WAL path.
     // RPC_SIM_CAPTURE_RESET  body: (empty)
     //   -> truncates the WAL and clears the counters; useful between
     //      demo takes so the numbers aren't cumulative from previous
     //      runs.
     auto do_sim_cap_stats = [&](const std::string& /*body*/, std::string* resp) {
         auto s = nr::SimCapture::instance().stats();
-        char buf[384];
+        char buf[640];
         int n = std::snprintf(buf, sizeof(buf),
             "{\"ok\":true,\"pushed_events\":%lu,\"pushed_bytes\":%lu,"
             "\"flushed_events\":%lu,\"flushed_bytes\":%lu,"
-            "\"dropped_events\":%lu}",
+            "\"dropped_events\":%lu,\"object_attr_events\":%lu,"
+            "\"interaction_events\":%lu,\"wal_bytes\":%lu,"
+            "\"wal_path\":\"%s\"}",
             (unsigned long)s.pushed_events,  (unsigned long)s.pushed_bytes,
             (unsigned long)s.flushed_events, (unsigned long)s.flushed_bytes,
-            (unsigned long)s.dropped_events);
+            (unsigned long)s.dropped_events,
+            (unsigned long)s.object_attr_events,
+            (unsigned long)s.interaction_events,
+            (unsigned long)s.wal_bytes,
+            s.wal_path.c_str());
         resp->assign(buf, n);
     };
 
@@ -1259,27 +1976,434 @@ int main(int argc, char** argv) {
         *resp = std::move(out);
     };
 
+    auto do_mempool_pools = [&](const std::string& /*body*/, std::string* resp) {
+        nr::PoolInfo local{};
+        nr::PoolInfo remote{};
+        bool local_ok = nr::PoolRegistry::instance().find_local("default/slab1k", &local);
+        bool remote_ok = nr::PoolRegistry::instance().find_remote(
+            args.peer_ip, "default/slab1k", &remote);
+        char buf[1024];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":%s,\"self\":\"%s\",\"peer_id\":\"%s\","
+            "\"local\":{\"ok\":%s,\"pool_id\":%u,\"name\":\"%s\","
+            "\"base\":%lu,\"len\":%lu,\"lkey\":%u,\"rkey\":%u,"
+            "\"tenant_id\":%u,\"numa\":%d},"
+            "\"remote\":{\"ok\":%s,\"name\":\"%s\",\"base\":%lu,"
+            "\"len\":%lu,\"rkey\":%u,\"tenant_id\":%u,\"numa\":%d}}",
+            (local_ok && remote_ok) ? "true" : "false",
+            args.role.c_str(), args.peer_ip.c_str(),
+            local_ok ? "true" : "false",
+            local.pool_id,
+            local.name.c_str(),
+            (unsigned long)local.base_addr,
+            (unsigned long)local.length,
+            local.lkey,
+            local.rkey,
+            local.tenant_id,
+            local.numa,
+            remote_ok ? "true" : "false",
+            remote.name.c_str(),
+            (unsigned long)remote.base_addr,
+            (unsigned long)remote.length,
+            remote.rkey,
+            remote.tenant_id,
+            remote.numa);
+        resp->assign(buf, n);
+    };
+
+    int backup_fd = -1;
+    std::mutex backup_mu;
+    std::atomic<uint64_t> backup_next_off{0};
+    auto do_backup_write = [&](const std::string& body, std::string* resp) {
+        if (body.empty()) {
+            *resp = "{\"ok\":false,\"err\":\"empty backup body\"}";
+            return;
+        }
+        if (body.size() > (1U << 20)) {
+            *resp = "{\"ok\":false,\"err\":\"backup body too large\"}";
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lk(backup_mu);
+            if (backup_fd < 0) {
+                std::filesystem::path p(args.backup_path);
+                std::error_code ec;
+                if (std::filesystem::exists(p, ec) && std::filesystem::is_directory(p, ec)) {
+                    p /= "pf7_backup.dat";
+                }
+                if (p.has_parent_path()) {
+                    std::filesystem::create_directories(p.parent_path(), ec);
+                }
+                backup_fd = ::open(p.c_str(), O_RDWR | O_CREAT, 0644);
+                if (backup_fd < 0) {
+                    char buf[192];
+                    int n = std::snprintf(buf, sizeof(buf),
+                        "{\"ok\":false,\"err\":\"open backup path failed errno=%d\"}",
+                        errno);
+                    resp->assign(buf, n);
+                    return;
+                }
+                if (args.backup_ring_bytes > 0) {
+                    if (::ftruncate(backup_fd, (off_t)args.backup_ring_bytes) != 0) {
+                        NR_WARN("backup writer: ftruncate(%s, %lu) failed errno=%d",
+                                p.c_str(), (unsigned long)args.backup_ring_bytes, errno);
+                    }
+                }
+                NR_INFO("backup writer ready: path=%s fd=%d ring_bytes=%lu fsync=%s",
+                        p.c_str(), backup_fd,
+                        (unsigned long)args.backup_ring_bytes,
+                        args.backup_fsync ? "true" : "false");
+            }
+        }
+
+        uint64_t ring = args.backup_ring_bytes ? args.backup_ring_bytes : (128ULL << 20);
+        if (ring < body.size()) ring = body.size();
+        uint64_t raw_off = backup_next_off.fetch_add(body.size(), std::memory_order_relaxed);
+        uint64_t off = raw_off % ring;
+        if (off + body.size() > ring) off = 0;
+
+        uint64_t t0 = nr::now_ns();
+        ssize_t wr = ::pwrite(backup_fd, body.data(), body.size(), (off_t)off);
+        int saved_errno = errno;
+        int sync_rc = 0;
+        if (wr == (ssize_t)body.size() && args.backup_fsync) {
+            sync_rc = ::fdatasync(backup_fd);
+            if (sync_rc != 0) saved_errno = errno;
+        }
+        uint64_t dt = nr::now_ns() - t0;
+
+        if (wr != (ssize_t)body.size() || sync_rc != 0) {
+            char buf[256];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"backup write failed\",\"errno\":%d,"
+                "\"written\":%ld,\"write_ns\":%lu}",
+                saved_errno, (long)wr, (unsigned long)dt);
+            resp->assign(buf, n);
+            return;
+        }
+
+        char buf[256];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"bytes\":%zu,\"offset\":%lu,\"write_ns\":%lu,"
+            "\"fsync\":%s}",
+            body.size(), (unsigned long)off, (unsigned long)dt,
+            args.backup_fsync ? "true" : "false");
+        resp->assign(buf, n);
+    };
+
+    struct GdrReq {
+        uint64_t offset = 0;
+        size_t bytes = 4096;
+        uint32_t seed = 0x5a;
+    };
+    auto parse_gdr_req = [](const std::string& body) {
+        GdrReq req;
+        size_t pos = 0;
+        while (pos < body.size()) {
+            size_t amp = body.find('&', pos);
+            std::string item = body.substr(
+                pos, amp == std::string::npos ? std::string::npos : amp - pos);
+            size_t eq = item.find('=');
+            if (eq != std::string::npos) {
+                std::string key = item.substr(0, eq);
+                std::string val = item.substr(eq + 1);
+                try {
+                    if (key == "offset") req.offset = std::stoull(val, nullptr, 0);
+                    else if (key == "bytes" || key == "len") req.bytes = std::stoull(val, nullptr, 0);
+                    else if (key == "seed") req.seed = (uint32_t)std::stoul(val, nullptr, 0);
+                } catch (...) {
+                    // Keep defaults on malformed fields; range checks below
+                    // still reject unsafe requests.
+                }
+            }
+            if (amp == std::string::npos) break;
+            pos = amp + 1;
+        }
+        return req;
+    };
+
+    auto do_gdr_status = [&](std::string* resp) {
+        const auto& gi = gdr.info();
+        std::string out = "{\"ok\":true";
+        out += ",\"gdr_requested\":";
+        out += args.gdr_enable ? "true" : "false";
+        out += ",\"gdr_compiled\":";
+        out += nr::gpu_direct_compiled() ? "true" : "false";
+        out += ",\"peer_memory_loaded\":";
+        out += nr::gpu_peer_memory_loaded() ? "true" : "false";
+        out += ",\"local_gpu_enabled\":";
+        out += gi.enabled ? "true" : "false";
+        out += ",\"local_gpu_device_id\":";
+        out += std::to_string(gi.device_id);
+        out += ",\"local_gpu_name\":\"";
+        append_json_escaped(&out, gi.device_name);
+        out += "\",\"local_gpu_base\":";
+        out += std::to_string(gi.base_addr);
+        out += ",\"local_gpu_len\":";
+        out += std::to_string(gi.len);
+        out += ",\"local_gpu_lkey\":";
+        out += std::to_string(gi.lkey);
+        out += ",\"local_gpu_rkey\":";
+        out += std::to_string(gi.rkey);
+        out += ",\"cuda_driver_version\":";
+        out += std::to_string(gi.cuda_driver_version);
+        out += ",\"cuda_runtime_version\":";
+        out += std::to_string(gi.cuda_runtime_version);
+        out += ",\"local_gpu_error\":\"";
+        append_json_escaped(&out, gi.error);
+        out += "\",\"peer_gpu_enabled\":";
+        out += peer.gpu_enabled ? "true" : "false";
+        out += ",\"peer_gpu_base\":";
+        out += std::to_string(peer.gpu_base);
+        out += ",\"peer_gpu_len\":";
+        out += std::to_string(peer.gpu_len);
+        out += ",\"peer_gpu_rkey\":";
+        out += std::to_string(peer.gpu_rkey);
+        out += "}";
+        *resp = std::move(out);
+    };
+
+    auto do_gdr_write = [&](const std::string& body, std::string* resp) {
+        GdrReq req = parse_gdr_req(body);
+        if (!hb.peer_alive()) {
+            *resp = "{\"ok\":false,\"err\":\"peer heartbeat is not alive\",\"degraded\":true}";
+            return;
+        }
+        if (!peer.gpu_enabled || peer.gpu_base == 0 || peer.gpu_rkey == 0 || peer.gpu_len == 0) {
+            *resp = "{\"ok\":false,\"err\":\"peer GPU MR is not available\",\"degraded\":true}";
+            return;
+        }
+        if (req.bytes == 0 || req.bytes > slab.slot_size()) {
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"bytes must be in 1..slab_slot_size\","
+                "\"requested\":%zu,\"slab_slot_size\":%zu}",
+                req.bytes, slab.slot_size());
+            resp->assign(buf, n);
+            return;
+        }
+        if (req.offset > peer.gpu_len || req.bytes > peer.gpu_len - req.offset) {
+            *resp = "{\"ok\":false,\"err\":\"write range exceeds peer GPU MR\"}";
+            return;
+        }
+        void* slot = slab.alloc();
+        if (!slot) {
+            *resp = "{\"ok\":false,\"err\":\"slab oom\"}";
+            return;
+        }
+        auto* p = static_cast<uint8_t*>(slot);
+        for (size_t i = 0; i < req.bytes; ++i) {
+            p[i] = nr::gdr_pattern_byte(req.offset + i, req.seed);
+        }
+
+        int qp_idx = QP_READ;
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+        uint64_t t0 = nr::now_ns();
+        int rc = core.post_write(qp_idx, slot, req.bytes, slab.lkey(),
+                                 peer.gpu_base + req.offset, peer.gpu_rkey,
+                                 0, wr_id, true);
+        bool ok = false;
+        if (rc == 0) {
+            ok = fut.get();
+        } else {
+            repl_waiter.cancel_wr_id(wr_id);
+        }
+        uint64_t dt = nr::now_ns() - t0;
+        slab.free(slot);
+        if (!ok) {
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"RDMA WRITE to peer GPU MR failed\","
+                "\"post_rc\":%d,\"transport\":\"gpudirect_rdma\",\"degraded\":true}",
+                rc);
+            resp->assign(buf, n);
+            return;
+        }
+        char buf[512];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":true,\"transport\":\"gpudirect_rdma\",\"degraded\":false,"
+            "\"bytes\":%zu,\"offset\":%lu,\"seed\":%u,\"qp_idx\":%d,"
+            "\"write_ns\":%lu,\"peer_gpu_base\":%lu,\"peer_gpu_rkey\":%u,"
+            "\"peer_gpu_len\":%lu}",
+            req.bytes, (unsigned long)req.offset, req.seed, qp_idx,
+            (unsigned long)dt, (unsigned long)peer.gpu_base, peer.gpu_rkey,
+            (unsigned long)peer.gpu_len);
+        resp->assign(buf, n);
+    };
+
+    auto do_gdr_readback = [&](const std::string& body, std::string* resp) {
+        GdrReq req = parse_gdr_req(body);
+        if (!hb.peer_alive()) {
+            *resp = "{\"ok\":false,\"err\":\"peer heartbeat is not alive\",\"degraded\":true}";
+            return;
+        }
+        if (!peer.gpu_enabled || peer.gpu_base == 0 || peer.gpu_rkey == 0 || peer.gpu_len == 0) {
+            *resp = "{\"ok\":false,\"err\":\"peer GPU MR is not available\",\"degraded\":true}";
+            return;
+        }
+        if (req.bytes == 0 || req.bytes > slab.slot_size()) {
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"bytes must be in 1..slab_slot_size\","
+                "\"requested\":%zu,\"slab_slot_size\":%zu}",
+                req.bytes, slab.slot_size());
+            resp->assign(buf, n);
+            return;
+        }
+        if (req.offset > peer.gpu_len || req.bytes > peer.gpu_len - req.offset) {
+            *resp = "{\"ok\":false,\"err\":\"read range exceeds peer GPU MR\"}";
+            return;
+        }
+        void* slot = slab.alloc();
+        if (!slot) {
+            *resp = "{\"ok\":false,\"err\":\"slab oom\"}";
+            return;
+        }
+        std::memset(slot, 0, req.bytes);
+        int qp_idx = QP_READ;
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+        uint64_t t0 = nr::now_ns();
+        int rc = core.post_read(qp_idx, slot, req.bytes, slab.lkey(),
+                                peer.gpu_base + req.offset, peer.gpu_rkey,
+                                wr_id);
+        bool rdma_ok = false;
+        if (rc == 0) {
+            rdma_ok = fut.get();
+        } else {
+            repl_waiter.cancel_wr_id(wr_id);
+        }
+        uint64_t dt = nr::now_ns() - t0;
+        if (!rdma_ok) {
+            slab.free(slot);
+            char buf[192];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"RDMA READ from peer GPU MR failed\","
+                "\"post_rc\":%d,\"transport\":\"gpudirect_rdma\",\"degraded\":true}",
+                rc);
+            resp->assign(buf, n);
+            return;
+        }
+        auto* p = static_cast<uint8_t*>(slot);
+        uint64_t checksum = 0;
+        uint64_t mismatches = 0;
+        uint64_t first_bad = UINT64_MAX;
+        uint32_t expected_first = 0;
+        uint32_t actual_first = 0;
+        for (size_t i = 0; i < req.bytes; ++i) {
+            uint8_t actual = p[i];
+            uint8_t expected = nr::gdr_pattern_byte(req.offset + i, req.seed);
+            checksum += actual;
+            if (actual != expected) {
+                if (first_bad == UINT64_MAX) {
+                    first_bad = i;
+                    expected_first = expected;
+                    actual_first = actual;
+                }
+                ++mismatches;
+            }
+        }
+        slab.free(slot);
+        bool ok = mismatches == 0;
+        char buf[640];
+        int n = std::snprintf(buf, sizeof(buf),
+            "{\"ok\":%s,\"transport\":\"gpudirect_rdma\",\"degraded\":false,"
+            "\"bytes\":%zu,\"offset\":%lu,\"seed\":%u,\"qp_idx\":%d,"
+            "\"read_ns\":%lu,\"checksum\":%lu,\"mismatches\":%lu,"
+            "\"first_bad\":%lu,\"expected_first\":%u,\"actual_first\":%u}",
+            ok ? "true" : "false", req.bytes, (unsigned long)req.offset,
+            req.seed, qp_idx, (unsigned long)dt, (unsigned long)checksum,
+            (unsigned long)mismatches, (unsigned long)first_bad,
+            expected_first, actual_first);
+        resp->assign(buf, n);
+    };
+
+    auto do_gdr_validate = [&](const std::string& body, std::string* resp) {
+        GdrReq req = parse_gdr_req(body);
+        auto r = gdr.validate_pattern(req.offset, req.bytes, req.seed);
+        std::string out = "{\"ok\":";
+        out += r.ok ? "true" : "false";
+        out += ",\"gpu_side_validate\":true,\"bytes\":";
+        out += std::to_string(r.bytes);
+        out += ",\"offset\":";
+        out += std::to_string(r.offset);
+        out += ",\"seed\":";
+        out += std::to_string(r.seed);
+        out += ",\"checksum\":";
+        out += std::to_string(r.checksum);
+        out += ",\"mismatches\":";
+        out += std::to_string(r.mismatches);
+        out += ",\"first_bad\":";
+        out += std::to_string(r.first_bad);
+        out += ",\"expected_first\":";
+        out += std::to_string(r.expected_first);
+        out += ",\"actual_first\":";
+        out += std::to_string(r.actual_first);
+        out += ",\"validate_ns\":";
+        out += std::to_string(r.validate_ns);
+        out += ",\"local_gpu_enabled\":";
+        out += gdr.info().enabled ? "true" : "false";
+        out += ",\"local_gpu_rkey\":";
+        out += std::to_string(gdr.info().rkey);
+        out += ",\"err\":\"";
+        append_json_escaped(&out, r.error);
+        out += "\"}";
+        *resp = std::move(out);
+    };
+
     nr::UdsServer uds;
     uds.set_handler([&](const std::string& kind, const std::string& body,
                         std::string* resp) {
         if      (kind == "RPC_CLUSTER_STATUS") {
-            char buf[384];
+            const auto& gi = gdr.info();
+            char buf[1280];
             int n = std::snprintf(buf, sizeof(buf),
                 "{\"ok\":true,\"self\":\"%s\",\"peer_alive\":%s,"
-                "\"peer_slab_base\":%lu,\"peer_slab_rkey\":%u,\"peer_num_qp\":%u,"
-                "\"degraded_puts\":%lu,\"degraded_bytes\":%lu}",
+                "\"local_slab_base\":%lu,\"local_slab_len\":%lu,"
+                "\"local_slab_lkey\":%u,\"local_slab_rkey\":%u,"
+                "\"peer_slab_base\":%lu,\"peer_slab_len\":%lu,"
+                "\"peer_slab_rkey\":%u,\"peer_num_qp\":%u,"
+                "\"local_gpu_enabled\":%s,\"local_gpu_len\":%lu,"
+                "\"local_gpu_lkey\":%u,\"local_gpu_rkey\":%u,"
+                "\"peer_gpu_enabled\":%s,\"peer_gpu_base\":%lu,"
+                "\"peer_gpu_len\":%lu,\"peer_gpu_rkey\":%u,"
+                "\"degraded_puts\":%lu,\"degraded_bytes\":%lu,"
+                "\"transport\":\"%s\",\"async_repl\":%s,\"tcp_data_ready\":%s,"
+                "\"tcp_data_port\":%u,\"tcp_puts_received\":%lu,"
+                "\"tcp_gets_received\":%lu}",
                 args.role.c_str(),
                 hb.peer_alive() ? "true" : "false",
+                (unsigned long)slab.base_addr(),
+                (unsigned long)(slab.capacity() * slab.slot_size()),
+                slab.lkey(),
+                slab.rkey(),
                 (unsigned long)peer.slab_base,
+                (unsigned long)peer.slab_len,
                 peer.slab_rkey,
                 (unsigned)peer.qpns.size(),
+                gi.enabled ? "true" : "false",
+                (unsigned long)gi.len,
+                gi.lkey,
+                gi.rkey,
+                peer.gpu_enabled ? "true" : "false",
+                (unsigned long)peer.gpu_base,
+                (unsigned long)peer.gpu_len,
+                peer.gpu_rkey,
                 (unsigned long)degraded_puts.load(),
-                (unsigned long)degraded_bytes.load());
+                (unsigned long)degraded_bytes.load(),
+                args.transport.c_str(),
+                args.async_repl ? "true" : "false",
+                tcp_data_ready ? "true" : "false",
+                (unsigned)args.tcp_data_port,
+                (unsigned long)tcp_data.puts_received(),
+                (unsigned long)tcp_data.gets_received());
             resp->assign(buf, n);
         }
-        else if (kind == "RPC_KV_PUT")     do_put(body, resp, /*high_prio*/true);
-        else if (kind == "RPC_KV_PUT_HI")  do_put(body, resp, /*high_prio*/true);
-        else if (kind == "RPC_KV_PUT_LO")  do_put(body, resp, /*high_prio*/false);
+        else if (kind == "RPC_KV_PUT")     do_put(body, resp, /*high_prio*/true, "");
+        else if (kind == "RPC_KV_PUT_HI")  do_put(body, resp, /*high_prio*/true, "");
+        else if (kind == "RPC_KV_PUT_LO")  do_put(body, resp, /*high_prio*/false, "");
+        else if (kind == "RPC_KV_PUT_TCP") do_put(body, resp, /*high_prio*/true, "tcp");
+        else if (kind == "RPC_KV_PUT_RDMA") do_put(body, resp, /*high_prio*/true, "rdma");
         else if (kind == "RPC_KV_PUT_BATCH" || kind == "RPC_KV_PUT_BATCH_HI") {
             // Batch PUT: body = [u32 count]([u16 klen][key][u32 vlen][val])*
             // Three-phase batch: 1) parse all, 2) batch slab+tier, 3) RDMA.
@@ -1324,7 +2448,16 @@ int main(int argc, char** argv) {
                 // Phase 3: resolve slots, memcpy, collect reused slots for batch free
                 bool peer_alive = hb.peer_alive();
                 uint32_t ok_n = 0;
-                struct RdmaItem { void* slot; uint64_t slot_off; uint32_t vlen; };
+                uint32_t degraded_n = 0;
+                uint32_t replicated_n = 0;
+                uint32_t repl_failed_n = 0;
+                uint64_t repl_total_ns = 0;
+                struct RdmaItem {
+                    std::string key;
+                    void* slot;
+                    uint64_t slot_off;
+                    uint32_t vlen;
+                };
                 std::vector<RdmaItem> rdma_items;
                 if (peer_alive) rdma_items.reserve(n_alloc);
                 std::vector<void*> free_slots;
@@ -1344,8 +2477,10 @@ int main(int argc, char** argv) {
                     std::memcpy(slot, parsed[i].vdata, parsed[i].vlen);
                     if (!peer_alive) {
                         degraded_puts.fetch_add(1, std::memory_order_relaxed);
+                        degraded_bytes.fetch_add(parsed[i].vlen, std::memory_order_relaxed);
+                        ++degraded_n;
                     } else {
-                        rdma_items.push_back({slot, slot_off, parsed[i].vlen});
+                        rdma_items.push_back({std::string(parsed[i].key), slot, slot_off, parsed[i].vlen});
                     }
                     ++ok_n;
                 }
@@ -1359,49 +2494,103 @@ int main(int argc, char** argv) {
                     repl_waiter.reserve_wr_ids_async(wr_ids.data(), rdma_items.size());
                     // Use a fixed QP for the entire batch to reduce round-robin overhead
                     int qp_idx = qos.pick_qp(true);
+                    uint64_t t0 = nr::now_ns();
                     for (size_t i = 0; i < rdma_items.size(); ++i) {
                         auto& ri = rdma_items[i];
                         uint64_t remote_addr = peer.slab_base + ri.slot_off;
                         int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
                                                  slab.lkey(), remote_addr,
                                                  peer.slab_rkey, 0, wr_ids[i], true);
-                        if (rc != 0) repl_waiter.cancel_wr_id(wr_ids[i]);
+                        if (rc != 0) {
+                            repl_waiter.cancel_wr_id(wr_ids[i]);
+                            ++repl_failed_n;
+                        } else {
+                            ++replicated_n;
+                            send_kv_index(ri.key, ri.slot_off, ri.vlen);
+                            bytes_tx_1s.fetch_add(ri.vlen);
+                        }
                     }
+                    repl_total_ns = nr::now_ns() - t0;
                 } else if (!rdma_items.empty()) {
                     // Sync mode: per-item replication
                     for (auto& ri : rdma_items) {
                         int qp_idx = qos.pick_qp(true);
                         auto [wr_id, fut] = repl_waiter.reserve_wr_id();
                         uint64_t remote_addr = peer.slab_base + ri.slot_off;
+                        uint64_t t0 = nr::now_ns();
                         int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
                                                  slab.lkey(), remote_addr,
                                                  peer.slab_rkey, 0, wr_id, true);
-                        if (rc == 0) fut.get();
-                        else repl_waiter.cancel_wr_id(wr_id);
+                        bool repl_ok = false;
+                        if (rc == 0) {
+                            repl_ok = fut.get();
+                        } else {
+                            repl_waiter.cancel_wr_id(wr_id);
+                        }
+                        repl_total_ns += nr::now_ns() - t0;
+                        if (repl_ok) {
+                            ++replicated_n;
+                            send_kv_index(ri.key, ri.slot_off, ri.vlen);
+                            bytes_tx_1s.fetch_add(ri.vlen);
+                        } else {
+                            ++repl_failed_n;
+                        }
                     }
                 }
+                if (repl_total_ns > 0) {
+                    uint64_t avg_ns = repl_total_ns / std::max<size_t>(1, rdma_items.size());
+                    last_repl_ns.store(avg_ns);
+                    lat_push(avg_ns);
+                    busy_ns_1s.fetch_add(repl_total_ns);
+                }
                 // Free slots for items we couldn't alloc
-                char buf[64];
+                bool ok = (ok_n == count && repl_failed_n == 0);
+                bool degraded = (degraded_n > 0 || repl_failed_n > 0);
+                char buf[256];
                 int nb = std::snprintf(buf, sizeof(buf),
-                    "{\"ok\":true,\"n\":%u,\"ok_n\":%u}", count, ok_n);
+                    "{\"ok\":%s,\"n\":%u,\"ok_n\":%u,"
+                    "\"peer_alive\":%s,\"replicated_n\":%u,"
+                    "\"degraded_n\":%u,\"repl_failed_n\":%u,"
+                    "\"degraded\":%s,\"transport\":\"rdma\","
+                    "\"async_repl\":%s,\"aggregation\":\"batch_rpc\","
+                    "\"repl_ns\":%lu}",
+                    ok ? "true" : "false", count, ok_n,
+                    peer_alive ? "true" : "false", replicated_n,
+                    degraded_n, repl_failed_n,
+                    degraded ? "true" : "false",
+                    args.async_repl ? "true" : "false",
+                    (unsigned long)repl_total_ns);
                 resp->assign(buf, nb);
             }
         }
         else if (kind == "RPC_KV_GET")   do_get(body, resp);
         else if (kind == "RPC_KV_GET_RAW") do_get_raw(body, resp);
         else if (kind == "RPC_SNAPSHOT") do_snapshot(body, resp);
+        else if (kind == "RPC_BACKUP_WRITE") do_backup_write(body, resp);
+        else if (kind == "RPC_GDR_STATUS")   do_gdr_status(resp);
+        else if (kind == "RPC_GDR_WRITE")    do_gdr_write(body, resp);
+        else if (kind == "RPC_GDR_READBACK") do_gdr_readback(body, resp);
+        else if (kind == "RPC_GDR_VALIDATE") do_gdr_validate(body, resp);
         else if (kind == "RPC_TIER_STATS")  do_tier_stats(resp);
         else if (kind == "RPC_TIER_DEMOTE") do_tier_demote(body, resp);
         else if (kind == "RPC_PREFETCH_STATS") do_prefetch_stats(body, resp);
         else if (kind == "RPC_COMPRESS_STATS") do_compress_stats(resp);
+        else if (kind == "RPC_DEDUP_STATS")    do_dedup_stats(resp);
+        else if (kind == "RPC_IO_STATS")       do_io_stats(resp);
         else if (kind == "RPC_ADMIN_FLUSH")    do_admin_flush(resp);
         else if (kind == "RPC_SIM_RUN")        do_sim_run(body, resp);
         else if (kind == "RPC_ROUTE_QUERY")    do_route_query(body, resp);
+        else if (kind == "RPC_ROUTE_PUT")      do_route_put(body, resp);
+        else if (kind == "RPC_TCP_GET_PEER")   do_tcp_get_peer(body, resp);
         else if (kind == "RPC_SIM_CAPTURE_STATS") do_sim_cap_stats(body, resp);
         else if (kind == "RPC_SIM_CAPTURE_RESET") do_sim_cap_reset(body, resp);
         else if (kind == "RPC_ISO_ALLOW")       do_iso_allow(body, resp);
         else if (kind == "RPC_ISO_DENY")        do_iso_deny(body, resp);
         else if (kind == "RPC_ISO_LIST")        do_iso_list(body, resp);
+        else if (kind == "RPC_MEMPOOL_POOLS")   do_mempool_pools(body, resp);
+        else if (kind == "RPC_MEMPOOL_ADAPT_PUT") do_mempool_adapt_put(body, resp);
+        else if (kind == "RPC_MEMPOOL_ADAPT_GET") do_mempool_adapt_get(body, resp);
+        else if (kind == "RPC_MEMPOOL_ADAPT_STATS") do_mempool_adapt_stats(resp);
         else {
             *resp = "{\"ok\":false,\"err\":\"unknown rpc kind\"}";
         }
@@ -1415,6 +2604,7 @@ int main(int argc, char** argv) {
 
     NR_INFO("native_rdma_dp shutting down...");
     uds.stop();
+    tcp_data.stop();
     hb.stop();
     hb_stop.store(true);
     mig_stop.store(true);
@@ -1429,7 +2619,9 @@ int main(int argc, char** argv) {
     // Final flush of the simulation capture WAL. stop() joins the bg
     // thread and writes any remaining buffered events.
     nr::SimCapture::instance().stop();
+    if (backup_fd >= 0) ::close(backup_fd);
     io.shutdown();
+    gdr.shutdown(core);
     slab.shutdown();
     return 0;
 }

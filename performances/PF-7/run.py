@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import socket
+import struct
 import subprocess
 import time
 from pathlib import Path
@@ -39,6 +41,42 @@ def percentile_us(write: dict, key: str) -> float:
     return float(write.get("clat_ns", {}).get("percentile", {}).get(key, 0)) / 1000.0
 
 
+def percentile(samples: list[float], pct: float) -> float:
+    if not samples:
+        return 0.0
+    ordered = sorted(samples)
+    idx = int((pct / 100.0) * len(ordered) + 0.999999) - 1
+    if idx < 0:
+        idx = 0
+    if idx >= len(ordered):
+        idx = len(ordered) - 1
+    return ordered[idx]
+
+
+def uds_rpc(uds: str, kind: str, body: bytes) -> bytes:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+        s.connect(uds)
+        return uds_rpc_on_socket(s, kind, body)
+
+
+def uds_rpc_on_socket(s: socket.socket, kind: str, body: bytes) -> bytes:
+        k = kind.encode("utf-8")
+        s.sendall(struct.pack("<I", len(k)) + k + struct.pack("<I", len(body)) + body)
+        hdr = s.recv(4)
+        if len(hdr) != 4:
+            raise RuntimeError("short response header")
+        (n,) = struct.unpack("<I", hdr)
+        chunks: list[bytes] = []
+        remaining = n
+        while remaining:
+            chunk = s.recv(remaining)
+            if not chunk:
+                raise RuntimeError("short response body")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
+
+
 def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> None:
     lines = [
         f"# {PF_ID} Summary",
@@ -59,14 +97,15 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "| Key | Value |",
         "|---|---:|",
     ]
-    for key in ("lat_p50_us", "lat_p95_us", "lat_p99_us", "lat_p999_us", "lat_max_us", "success_writes", "raid5_confirmed", "rw", "direct", "fsync", "queue_depth", "threads", "duration_s", "fio_exit_code", "fio_job_error"):
+    for key in ("backend", "lat_p50_us", "lat_p95_us", "lat_p99_us", "lat_p999_us", "lat_max_us", "success_writes", "failed_writes", "client_iops", "raid5_confirmed", "rw", "direct", "fsync", "queue_depth", "threads", "duration_s", "fio_exit_code", "fio_job_error"):
         lines.append(f"| `{key}` | {result.get(key, 'N/A')} |")
     lines.extend([
         "",
         "## 统计口径",
         "",
-        "- 该指标在旧 `native_rdma/tests/performance/` 下没有脚本，本 `run.py` 新增 fio 4KB 写延迟测试。",
-        "- P999 按成功写入请求完成延迟样本计算。",
+        "- 默认后端为 `dataplane`：脚本通过 UDS 调用数据面的 `RPC_BACKUP_WRITE`，统计数据面内部 4KB 备份写完成耗时。",
+        "- `PF7_BACKEND=fio` 可切换为 fio 直写路径，用于存储设备对照测试。",
+        "- P999 按成功写入请求完成延迟样本计算；失败请求不参与分位数，单独计入 `failed_writes`。",
         "- 未设置 `RAID5_CONFIRMED=1` 前，结果不能作为严格 3+1 RAID5 验收通过依据。",
     ])
     note = result.get("error") or result.get("note")
@@ -91,6 +130,7 @@ def main() -> int:
     logs = log_dir()
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
+    backend = os.environ.get("PF7_BACKEND", "dataplane").lower()
     fio_bin = os.environ.get("FIO_BIN") or shutil.which("fio")
 
     backup_path = Path(os.environ.get("BACKUP_TEST_PATH", path)).resolve()
@@ -108,6 +148,92 @@ def main() -> int:
     fsync_enabled = is_true(os.environ.get("FSYNC", "0"))
     raid5_confirmed = is_true(os.environ.get("RAID5_CONFIRMED", "0"))
     test_file = backup_path / "pf7_fio_4k_write_test.dat"
+
+    if backend == "dataplane":
+        uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
+        if not Path(uds).is_socket():
+            return fail(path, f"data plane UDS not found: {uds}; PF-7 dataplane backend requires native_rdma_dp")
+
+        body = bytes((i % 251 for i in range(4096)))
+        warmup = int(os.environ.get("PF7_WARMUP_OPS", "1000"))
+        samples: list[float] = []
+        failed = 0
+        run_lines = [
+            f"backend=dataplane uds={uds} duration={duration}s warmup={warmup} bs=4096\n"
+        ]
+
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(uds)
+            for _ in range(warmup):
+                try:
+                    resp = json.loads(uds_rpc_on_socket(sock, "RPC_BACKUP_WRITE", body).decode("utf-8"))
+                    if not resp.get("ok"):
+                        failed += 1
+                except Exception:
+                    failed += 1
+
+            deadline = time.monotonic() + duration
+            t0 = time.monotonic()
+            while time.monotonic() < deadline:
+                try:
+                    resp = json.loads(uds_rpc_on_socket(sock, "RPC_BACKUP_WRITE", body).decode("utf-8"))
+                    if resp.get("ok") and "write_ns" in resp:
+                        samples.append(float(resp["write_ns"]) / 1000.0)
+                        fsync_enabled = bool(resp.get("fsync", fsync_enabled))
+                    else:
+                        failed += 1
+                except Exception:
+                    failed += 1
+                    break
+        elapsed = max(time.monotonic() - t0, 0.001)
+
+        notes = []
+        if not raid5_confirmed:
+            notes.append("RAID5_CONFIRMED is not set to 1; latency was measured through the data-plane backup writer, but strict 3+1 RAID5 topology still needs ops confirmation.")
+        if not samples:
+            result = {
+                "metric": "perf_07_backup_latency",
+                "backend": "dataplane",
+                "passed": False,
+                "error": "no successful backup writes collected from RPC_BACKUP_WRITE",
+                "failed_writes": failed,
+            }
+        else:
+            lat_p999 = percentile(samples, 99.9)
+            result = {
+                "metric": "perf_07_backup_latency",
+                "backend": "dataplane",
+                "raid5_confirmed": raid5_confirmed,
+                "backup_test_path": os.environ.get("BACKUP_PATH", "native_rdma_dp default backup path"),
+                "rw": "sequential-ring-pwrite",
+                "direct": "data-plane-file-writer",
+                "fsync": fsync_enabled,
+                "queue_depth": 1,
+                "threads": 1,
+                "duration_s": duration,
+                "size": "4k",
+                "success_writes": len(samples),
+                "failed_writes": failed,
+                "client_iops": round(len(samples) / elapsed, 2),
+                "lat_p50_us": round(percentile(samples, 50.0), 3),
+                "lat_p95_us": round(percentile(samples, 95.0), 3),
+                "lat_p99_us": round(percentile(samples, 99.0), 3),
+                "lat_p999_us": round(lat_p999, 3),
+                "lat_max_us": round(max(samples), 3),
+                "thresholds": {"lat_p999_us": 1000.0, "failed_writes": 0},
+                "passed_latency": bool(lat_p999 <= 1000.0),
+                "passed": bool(failed == 0 and lat_p999 <= 1000.0),
+                "note": " ".join(notes),
+            }
+        run_log.write_text("".join(run_lines), encoding="utf-8")
+        write_json(raw_json, result)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        write_json(logs / f"perf_07_backup_latency_{ts}.json", result)
+        write_summary(path, result, run_log, raw_json)
+        return 0 if result.get("passed") else 1
+
+    if backend != "fio":
+        return fail(path, f"unknown PF7_BACKEND={backend}; expected dataplane or fio")
 
     if fio_bin is None:
         return fail(path, "fio not found; install fio or set FIO_BIN. PF-7 requires fio.")
@@ -151,6 +277,7 @@ def main() -> int:
             notes.append(f"fio process exited with {proc.returncode} after emitting JSON; fio job error={job_error}.")
         result = {
             "metric": "perf_07_backup_latency",
+            "backend": "fio",
             "raid5_confirmed": raid5_confirmed,
             "fio_exit_code": proc.returncode,
             "fio_job_error": job_error,
@@ -163,6 +290,7 @@ def main() -> int:
             "duration_s": duration,
             "size": size,
             "success_writes": int(write.get("total_ios", 0)),
+            "failed_writes": 0 if job_error == 0 and proc.returncode == 0 else "fio_error",
             "lat_p50_us": round(percentile_us(write, "50.000000"), 3),
             "lat_p95_us": round(percentile_us(write, "95.000000"), 3),
             "lat_p99_us": round(percentile_us(write, "99.000000"), 3),
@@ -172,13 +300,14 @@ def main() -> int:
             "passed_latency": bool(lat_p999 <= 1000.0),
             # Pass on latency alone. RAID5 confirmation is a manual ops step
             # documented in the note; it does not block automated test PASS.
-            "passed": bool(job_error == 0 and lat_p999 <= 1000.0),
+            "passed": bool(proc.returncode == 0 and job_error == 0 and lat_p999 <= 1000.0),
             "note": " ".join(notes),
             "fio": fio_raw,
         }
     except Exception as exc:
         result = {
             "metric": "perf_07_backup_latency",
+            "backend": "fio",
             "passed": False,
             "error": f"failed to parse fio JSON: {exc}. PF-7 requires valid fio JSON output.",
             "stdout_tail": proc.stdout[-4000:],

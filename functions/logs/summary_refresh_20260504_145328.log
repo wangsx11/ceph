@@ -1,0 +1,19 @@
+summary refresh 2026-05-04T14:53:28+0800
+source: existing per-FN raw.json files; no test re-run
+storage/FN-1: PASS 完成
+storage/FN-2: PASS 完成
+storage/FN-3: PASS 完成
+storage/FN-4: PASS 完成
+storage/FN-5: PASS 完成
+storage/FN-6: PASS 完成
+rdma/FN-1: PASS 完成
+rdma/FN-2: PASS 完成
+rdma/FN-3: PASS 完成
+rdma/FN-4: PASS 完成
+rdma/FN-5: PASS 完成
+mempool/FN-1: SKIP 未完成
+mempool/FN-2: PASS 完成
+mempool/FN-3: SKIP 未完成
+mempool/FN-4: PASS 部分完成
+mempool/FN-5: PASS 完成
+mempool/FN-6: PASS 部分完成

@@ -3,6 +3,7 @@
 #
 # Optional env:
 #   PEER_HOST=xfusion4
+#   LOCAL_HOST=xfusion3   # optional: start role A through ssh as well
 #   PEER_REPO_ROOT=/home/wangshouxin/native-rdma-web
 #   NR_BUILD_DIR=/path/to/build-current
 set -euo pipefail
@@ -12,12 +13,27 @@ REPO_ROOT="$(cd "${ROOT}/.." && pwd)"
 REPO_NAME="$(basename "${REPO_ROOT}")"
 
 PEER_HOST="${PEER_HOST:-xfusion4}"
+LOCAL_HOST="${LOCAL_HOST:-}"
 PEER_REPO_ROOT="${PEER_REPO_ROOT:-/home/${USER}/${REPO_NAME}}"
 PEER_NATIVE_ROOT="${PEER_REPO_ROOT}/native_rdma"
 NR_BUILD_DIR="${NR_BUILD_DIR:-${ROOT}/build-current}"
 
 export NR_BUILD_DIR
-export NR_ASYNC_REPL="${NR_ASYNC_REPL:-1}"
+# Functional validation defaults to synchronous RDMA replication so scripts can
+# read back peer state immediately. Performance runs can override with
+# NR_ASYNC_REPL=1.
+export NR_ASYNC_REPL="${NR_ASYNC_REPL:-0}"
+export NR_TRANSPORT="${NR_TRANSPORT:-rdma}"
+export NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT:-18516}"
+export NR_GDR_ENABLE="${NR_GDR_ENABLE:-0}"
+export NR_CUDA_DEVICE="${NR_CUDA_DEVICE:-0}"
+export NR_GDR_BYTES="${NR_GDR_BYTES:-67108864}"
+
+LOCAL_CUDA_FLAG="-DNR_USE_CUDA=OFF"
+PEER_CUDA_FLAG="-DNR_USE_CUDA=OFF"
+if [ "${NR_GDR_ENABLE}" = "1" ] || [ "${NR_GDR_ENABLE}" = "true" ]; then
+    PEER_CUDA_FLAG="-DNR_USE_CUDA=ON -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc"
+fi
 
 say() { printf '[start] %s\n' "$*"; }
 
@@ -26,7 +42,7 @@ say "build=${NR_BUILD_DIR}"
 say "peer=${PEER_HOST}:${PEER_REPO_ROOT}"
 
 say "build local"
-cmake -S "${ROOT}" -B "${NR_BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release -GNinja
+cmake -S "${ROOT}" -B "${NR_BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release "${LOCAL_CUDA_FLAG}" -GNinja
 cmake --build "${NR_BUILD_DIR}" -j
 
 say "check peer ssh"
@@ -44,7 +60,7 @@ rsync -avz \
 
 say "build peer"
 ssh "${PEER_HOST}" \
-    "cd '${PEER_NATIVE_ROOT}' && cmake -S . -B build-current -DCMAKE_BUILD_TYPE=Release -GNinja && cmake --build build-current -j"
+    "cd '${PEER_NATIVE_ROOT}' && cmake -S . -B build-current -DCMAKE_BUILD_TYPE=Release ${PEER_CUDA_FLAG} -GNinja && cmake --build build-current -j"
 
 say "clean cold-tier leftovers"
 rm -rf /home/wangshouxin/nr_cold/* 2>/dev/null || true
@@ -57,8 +73,12 @@ say "stop old peer stack"
 ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && bash scripts/demo_down.sh" 2>/dev/null || true
 
 say "start peer role B"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' ROLE=B bash scripts/demo_up.sh"
+ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' ROLE=B bash scripts/demo_up.sh"
 sleep 3
 
 say "start local role A"
-ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" bash "${ROOT}/scripts/demo_up.sh"
+if [ -n "${LOCAL_HOST}" ]; then
+    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' bash scripts/demo_up.sh"
+else
+    ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" bash "${ROOT}/scripts/demo_up.sh"
+fi

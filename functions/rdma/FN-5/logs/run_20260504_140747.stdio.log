@@ -1,0 +1,7 @@
+rdma/FN-5 PASS - 分布式节点路由转发与负载均衡
+- 64 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 54}
+- 本地 primary 写入未转发: key=fn_route_1777874867999_348962_0 primary=192.168.0.218
+- 远端 primary 写入已转发到 peer: key=fn_route_1777874868000_348962_10 primary=192.168.0.214 transport=tcp_data_channel
+- 本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=27
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260504_140747.log

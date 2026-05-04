@@ -13,6 +13,10 @@ struct RemoteEndpoint {
     uint64_t      slab_base    = 0;      // peer slab VA (for RDMA write/read)
     uint64_t      slab_len     = 0;
     uint32_t      slab_rkey    = 0;
+    bool          gpu_enabled  = false;
+    uint64_t      gpu_base     = 0;      // peer GPU VA for GPUDirect RDMA
+    uint64_t      gpu_len      = 0;
+    uint32_t      gpu_rkey     = 0;
     uint16_t      lid          = 0;
     uint8_t       gid_index    = 0;
     union ibv_gid gid{};
@@ -31,6 +35,10 @@ bool oob_handshake(RdmaCore& core,
                    uint64_t local_slab_base,
                    uint64_t local_slab_len,
                    uint32_t local_slab_rkey,
+                   bool local_gpu_enabled,
+                   uint64_t local_gpu_base,
+                   uint64_t local_gpu_len,
+                   uint32_t local_gpu_rkey,
                    RemoteEndpoint* peer);
 
 } // namespace nr

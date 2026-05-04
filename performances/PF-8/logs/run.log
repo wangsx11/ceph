@@ -1,4 +1,4 @@
 UDS=/tmp/native_rdma-dp.sock
 RPC=RPC_SIM_RUN
-body=entities=100000&events=1000000&threads=4&step_us=10&stress=20000
-response={"ok":true,"entities":100000,"events":1000000,"threads":4,"step_us":10,"stress":20000,"wall_s":6.993339,"sim_s":10.000000,"speedup":1.4299,"events_per_sec":142993,"capture_every_n":256,"captured_events":3908,"captured_dropped":0}
+body=entities=100000&entity_size=1024&events=1000000&threads=4&step_us=10&stress=20000
+response={"ok":true,"entities":100000,"entity_size":1024,"entity_bytes":102400000,"events":1000000,"threads":4,"step_us":10,"stress":20000,"wall_s":7.293838,"sim_s":10.000000,"speedup":1.3710,"events_per_sec":137102,"capture_every_n":256,"captured_events":3908,"captured_dropped":0}

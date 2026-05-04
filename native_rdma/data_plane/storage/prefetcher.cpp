@@ -47,7 +47,8 @@ void Prefetcher::on_access(std::string_view key_sv) {
     while ((int)history_.size() > cfg_.stride_window) history_.pop_front();
 }
 
-std::vector<std::string> Prefetcher::predict(std::string_view key_sv) const {
+std::vector<std::string> Prefetcher::predict(std::string_view key_sv,
+                                             bool record_strategy_hit) const {
     std::lock_guard<std::mutex> lk(mu_);
     std::vector<std::string> out;
     if (cfg_.prefetch_depth <= 0) return out;
@@ -79,7 +80,7 @@ std::vector<std::string> Prefetcher::predict(std::string_view key_sv) const {
                     cur += stride;
                     out.push_back(pfx_first + std::to_string(cur));
                 }
-                ++s_.hits_stride;
+                if (record_strategy_hit) ++s_.hits_stride;
                 return out;
             }
         }
@@ -97,7 +98,7 @@ std::vector<std::string> Prefetcher::predict(std::string_view key_sv) const {
         size_t n = std::min<size_t>(cand.size(), (size_t)cfg_.prefetch_depth);
         out.reserve(n);
         for (size_t i = 0; i < n; ++i) out.push_back(cand[i].first);
-        if (!out.empty()) ++s_.hits_markov;
+        if (record_strategy_hit && !out.empty()) ++s_.hits_markov;
     }
     return out;
 }

@@ -18,12 +18,19 @@ namespace nr {
 //   u64  slab_len
 //   u32  slab_rkey
 //   u32  pad
+//   u64  gpu_base
+//   u64  gpu_len
+//   u32  gpu_rkey
+//   u8   gpu_enabled
+//   u8[3] pad
 //   num_qp * u32 qpn
-// Total header = 48 bytes + 4 * num_qp
-static constexpr size_t kOobHdrSize = 48;
+// Total header = 72 bytes + 4 * num_qp
+static constexpr size_t kOobHdrSize = 72;
 
 static bool send_info(TcpFallback& ch, const RdmaCore& core,
-                      uint64_t slab_base, uint64_t slab_len, uint32_t slab_rkey)
+                      uint64_t slab_base, uint64_t slab_len, uint32_t slab_rkey,
+                      bool gpu_enabled, uint64_t gpu_base, uint64_t gpu_len,
+                      uint32_t gpu_rkey)
 {
     uint32_t nqp = (uint32_t)core.num_qp();
     std::vector<uint8_t> buf(kOobHdrSize + 4 * (size_t)nqp, 0);
@@ -40,6 +47,11 @@ static bool send_info(TcpFallback& ch, const RdmaCore& core,
     std::memcpy(p + 32, &slab_len,  8);
     std::memcpy(p + 40, &slab_rkey, 4);
     // p[44..47] pad
+    std::memcpy(p + 48, &gpu_base, 8);
+    std::memcpy(p + 56, &gpu_len,  8);
+    std::memcpy(p + 64, &gpu_rkey, 4);
+    p[68] = gpu_enabled ? 1 : 0;
+    // p[69..71] pad
     uint8_t* q = p + kOobHdrSize;
     for (uint32_t i = 0; i < nqp; ++i) {
         uint32_t qpn = core.local_qpn((int)i);
@@ -63,6 +75,12 @@ static bool recv_info(TcpFallback& ch, RemoteEndpoint* peer)
     std::memcpy(&slab_base, hdr + 24, 8);
     std::memcpy(&slab_len,  hdr + 32, 8);
     std::memcpy(&slab_rkey, hdr + 40, 4);
+    uint64_t gpu_base = 0, gpu_len = 0;
+    uint32_t gpu_rkey = 0;
+    std::memcpy(&gpu_base, hdr + 48, 8);
+    std::memcpy(&gpu_len,  hdr + 56, 8);
+    std::memcpy(&gpu_rkey, hdr + 64, 4);
+    bool gpu_enabled = hdr[68] != 0;
 
     std::vector<uint32_t> qpns(nqp);
     if (nqp && ch.recv_all(qpns.data(), (size_t)nqp * 4) < 0) return false;
@@ -73,6 +91,10 @@ static bool recv_info(TcpFallback& ch, RemoteEndpoint* peer)
     peer->slab_base  = slab_base;
     peer->slab_len   = slab_len;
     peer->slab_rkey  = slab_rkey;
+    peer->gpu_enabled = gpu_enabled;
+    peer->gpu_base   = gpu_base;
+    peer->gpu_len    = gpu_len;
+    peer->gpu_rkey   = gpu_rkey;
     peer->qpns       = std::move(qpns);
     return true;
 }
@@ -85,6 +107,10 @@ bool oob_handshake(RdmaCore& core,
                    uint64_t local_slab_base,
                    uint64_t local_slab_len,
                    uint32_t local_slab_rkey,
+                   bool local_gpu_enabled,
+                   uint64_t local_gpu_base,
+                   uint64_t local_gpu_len,
+                   uint32_t local_gpu_rkey,
                    RemoteEndpoint* peer)
 {
     TcpFallback ch;
@@ -107,11 +133,13 @@ bool oob_handshake(RdmaCore& core,
     // Exchange. Listener sends first, then receives.
     bool ok;
     if (is_listener) {
-        ok = send_info(ch, core, local_slab_base, local_slab_len, local_slab_rkey)
+        ok = send_info(ch, core, local_slab_base, local_slab_len, local_slab_rkey,
+                       local_gpu_enabled, local_gpu_base, local_gpu_len, local_gpu_rkey)
              && recv_info(ch, peer);
     } else {
         ok = recv_info(ch, peer)
-             && send_info(ch, core, local_slab_base, local_slab_len, local_slab_rkey);
+             && send_info(ch, core, local_slab_base, local_slab_len, local_slab_rkey,
+                          local_gpu_enabled, local_gpu_base, local_gpu_len, local_gpu_rkey);
     }
     if (!ok) { NR_ERROR("OOB exchange failed"); return false; }
 
@@ -121,10 +149,13 @@ bool oob_handshake(RdmaCore& core,
         return false;
     }
 
-    NR_INFO("OOB exchanged: peer lid=%u gid_idx=%u num_qp=%u slab=0x%lx+%lu rkey=0x%x",
+    NR_INFO("OOB exchanged: peer lid=%u gid_idx=%u num_qp=%u slab=0x%lx+%lu rkey=0x%x gpu=%s gpu=0x%lx+%lu rkey=0x%x",
             peer->lid, peer->gid_index, (unsigned)peer->qpns.size(),
             (unsigned long)peer->slab_base,
-            (unsigned long)peer->slab_len, peer->slab_rkey);
+            (unsigned long)peer->slab_len, peer->slab_rkey,
+            peer->gpu_enabled ? "true" : "false",
+            (unsigned long)peer->gpu_base,
+            (unsigned long)peer->gpu_len, peer->gpu_rkey);
 
     for (int i = 0; i < core.num_qp(); ++i) {
         if (!core.connect_qp(i, peer->qpns[i], peer->lid,

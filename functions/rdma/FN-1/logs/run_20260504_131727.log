@@ -1,0 +1,5 @@
+[13:17:27] start rdma/FN-1 RDMA 与 TCP/IP 统一通信层
+[13:17:27] repo_root=/home/wangshouxin/native-rdma-web
+[13:17:27] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[13:17:27] rpc RPC_CLUSTER_STATUS body_len=0
+[13:17:27] result=SKIP completion=未完成

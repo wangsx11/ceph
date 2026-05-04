@@ -18,6 +18,16 @@ public:
         int sq_depth    = 1024;
         bool sq_poll_fg = true;     // IORING_SETUP_SQPOLL for FG
     };
+    struct Stats {
+        uint64_t fg_read_ops = 0;
+        uint64_t fg_write_ops = 0;
+        uint64_t fg_read_bytes = 0;
+        uint64_t fg_write_bytes = 0;
+        uint64_t bg_read_ops = 0;
+        uint64_t bg_write_ops = 0;
+        uint64_t bg_read_bytes = 0;
+        uint64_t bg_write_bytes = 0;
+    };
 
     using OnDone = std::function<void(int rc)>;
 
@@ -33,6 +43,8 @@ public:
     // Blocking helper (used by cold-path snapshot / migration).
     int sync_write(Prio p, const void* buf, size_t len, uint64_t offset);
     int sync_read (Prio p, void* buf,       size_t len, uint64_t offset);
+
+    Stats stats() const;
 };
 
 } // namespace nr

@@ -1,0 +1,15 @@
+[14:00:40] start rdma/FN-3 流量优先级机制
+[14:00:40] repo_root=/home/wangshouxin/native-rdma-web
+[14:00:40] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[14:00:40] rpc RPC_CLUSTER_STATUS body_len=0
+[14:00:40] rpc RPC_CLUSTER_STATUS resp_len=276 resp={"ok":true,"self":"A","peer_alive":true,"peer_slab_base":139764486852608,"peer_slab_rkey":87040,"peer_num_qp":32,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"tcp_data_port":18516,"tcp_puts_received":0,"tcp_gets_received":0}
+[14:00:40] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=550787
+[14:00:40] rpc RPC_KV_PUT_HI body_len=42
+[14:00:40] rpc RPC_KV_PUT_HI resp_len=359 resp={"ok":true,"key":"fn_qos_hi_1777874440428_332659","size":11,"offset":2093056,"repl_ns":47450,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":0,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[14:00:40] rpc RPC_KV_PUT_LO body_len=42
+[14:00:40] rpc RPC_KV_PUT_LO resp_len=360 resp={"ok":true,"key":"fn_qos_lo_1777874440428_332659","size":11,"offset":3141632,"repl_ns":14571,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"lo","qp_idx":16,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[14:00:40] rpc RPC_TCP_GET_PEER body_len=30
+[14:00:40] rpc RPC_TCP_GET_PEER resp_len=114 resp={"ok":true,"transport":"tcp","key":"fn_qos_hi_1777874440428_332659","size":11,"tcp_ns":360757,"val":"hi-priority"}
+[14:00:40] rpc RPC_TCP_GET_PEER body_len=30
+[14:00:40] rpc RPC_TCP_GET_PEER resp_len=114 resp={"ok":true,"transport":"tcp","key":"fn_qos_lo_1777874440428_332659","size":11,"tcp_ns":255804,"val":"lo-priority"}
+[14:00:40] result=PASS completion=完成

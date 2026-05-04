@@ -3,18 +3,20 @@
 - Module: 一致性总线内存池化仿真计算模块
 - Function: 内存池高可靠机制
 - Source: docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 6 条
-- Last Run: 2026-05-03T23:41:54+0800
+- Last Run: 2026-05-04T16:03:19+0800
 - Result: PASS
-- Completion: 部分完成
-- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260503_234154.log
+- Completion: 完成
+- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260504_160302.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/raw.json
 
 ## 关键证据
 
-- HA 字段完备: peer_alive=False degraded_puts=19 degraded_bytes=4255
-- 默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH
+- 主动故障演练成功: peer_alive true->false, degraded_puts 0->1
+- 故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1777881786515_556313
+- 恢复命令执行后 peer_alive=true，后续 PUT 重新走 RDMA 非降级复制并可从 peer 读回
 
 ## 统计口径
 
-- 默认不 kill peer。
-- ALLOW_DESTRUCTIVE=1 且提供 peer 参数时才主动演练故障降级。
+- 默认不 kill peer，仅做非破坏性字段检查并标记部分完成。
+- 完整验收需 ALLOW_DESTRUCTIVE=1、PEER_SSH、PEER_DP_PATH 和 FN6_RECOVERY_CMD。
+- 验证 peer 失联期间本节点继续提供本地 PUT/GET 可用性；不宣称无需重启即可自动重新 OOB/QP 握手。

@@ -1,0 +1,4 @@
+rdma/FN-1 SKIP - RDMA 与 TCP/IP 统一通信层
+- UDS RPC RPC_CLUSTER_STATUS 调用失败: [Errno 1] Operation not permitted
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260504_124104.log

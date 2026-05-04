@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .claude/
 node_modules/
+performances/PF-7/pf7_backup.dat
+*.dat

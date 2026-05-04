@@ -6,6 +6,7 @@
 #include <mutex>
 #include <atomic>
 #include <vector>
+#include "dedup.h"
 
 namespace nr {
 
@@ -161,6 +162,7 @@ public:
         uint64_t n_compressed = 0;  // count of objects compressed
     };
     CompressStats compress_stats() const;
+    Dedup::Stats dedup_stats() const;
 
     // Drop the in-memory index and return the list of DRAM slab offsets that
     // were in use, so the caller can free them back to the SlabPool.
@@ -190,6 +192,7 @@ private:
     std::atomic<uint64_t> cmp_raw_bytes_{0};
     std::atomic<uint64_t> cmp_cmp_bytes_{0};
     std::atomic<uint64_t> cmp_n_{0};
+    Dedup dedup_;
 };
 
 } // namespace nr

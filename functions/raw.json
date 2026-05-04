@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-03T23:41:54+0800",
-  "run_log": "/home/wangshouxin/native-rdma-web/functions/logs/run_all_20260503_234152.log",
+  "generated_at": "2026-05-04T14:53:58+0800",
+  "run_log": "/home/wangshouxin/native-rdma-web/functions/logs/summary_refresh_20260504_145358.log",
   "rows": [
     {
       "module": "storage",
@@ -12,7 +12,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/raw.json",
       "exit_code": 0,
       "evidence": [
-        "RPC_TIER_STATS ok: dram=0 nvme=0 hdd=0"
+        "RPC_TIER_STATS 暴露 dram/nvme/hdd 统一层级字段",
+        "NVMe 闭环成功: PUT -> RPC_TIER_DEMOTE(nvme) -> GET hit=nvme_promote",
+        "HDD 闭环成功: PUT -> RPC_TIER_DEMOTE(hdd) -> GET hit=hdd_promote"
       ]
     },
     {
@@ -25,7 +27,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-2/raw.json",
       "exit_code": 0,
       "evidence": [
-        "对象 fn_storage_tier_1777822912725_2982275 写入后 demote->nvme 成功，GET hit=nvme_promote"
+        "手动冷热迁移闭环成功: fn_storage_tier_manual_1777864902811_60186 demote->nvme, GET hit=nvme_promote",
+        "自动冷热分离成功: 冷对象 fn_storage_tier_cold_1777864902812_60186 等待 16.0s 后 GET hit=nvme_promote",
+        "热对象 fn_storage_tier_hot_1777864902812_60186 持续访问期间未发生下沉，最终 hit=local"
       ]
     },
     {
@@ -38,7 +42,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-3/raw.json",
       "exit_code": 0,
       "evidence": [
-        "顺序访问触发 stride 预测: expected=fn_prefetch__1777822912792_29822894 predicted_count=8"
+        "stride 预取执行成功: predicted=fn_prefetch_stride__1777866006296_95000_4, GET hit=local",
+        "Markov 预取执行成功: predicted=fn_prefetch_markov_1777866006297_95000_Bkey, GET hit=local",
+        "预取统计增加: loaded 0->2, hits 0->2"
       ]
     },
     {
@@ -46,13 +52,14 @@
       "fn_id": "FN-4",
       "function": "可配置压缩与去重",
       "status": "PASS",
-      "completion": "部分完成",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/raw.json",
       "exit_code": 0,
       "evidence": [
         "压缩统计增加: objects 0->1, saved_bytes 0->4077",
-        "dedup.cpp/dedup.h 存在且纳入 nr_storage 构建口径: True"
+        "去重统计增加: duplicate_objects 0->1, saved_bytes 0->19",
+        "HDD 读回闭环成功: A hit=hdd_promote, B hit=hdd_promote"
       ]
     },
     {
@@ -65,7 +72,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/raw.json",
       "exit_code": 0,
       "evidence": [
-        "数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+        "数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+        "前台 NVMe I/O 计数增加: fg_write_ops +1, fg_read_ops +1",
+        "后台 HDD I/O 计数增加: bg_write_ops +1, bg_read_ops +1"
       ]
     },
     {
@@ -78,7 +87,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-6/raw.json",
       "exit_code": 0,
       "evidence": [
-        "仿真采集成功: captured=200 pushed=200 flushed=200"
+        "仿真采集成功: captured=200 pushed=200 flushed=200",
+        "多类型采集成功: ObjectAttr=100, InteractionEvent=100",
+        "WAL 落盘成功: path=/tmp/nr_sim_capture/sim_A.log, events=200, bytes=11200"
       ]
     },
     {
@@ -91,8 +102,10 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/raw.json",
       "exit_code": 0,
       "evidence": [
-        "日志包含 RDMA QP 和 TCP fallback/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
-        "peer_num_qp=32 peer_alive=False"
+        "最近一次数据面启动日志包含 RDMA QP、TcpFallback 和 OOB exchange 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+        "peer_alive=True peer_num_qp=32 peer_slab_rkey=87040",
+        "TCP 协议切换闭环成功: RPC_KV_PUT transport=tcp -> RPC_TCP_GET_PEER size=19",
+        "RDMA/TCP 复制时延对比: RDMA avg=23005ns p95=21657ns; TCP avg=199431ns p95=215146ns; samples=8"
       ]
     },
     {
@@ -105,8 +118,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/raw.json",
       "exit_code": 0,
       "evidence": [
-        "RPC_KV_PUT_BATCH 成功: ok_n=4/4",
-        "BatchAggregator 启动日志存在: True"
+        "RPC_KV_PUT_BATCH 成功: ok_n=8/8 replicated_n=8/8",
+        "批量 RDMA peer 读回成功: RPC_TCP_GET_PEER 8/8 同值",
+        "最近一次启动日志包含 BatchAggregator/RDMA QP/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
       ]
     },
     {
@@ -119,20 +133,26 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-3/raw.json",
       "exit_code": 0,
       "evidence": [
-        "高低优先级 PUT 均成功，QosSched 日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+        "QosSched 最近启动日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+        "高优先级 PUT 走 RDMA QP 0，低优先级 PUT 走 RDMA QP 16",
+        "高低优先级 RDMA PUT 均完成 peer 读回同值校验"
       ]
     },
     {
       "module": "rdma",
       "fn_id": "FN-4",
       "function": "CPU 与 GPU 高速直通访问",
-      "status": "WAIVED",
-      "completion": "硬件/环境豁免",
+      "status": "PASS",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/raw.json",
       "exit_code": 0,
       "evidence": [
-        "当前环境未确认 GPU、CUDA 与 GPU Direct RDMA 可用，按需求文档暂时 WAIVED"
+        "xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用",
+        "RPC_GDR_STATUS peer GPU MR 有效: base=139952750854144 len=67108864 rkey=87283",
+        "A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=34026，degraded=false",
+        "xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=84564",
+        "A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=13841 checksum=522240"
       ]
     },
     {
@@ -145,8 +165,10 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-5/raw.json",
       "exit_code": 0,
       "evidence": [
-        "32 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 22}",
-        "replica 为空的样本数=16，当前 ObjectRouter 在副本 hash 命中 primary 时会置空"
+        "64 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 54}",
+        "本地 primary 写入未转发: key=fn_route_1777874867999_348962_0 primary=192.168.0.218",
+        "远端 primary 写入已转发到 peer: key=fn_route_1777874868000_348962_10 primary=192.168.0.214 transport=tcp_data_channel",
+        "本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=27"
       ]
     },
     {

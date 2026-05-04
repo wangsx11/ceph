@@ -16,7 +16,7 @@ from common import can_connect_uds
 PF_ID = "PF-8"
 PF_NAME = "RDMA 网络环境下仿真引擎运行能力"
 SOURCE_NO = 8
-THRESHOLD = "speedup >= 1.0"
+THRESHOLD = "100000 entities, entity_size=1024B, 1000000 events, speedup >= 1.0"
 
 
 def out_dir() -> Path:
@@ -55,7 +55,9 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "| Key | Value |",
         "|---|---:|",
     ]
-    for key in ("sim_nodes", "entities", "events", "threads", "step_us", "stress", "wall_s", "sim_s", "speedup", "events_per_sec"):
+    for key in ("sim_nodes", "entities", "entity_size", "entity_bytes", "events", "threads",
+                "step_us", "stress", "wall_s", "sim_s", "speedup", "events_per_sec",
+                "captured_events", "captured_dropped"):
         lines.append(f"| `{key}` | {result.get(key, 'N/A')} |")
     lines.extend([
         "",
@@ -63,6 +65,7 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "",
         "- 测试逻辑由 `native_rdma/tests/performance/perf_08_simulation.sh` 迁移到本 `run.py`。",
         "- 通过数据面 UDS 发送 `RPC_SIM_RUN`，统计仿真运行窗口。",
+        "- 数据面按 `entity_size` 为每个仿真实体分配 payload；默认实体大小为 1024B。",
         "- `speedup = simulated_seconds / wall_seconds`。",
     ])
     note = result.get("error") or result.get("note")
@@ -103,12 +106,16 @@ def main() -> int:
 
     sim_nodes = int(os.environ.get("SIM_NODES", "4"))
     entities = int(os.environ.get("ENTITIES", "100000"))
+    entity_size = int(os.environ.get("ENTITY_SIZE", "1024"))
     events = int(os.environ.get("EVENTS", "1000000"))
     threads = int(os.environ.get("THREADS", "4"))
     step_us = int(os.environ.get("STEP_US", "10"))
     stress = int(os.environ.get("STRESS", "20000"))
     kind = b"RPC_SIM_RUN"
-    body = f"entities={entities}&events={events}&threads={threads}&step_us={step_us}&stress={stress}".encode()
+    body = (
+        f"entities={entities}&entity_size={entity_size}&events={events}"
+        f"&threads={threads}&step_us={step_us}&stress={stress}"
+    ).encode()
 
     try:
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -137,6 +144,8 @@ def main() -> int:
         "metric": "perf_08_simulation",
         "sim_nodes": sim_nodes,
         "entities": raw.get("entities", entities),
+        "entity_size": raw.get("entity_size", entity_size),
+        "entity_bytes": raw.get("entity_bytes", entities * entity_size),
         "events": raw.get("events", events),
         "threads": raw.get("threads", threads),
         "step_us": raw.get("step_us", step_us),
@@ -145,10 +154,19 @@ def main() -> int:
         "sim_s": raw.get("sim_s", 0),
         "speedup": speedup,
         "events_per_sec": float(raw.get("events_per_sec", 0)),
+        "captured_events": int(raw.get("captured_events", 0)),
+        "captured_dropped": int(raw.get("captured_dropped", 0)),
         "threshold_speedup": 1.0,
-        "passed": bool(raw.get("ok", False) and speedup >= 1.0),
         "raw": raw,
     }
+    result["passed"] = bool(
+        raw.get("ok", False)
+        and int(result["entities"]) == 100000
+        and int(result["entity_size"]) == 1024
+        and int(result["events"]) == 1000000
+        and int(result["captured_dropped"]) == 0
+        and speedup >= 1.0
+    )
     if sim_nodes != 4:
         result["note"] = f"SIM_NODES={sim_nodes}; 指标要求为 4 个节点。"
     ts = time.strftime("%Y%m%d_%H%M%S")

@@ -1,0 +1,29 @@
+{
+  "metric": "perf_09_mempool",
+  "threads_multi": 8,
+  "malloc_ops_1t": 38240465,
+  "slab_ops_1t": 51295729,
+  "overhead_pct": 0.0,
+  "malloc_ops_Nt": 22331281,
+  "slab_ops_Nt": 27499783,
+  "scale_gain_pct": 23.14,
+  "malloc_rss_kb": 5364,
+  "malloc_live_rss_kb": 303604,
+  "slab_live_rss_kb": 268796,
+  "live_objects": 262144,
+  "live_requested_kb": 262144,
+  "baseline_metadata_bytes": 128,
+  "throughput_metadata_bytes": 0,
+  "malloc_usable_kb": 296960,
+  "slab_usable_kb": 263168,
+  "savings_pct": 11.46,
+  "thresholds": {
+    "overhead_pct": 5.0,
+    "savings_pct": 7.0,
+    "scale_gain_pct": 20.0
+  },
+  "passed_overhead": true,
+  "passed_savings": true,
+  "passed_scale": true,
+  "passed": true
+}

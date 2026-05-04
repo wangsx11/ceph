@@ -1,0 +1,22 @@
+[11:10:03] start storage/FN-1 仿真引擎异构存储统一访问接口
+[11:10:03] repo_root=/home/wangshouxin/native-rdma-web
+[11:10:03] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[11:10:03] rpc RPC_TIER_STATS body_len=0
+[11:10:03] rpc RPC_TIER_STATS resp_len=81 resp={"ok":true,"dram":0,"nvme":0,"hdd":0,"demoted_d_n":0,"demoted_n_h":0,"events":[]}
+[11:10:03] rpc RPC_KV_PUT body_len=62
+[11:10:03] rpc RPC_KV_PUT resp_len=192 resp={"ok":true,"key":"fn_storage_iface_nvme_1777864203650_41686","size":20,"offset":2093056,"repl_ns":147,"degraded":true,"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[11:10:03] rpc RPC_TIER_DEMOTE body_len=46
+[11:10:03] rpc RPC_TIER_DEMOTE resp_len=73 resp={"ok":true,"key":"fn_storage_iface_nvme_1777864203650_41686","to":"nvme"}
+[11:10:03] rpc RPC_TIER_STATS body_len=0
+[11:10:03] rpc RPC_TIER_STATS resp_len=194 resp={"ok":true,"dram":0,"nvme":1,"hdd":0,"demoted_d_n":1,"demoted_n_h":0,"events":[{"ts_ns":7494257840007028,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20}]}
+[11:10:03] rpc RPC_KV_GET body_len=41
+[11:10:03] rpc RPC_KV_GET resp_len=71 resp={"ok":true,"hit":"nvme_promote","size":20,"val":"nvme-interface-probe"}
+[11:10:03] rpc RPC_KV_PUT body_len=60
+[11:10:03] rpc RPC_KV_PUT resp_len=204 resp={"ok":true,"key":"fn_storage_iface_hdd_1777864203650_41686","size":19,"offset":4190208,"repl_ns":179,"degraded":true,"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[11:10:03] rpc RPC_TIER_DEMOTE body_len=44
+[11:10:03] rpc RPC_TIER_DEMOTE resp_len=71 resp={"ok":true,"key":"fn_storage_iface_hdd_1777864203650_41686","to":"hdd"}
+[11:10:03] rpc RPC_TIER_STATS body_len=0
+[11:10:03] rpc RPC_TIER_STATS resp_len=420 resp={"ok":true,"dram":1,"nvme":0,"hdd":1,"demoted_d_n":2,"demoted_n_h":0,"events":[{"ts_ns":7494257840376590,"key":"fn_storage_iface_hdd_1777864203650_41686","from":"dram","to":"hdd","bytes":19},{"ts_ns":7494257840184985,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"nvme","to":"dram","bytes":20},{"ts_ns":7494257840007028,"key":"fn_storage_iface_nvme_1777864203650_41686","from":"dram","to":"nvme","bytes":20}]}
+[11:10:03] rpc RPC_KV_GET body_len=40
+[11:10:03] rpc RPC_KV_GET resp_len=69 resp={"ok":true,"hit":"hdd_promote","size":19,"val":"hdd-interface-probe"}
+[11:10:03] result=PASS completion=完成

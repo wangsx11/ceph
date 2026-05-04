@@ -299,10 +299,20 @@ bool TierEngine::demote(std::string_view key, Tier to,
     uint8_t  chosen_algo  = 0;
     std::string enc_buf;
     const char* write_ptr = tmp.data();
+    bool dedup_duplicate = false;
+    uint64_t dedup_fp = 0;
+    Dedup::Entry dedup_entry{};
     if (to == Tier::HDD) {
+        std::string raw(tmp.data(), snap.size);
+        dedup_fp = Dedup::fingerprint(raw);
+        if (dedup_.lookup(dedup_fp, &dedup_entry)) {
+            dedup_duplicate = true;
+            on_disk_size = dedup_entry.stored_size;
+            chosen_algo = dedup_entry.algo;
+            target_off = dedup_entry.offset;
+        }
         CompressAlgo algo = CompressEngine::pick(snap.size);
-        if (algo != CompressAlgo::NONE) {
-            std::string raw(tmp.data(), snap.size);
+        if (!dedup_duplicate && algo != CompressAlgo::NONE) {
             if (CompressEngine::compress(algo, raw, &enc_buf)
                 && enc_buf.size() < snap.size /* only commit if it helped */) {
                 on_disk_size = (uint32_t)enc_buf.size();
@@ -314,20 +324,33 @@ bool TierEngine::demote(std::string_view key, Tier to,
             }
         }
         // HDD slot stride large enough to fit on-disk size rounded up.
-        size_t stride = cfg_.tier_slot_size;
-        while (stride < on_disk_size) stride *= 2;
-        target_off = hdd_next_off_.fetch_add(stride);
+        if (!dedup_duplicate) {
+            size_t stride = cfg_.tier_slot_size;
+            while (stride < on_disk_size) stride *= 2;
+            target_off = hdd_next_off_.fetch_add(stride);
+        }
     } else if (to == Tier::NVME) {
         target_off = nvme_next_off_.fetch_add(cfg_.tier_slot_size);
     } else {
         return false;
     }
-    int w = io_->sync_write(prio, write_ptr, on_disk_size, target_off);
-    if (w < 0 || (size_t)w != on_disk_size) {
-        NR_WARN("demote write %s failed key=%s off=%lu sz=%u w=%d",
-                to == Tier::HDD ? "HDD" : "NVMe",
-                skey.c_str(), (unsigned long)target_off, on_disk_size, w);
-        return false;
+    if (!dedup_duplicate) {
+        int w = io_->sync_write(prio, write_ptr, on_disk_size, target_off);
+        if (w < 0 || (size_t)w != on_disk_size) {
+            NR_WARN("demote write %s failed key=%s off=%lu sz=%u w=%d",
+                    to == Tier::HDD ? "HDD" : "NVMe",
+                    skey.c_str(), (unsigned long)target_off, on_disk_size, w);
+            return false;
+        }
+        if (to == Tier::HDD) {
+            dedup_.retain_or_insert(dedup_fp, target_off, snap.size,
+                                    on_disk_size, chosen_algo, nullptr,
+                                    nullptr);
+        }
+    } else {
+        dedup_.retain_or_insert(dedup_fp, target_off, snap.size,
+                                on_disk_size, chosen_algo, nullptr,
+                                nullptr);
     }
 
     // Commit index.
@@ -343,6 +366,7 @@ bool TierEngine::demote(std::string_view key, Tier to,
         }
         it->second.tier    = to;
         it->second.offset  = target_off;
+        it->second.fingerprint = (to == Tier::HDD) ? dedup_fp : 0;
         it->second.compressed_size = (to == Tier::HDD) ? on_disk_size : 0;
         it->second.algo    = (to == Tier::HDD) ? chosen_algo : 0;
 
@@ -454,6 +478,10 @@ TierEngine::CompressStats TierEngine::compress_stats() const {
     return s;
 }
 
+Dedup::Stats TierEngine::dedup_stats() const {
+    return dedup_.stats();
+}
+
 std::vector<uint64_t> TierEngine::reset_all() {
     std::vector<uint64_t> dram_offs;
     {
@@ -481,6 +509,7 @@ std::vector<uint64_t> TierEngine::reset_all() {
     cmp_raw_bytes_.store(0);
     cmp_cmp_bytes_.store(0);
     cmp_n_.store(0);
+    dedup_.reset();
     {
         std::lock_guard<std::mutex> lk(events_mu_);
         events_.clear();
