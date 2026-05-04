@@ -1,0 +1,16 @@
+[23:41:12] start storage/FN-1 仿真引擎异构存储统一访问接口
+[23:41:12] repo_root=/home/wangshouxin/native-rdma-web
+[23:41:12] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:41:12] rpc RPC_TIER_STATS body_len=0
+[23:41:12] rpc RPC_TIER_STATS resp_len=1418 resp={"ok":true,"dram":79040,"nvme":2,"hdd":960,"demoted_d_n":964,"demoted_n_h":960,"events":[{"ts_ns":7539326144367559,"key":"bk_7_9913","from":"nvme","to":"hdd","bytes":1024},{"ts_ns":7539326144365259,"key":"bk_3_9749","from":"nvme","to":"hdd","bytes":1024},{"ts_ns":7539326144362901,"key":"bk_6_9915","from":"nvme","to":"hdd","bytes":1024},{"ts_ns":7539326144360025,"key":"bk_0_9894","from":"nvme","to":"hdd","bytes":1024},{"ts_ns":7539326144357738,"key":"bk_6_9968","from":"nvme","to":"hdd","bytes":10
+[23:41:12] rpc RPC_KV_PUT body_len=64
+[23:41:12] rpc RPC_KV_PUT resp_len=384 resp={"ok":true,"key":"fn_storage_iface_nvme_1777909272271_2393593","tenant_id":0,"size":20,"offset":327581696,"repl_ns":812,"degraded":true,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":6,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[23:41:12] rpc RPC_TIER_DEMOTE body_len=48
+[23:41:12] rpc RPC_TIER_DEMOTE resp_len=75 resp={"ok":true,"key":"fn_storage_iface_nvme_1777909272271_2393593","to":"nvme"}
+[23:41:12] rpc RPC_TIER_STATS body_len=0
+[23:41:12] rpc RPC_TIER_STATS resp_len=1467 resp={"ok":true,"dram":79024,"nvme":19,"hdd":960,"demoted_d_n":981,"demoted_n_h":960,"events":[{"ts_ns":7539326460900833,"key":"fn_storage_iface_nvme_1777909272271_2393593","from":"dram","to":"nvme","bytes":20},{"ts_ns":7539326460477999,"key":"bk_7_9909","from":"dram","to":"nvme","bytes":1024},{"ts_ns":7539326460476003,"key":"bk_4_9833","from":"dram","to":"nvme","bytes":1024},{"ts_ns":7539326460473323,"key":"bk_2_9795","from":"dram","to":"nvme","bytes":1024},{"ts_ns":7539326460470797,"key":"bk_5_9700
+[23:41:12] rpc RPC_KV_GET body_len=43
+[23:41:12] rpc RPC_KV_GET resp_len=71 resp={"ok":true,"hit":"nvme_promote","size":20,"val":"nvme-interface-probe"}
+[23:41:12] rpc RPC_KV_PUT body_len=62
+[23:41:12] rpc RPC_KV_PUT resp_len=29 resp={"ok":false,"err":"slab oom"}
+[23:41:12] result=FAIL completion=未完成

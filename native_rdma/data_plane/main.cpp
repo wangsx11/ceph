@@ -2488,21 +2488,50 @@ int main(int argc, char** argv) {
                 if (!free_slots.empty())
                     slab.free_batch(free_slots.data(), free_slots.size());
                 ops_put.fetch_add(ok_n);
-                // Async replication: batch wr_id allocation + post all WRITEs
+                auto post_write_retry = [&](int qp_idx, void* slot, uint32_t vlen,
+                                            uint64_t remote_addr, uint64_t wr_id,
+                                            bool signaled) -> int {
+                    int rc = 0;
+                    for (int attempt = 0; attempt < 256; ++attempt) {
+                        rc = core.post_write(qp_idx, slot, vlen, slab.lkey(),
+                                             remote_addr, peer.slab_rkey, 0,
+                                             wr_id, signaled);
+                        if (rc == 0) return 0;
+                        std::this_thread::yield();
+                    }
+                    return rc;
+                };
+
+                // Async replication: post all WRITEs, but only request CQEs for
+                // each QP's tail WR in this batch. The unsignaled WRs are still
+                // real RDMA WRITE operations; the signaled tail completion
+                // proves that all earlier WRs on the same QP have retired.
                 if (!rdma_items.empty() && args.async_repl) {
-                    std::vector<uint64_t> wr_ids(rdma_items.size());
-                    repl_waiter.reserve_wr_ids_async(wr_ids.data(), rdma_items.size());
-                    // Use a fixed QP for the entire batch to reduce round-robin overhead
-                    int qp_idx = qos.pick_qp(true);
+                    std::vector<int> item_qps(rdma_items.size(), 0);
+                    std::vector<int> last_for_qp((size_t)core.num_qp(), -1);
+                    for (size_t i = 0; i < rdma_items.size(); ++i) {
+                        int qp_idx = qos.pick_qp(true);
+                        item_qps[i] = qp_idx;
+                        if (qp_idx >= 0 && qp_idx < core.num_qp()) {
+                            last_for_qp[(size_t)qp_idx] = (int)i;
+                        }
+                    }
                     uint64_t t0 = nr::now_ns();
                     for (size_t i = 0; i < rdma_items.size(); ++i) {
                         auto& ri = rdma_items[i];
                         uint64_t remote_addr = peer.slab_base + ri.slot_off;
-                        int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
-                                                 slab.lkey(), remote_addr,
-                                                 peer.slab_rkey, 0, wr_ids[i], true);
+                        int qp_idx = item_qps[i];
+                        bool signaled = (qp_idx >= 0 && qp_idx < core.num_qp() &&
+                                         last_for_qp[(size_t)qp_idx] == (int)i);
+                        uint64_t wr_id = 0;
+                        if (signaled) {
+                            auto reserved = repl_waiter.reserve_wr_id();
+                            wr_id = reserved.first;
+                        }
+                        int rc = post_write_retry(qp_idx, ri.slot, ri.vlen,
+                                                  remote_addr, wr_id, signaled);
                         if (rc != 0) {
-                            repl_waiter.cancel_wr_id(wr_ids[i]);
+                            if (signaled) repl_waiter.cancel_wr_id(wr_id);
                             ++repl_failed_n;
                         } else {
                             ++replicated_n;

@@ -7,7 +7,7 @@
 在节点 A 上启动完整 native_rdma 演示环境：
 
 ```bash
-cd /home/wangshouxin/ceph-web/native_rdma
+cd /home/wangshouxin/native-rdma-web/native_rdma
 bash start.sh
 ```
 
@@ -28,7 +28,7 @@ http://192.168.0.218:5000/
 如果只需要查看页面和调试 `/api/functions/*`，可以只启动 Flask 后端：
 
 ```bash
-cd /home/wangshouxin/ceph-web
+cd /home/wangshouxin/native-rdma-web
 PYTHONPATH=native_rdma/control_plane python3 native_rdma/control_plane/app.py
 ```
 

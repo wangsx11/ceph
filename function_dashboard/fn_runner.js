@@ -1,23 +1,33 @@
 (function () {
-  function envInputs() {
-    const env = window.FDState.state.env;
-    return `
-      <div class="env-grid">
-        <label>控制面地址<input data-env="CTRL_URL" value="${window.FDUtils.escapeHtml(env.CTRL_URL)}"></label>
-        <label>通信套接字<input data-env="UDS" value="${window.FDUtils.escapeHtml(env.UDS)}"></label>
-        <label>要求对端在线<input data-env="REQUIRE_PEER" value="${window.FDUtils.escapeHtml(env.REQUIRE_PEER)}"></label>
-        <label>当前节点<input data-env="CURRENT_NODE" value="${window.FDUtils.escapeHtml(env.CURRENT_NODE)}"></label>
-      </div>
-    `;
-  }
+  const tabs = ["结果摘要", "原始结果"];
 
   function collectEnv() {
     const env = { ...window.FDState.state.env, ALLOW_DESTRUCTIVE: "0" };
-    document.querySelectorAll("[data-env]").forEach((input) => {
-      env[input.dataset.env] = input.value;
-    });
     window.FDState.state.env = env;
     return env;
+  }
+
+  function materialContent(tab, detail) {
+    if (tab === "原始结果") return JSON.stringify(detail.raw || {}, null, 2);
+    return detail.summary_md || "暂无结果摘要";
+  }
+
+  function renderMaterialTabs(detail) {
+    const active = tabs.includes(window.FDState.state.scriptTab)
+      ? window.FDState.state.scriptTab
+      : "结果摘要";
+    window.FDState.state.scriptTab = active;
+    const tabHtml = tabs.map((tab) => `
+      <button class="tab-btn ${tab === active ? "active" : ""}" type="button" data-material-tab="${tab}">
+        ${window.FDUtils.escapeHtml(tab)}
+      </button>
+    `).join("");
+    return `
+      <div class="material-block">
+        <div class="tab-row">${tabHtml}</div>
+        <div class="code-box">${window.FDUtils.escapeHtml(materialContent(active, detail))}</div>
+      </div>
+    `;
   }
 
   function renderRunner(detail, job) {
@@ -28,15 +38,14 @@
     const body = `
       <div class="runner-controls">
         <button id="run-one-btn" class="btn primary" type="button" ${running ? "disabled" : ""}>
-          ${running ? "正在执行..." : "运行当前功能点测试"}
+          ${running ? "执行中..." : "运行当前功能点"}
         </button>
         <span class="status-pill ${running ? "partial" : "muted"}">${window.FDUtils.escapeHtml(jobText)}</span>
       </div>
-      <p>默认使用非破坏性参数执行；破坏性高可靠演练不会从此页面默认触发。</p>
-      ${envInputs()}
       <div id="runner-error" class="error" style="margin-top:10px"></div>
+      ${renderMaterialTabs(detail)}
     `;
-    document.getElementById("runner-pane").innerHTML = window.FDUtils.pane("一键启动测试", body);
+    document.getElementById("runner-pane").innerHTML = window.FDUtils.pane("执行与结果", body);
     const btn = document.getElementById("run-one-btn");
     if (btn) {
       btn.addEventListener("click", async () => {
@@ -53,6 +62,12 @@
         }
       });
     }
+    document.querySelectorAll("[data-material-tab]").forEach((tabBtn) => {
+      tabBtn.addEventListener("click", () => {
+        window.FDState.state.scriptTab = tabBtn.dataset.materialTab;
+        renderRunner(detail, window.FDState.state.currentJob);
+      });
+    });
   }
 
   async function pollJob(jobId) {

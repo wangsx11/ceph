@@ -8,7 +8,7 @@
     currentDetail: null,
     currentJob: null,
     pollTimer: null,
-    scriptTab: "启动脚本",
+    scriptTab: "结果摘要",
     env: {
       CTRL_URL: "http://127.0.0.1:5000",
       UDS: "/tmp/native_rdma-dp.sock",

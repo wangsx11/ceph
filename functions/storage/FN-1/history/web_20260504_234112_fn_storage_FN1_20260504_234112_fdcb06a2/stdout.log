@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+
+storage/FN-1 FAIL - 仿真引擎异构存储统一访问接口
+- RPC_KV_PUT hdd probe 返回失败: {'ok': False, 'err': 'slab oom'}
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260504_234112_fn_storage_FN1_20260504_234112_fdcb06a2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260504_234112_fn_storage_FN1_20260504_234112_fdcb06a2/logs/run_20260504_234112.log

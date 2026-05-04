@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+
+storage/FN-1 PASS - 仿真引擎异构存储统一访问接口
+- RPC_TIER_STATS 暴露 dram/nvme/hdd 统一层级字段
+- NVMe 闭环成功: PUT -> RPC_TIER_DEMOTE(nvme) -> GET hit=nvme_promote
+- HDD 闭环成功: PUT -> RPC_TIER_DEMOTE(hdd) -> GET hit=hdd_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260504_234227_fn_storage_FN1_20260504_234227_5a8451d1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260504_234227_fn_storage_FN1_20260504_234227_5a8451d1/logs/run_20260504_234227.log

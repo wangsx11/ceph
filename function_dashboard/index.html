@@ -19,8 +19,17 @@
   </header>
 
   <main class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-group">
+        <div class="sidebar-title">模块</div>
+        <div id="module-nav" class="module-nav" aria-label="功能模块"></div>
+      </div>
+      <div class="sidebar-group grow">
+        <div class="sidebar-title">功能点</div>
+        <nav id="fn-nav" class="fn-nav" aria-label="功能点"></nav>
+      </div>
+    </aside>
     <section class="content-area">
-      <div id="module-nav" class="module-nav" aria-label="功能模块"></div>
       <div class="content-head">
         <div>
           <h1 id="module-title">功能模块</h1>
@@ -28,13 +37,11 @@
         </div>
         <button id="run-all-btn" class="btn primary" type="button">运行全部功能测试</button>
       </div>
-      <nav id="fn-nav" class="fn-nav" aria-label="功能点"></nav>
-      <section id="detail-grid" class="detail-stack">
-        <section class="pane" id="requirement-pane"></section>
-        <section class="pane" id="implementation-pane"></section>
-        <section class="pane" id="runner-pane"></section>
+      <section id="quick-strip" class="quick-strip"></section>
+      <section id="detail-grid" class="detail-grid">
         <section class="pane" id="result-pane"></section>
-        <section class="pane" id="script-pane"></section>
+        <section class="pane" id="requirement-pane"></section>
+        <section class="pane compact-pane" id="runner-pane"></section>
       </section>
     </section>
   </main>
@@ -45,10 +52,8 @@
   <script src="module_nav.js"></script>
   <script src="fn_nav.js"></script>
   <script src="fn_requirement.js"></script>
-  <script src="fn_implementation.js"></script>
   <script src="fn_runner.js"></script>
   <script src="fn_result.js"></script>
-  <script src="fn_script_viewer.js"></script>
   <script src="layout.js"></script>
 </body>
 </html>
