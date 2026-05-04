@@ -1,0 +1,12 @@
+[01:26:02] start mempool/FN-2 分布式内存池 API
+[01:26:02] repo_root=/home/wangshouxin/native-rdma-web
+[01:26:02] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[01:26:02] rpc RPC_CLUSTER_STATUS body_len=0
+[01:26:02] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":139790386343936,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140531853553664,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[01:26:02] rpc RPC_KV_PUT body_len=60
+[01:26:02] rpc RPC_KV_PUT resp_len=378 resp={"ok":true,"key":"fn_pool_api_1777915562534_3058405","tenant_id":0,"size":26,"offset":36728832,"repl_ns":24989,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":13,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[01:26:02] rpc RPC_KV_GET body_len=33
+[01:26:02] rpc RPC_KV_GET resp_len=70 resp={"ok":true,"hit":"local","size":26,"val":"distributed-pool-api-value"}
+[01:26:02] rpc RPC_TCP_GET_PEER body_len=33
+[01:26:02] rpc RPC_TCP_GET_PEER resp_len=132 resp={"ok":true,"transport":"tcp","key":"fn_pool_api_1777915562534_3058405","size":26,"tcp_ns":194251,"val":"distributed-pool-api-value"}
+[01:26:02] result=PASS completion=完成

@@ -1,0 +1,112 @@
+{
+  "module": "mempool",
+  "module_name": "一致性总线内存池化仿真计算模块",
+  "fn_id": "FN-1",
+  "function": "RDMA 语义远程内存访问与零拷贝",
+  "source": "docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 1 条",
+  "started_at": "2026-05-05T01:22:09+0800",
+  "finished_at": "2026-05-05T01:22:09+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=30618",
+    "远端 slab 元数据有效: base=139930621902848 len=4294967296 rkey=71936 qps=32",
+    "offset/size 在 peer slab 范围内: offset=35680256 size=20",
+    "RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1777915329446_3051121"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140029932552192,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 139930621902848,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "put": {
+      "ok": true,
+      "key": "fn_zero_copy_1777915329446_3051121",
+      "tenant_id": 0,
+      "size": 20,
+      "offset": 35680256,
+      "repl_ns": 30618,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 12,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false
+      }
+    },
+    "peer_get": {
+      "ok": true,
+      "transport": "tcp",
+      "key": "fn_zero_copy_1777915329446_3051121",
+      "size": 20,
+      "tcp_ns": 296187,
+      "val": "rdma-zero-copy-probe"
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-1/history/web_20260505_012209_fn_mempool_FN1_20260505_012209_a8dda134/logs/run_20260505_012209.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-1/history/web_20260505_012209_fn_mempool_FN1_20260505_012209_a8dda134/logs/run_20260505_012209.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-1/history/web_20260505_012209_fn_mempool_FN1_20260505_012209_a8dda134/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140029932552192,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":139930621902848,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 55,
+      "response_len": 379,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_zero_copy_1777915329446_3051121\",\"tenant_id\":0,\"size\":20,\"offset\":35680256,\"repl_ns\":30618,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":12,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 34,
+      "response_len": 127,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_zero_copy_1777915329446_3051121\",\"size\":20,\"tcp_ns\":296187,\"val\":\"rdma-zero-copy-probe\"}"
+    }
+  ]
+}

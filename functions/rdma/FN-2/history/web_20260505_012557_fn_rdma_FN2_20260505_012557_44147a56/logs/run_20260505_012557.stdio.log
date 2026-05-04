@@ -1,0 +1,6 @@
+rdma/FN-2 PASS - 聚合数据传输
+- RPC_KV_PUT_BATCH 成功: ok_n=8/8 replicated_n=8/8
+- 批量 RDMA peer 读回成功: RPC_TCP_GET_PEER 8/8 同值
+- 最近一次启动日志包含 BatchAggregator/RDMA QP/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260505_012557_fn_rdma_FN2_20260505_012557_44147a56/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260505_012557_fn_rdma_FN2_20260505_012557_44147a56/logs/run_20260505_012557.log

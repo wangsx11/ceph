@@ -1,0 +1,23 @@
+[01:25:54] start storage/FN-5 IO 调度与优先级管理
+[01:25:54] repo_root=/home/wangshouxin/native-rdma-web
+[01:25:54] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[01:25:54] rpc RPC_CLUSTER_STATUS body_len=0
+[01:25:54] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":139790386343936,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140531853553664,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[01:25:54] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=796929
+[01:25:54] rpc RPC_IO_STATS body_len=0
+[01:25:54] rpc RPC_IO_STATS resp_len=156 resp={"ok":true,"fg_read_ops":5,"fg_write_ops":8,"fg_read_bytes":94,"fg_write_bytes":154,"bg_read_ops":3,"bg_write_ops":2,"bg_read_bytes":57,"bg_write_bytes":38}
+[01:25:54] rpc RPC_KV_PUT body_len=60
+[01:25:54] rpc RPC_KV_PUT resp_len=365 resp={"ok":true,"key":"fn_io_fg_nvme_1777915554469_3057924","tenant_id":0,"size":24,"offset":28307456,"repl_ns":26673,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":1,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[01:25:54] rpc RPC_TIER_DEMOTE body_len=40
+[01:25:54] rpc RPC_TIER_DEMOTE resp_len=67 resp={"ok":true,"key":"fn_io_fg_nvme_1777915554469_3057924","to":"nvme"}
+[01:25:54] rpc RPC_KV_GET body_len=35
+[01:25:54] rpc RPC_KV_GET resp_len=75 resp={"ok":true,"hit":"nvme_promote","size":24,"val":"foreground-nvme-io-probe"}
+[01:25:54] rpc RPC_KV_PUT body_len=58
+[01:25:54] rpc RPC_KV_PUT resp_len=364 resp={"ok":true,"key":"fn_io_bg_hdd_1777915554469_3057924","tenant_id":0,"size":23,"offset":30404608,"repl_ns":21688,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":2,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[01:25:54] rpc RPC_TIER_DEMOTE body_len=38
+[01:25:54] rpc RPC_TIER_DEMOTE resp_len=65 resp={"ok":true,"key":"fn_io_bg_hdd_1777915554469_3057924","to":"hdd"}
+[01:25:54] rpc RPC_KV_GET body_len=34
+[01:25:54] rpc RPC_KV_GET resp_len=73 resp={"ok":true,"hit":"hdd_promote","size":23,"val":"background-hdd-io-probe"}
+[01:25:54] rpc RPC_IO_STATS body_len=0
+[01:25:54] rpc RPC_IO_STATS resp_len=157 resp={"ok":true,"fg_read_ops":6,"fg_write_ops":9,"fg_read_bytes":118,"fg_write_bytes":178,"bg_read_ops":4,"bg_write_ops":3,"bg_read_bytes":80,"bg_write_bytes":61}
+[01:25:54] result=PASS completion=完成

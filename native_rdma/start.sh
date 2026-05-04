@@ -28,6 +28,7 @@ export NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT:-18516}"
 export NR_GDR_ENABLE="${NR_GDR_ENABLE:-0}"
 export NR_CUDA_DEVICE="${NR_CUDA_DEVICE:-0}"
 export NR_GDR_BYTES="${NR_GDR_BYTES:-67108864}"
+export NR_SKIP_FLASK="${NR_SKIP_FLASK:-0}"
 
 LOCAL_CUDA_FLAG="-DNR_USE_CUDA=OFF"
 PEER_CUDA_FLAG="-DNR_USE_CUDA=OFF"
@@ -54,6 +55,10 @@ rsync -avz \
     --exclude 'native_rdma/build/' \
     --exclude 'native_rdma/build-current/' \
     --exclude 'native_rdma/logs/' \
+    --exclude 'functions/history/' \
+    --exclude 'functions/*/FN-*/history/' \
+    --exclude 'performances/history/' \
+    --exclude 'performances/PF-*/history/' \
     --exclude '__pycache__/' \
     --exclude '*.pyc' \
     "${REPO_ROOT}/" "${PEER_HOST}:${PEER_REPO_ROOT}/"
@@ -67,18 +72,18 @@ rm -rf /home/wangshouxin/nr_cold/* 2>/dev/null || true
 ssh "${PEER_HOST}" "rm -rf /tmp/nr_cold/* 2>/dev/null || true" || true
 
 say "stop old local stack"
-bash "${ROOT}/scripts/demo_down.sh" 2>/dev/null || true
+NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_down.sh" 2>/dev/null || true
 
 say "stop old peer stack"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && bash scripts/demo_down.sh" 2>/dev/null || true
+ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_down.sh" 2>/dev/null || true
 
 say "start peer role B"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' ROLE=B bash scripts/demo_up.sh"
+ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}' ROLE=B bash scripts/demo_up.sh"
 sleep 3
 
 say "start local role A"
 if [ -n "${LOCAL_HOST}" ]; then
-    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' bash scripts/demo_up.sh"
+    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_up.sh"
 else
-    ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" bash "${ROOT}/scripts/demo_up.sh"
+    ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_up.sh"
 fi

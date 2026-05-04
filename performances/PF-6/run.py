@@ -163,6 +163,7 @@ def main() -> int:
     keyspace = os.environ.get("KEYSPACE", "512")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
+    restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
     put_threads = os.environ.get("PUT_THREADS", "5")
     put_batch = os.environ.get("PUT_BATCH", "2")
     get_threads = os.environ.get("GET_THREADS", "8")
@@ -277,13 +278,21 @@ def main() -> int:
 
     # Restore 4KB slab
     run_lines_restore: list[str] = []
-    restart_stack(native_root, {
+    restore_ok = restart_stack(native_root, {
         "SLAB_SLOT_SIZE": "4096",
         "SLAB_TOTAL_BYTES": "4294967296",
-        "NR_ASYNC_REPL": async_repl,
+        "NR_ASYNC_REPL": restore_async_repl,
     }, run_lines_restore)
+    result["restore_async_repl"] = restore_async_repl
+    result["restore_ok"] = bool(restore_ok)
+    if not restore_ok:
+        result["passed"] = False
+        result["note"] = (result.get("note") or "") + " restore failed"
+    run_log.write_text("\n".join(run_lines + ["\n[restore]\n"] + run_lines_restore), encoding="utf-8")
+    write_json(raw_json, result)
+    write_summary(path, result, run_log, raw_json)
 
-    return 0 if passed else 1
+    return 0 if result["passed"] else 1
 
 
 if __name__ == "__main__":

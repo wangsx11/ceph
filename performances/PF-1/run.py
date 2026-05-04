@@ -270,6 +270,7 @@ def main() -> int:
     link_gbps = float(os.environ.get("LINK_GBPS", "100"))
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
+    restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
     metrics_shm = os.environ.get("NR_METRICS_SHM", "/tmp/native_rdma-metrics.shm")
 
     if not os.access(bin_path, os.X_OK):
@@ -452,6 +453,19 @@ def main() -> int:
     bw_fail_pct = (bw_fail / bw_total * 100.0) if bw_total > 0 else 0.0
     bw_success_rate_pct = (bw_ops_ok / bw_total * 100.0) if bw_total > 0 else 0.0
     passed = passed_ops and passed_util
+
+    restore_lines: list[str] = []
+    restore_ok = restart_stack(native_root, {
+        "SLAB_SLOT_SIZE": "4096",
+        "SLAB_TOTAL_BYTES": "4294967296",
+        "NR_ASYNC_REPL": restore_async_repl,
+    }, restore_lines)
+    run_lines.append("\n" + "=" * 60 + "\nRestore functional data-plane defaults\n" + "=" * 60 + "\n")
+    run_lines.extend(restore_lines)
+    if not restore_ok:
+        run_lines.append("[ERROR] Failed to restore 4KB functional data-plane defaults\n")
+        passed = False
+
     result = {
         "metric": "perf_01",
         # Sub-test A
@@ -479,6 +493,8 @@ def main() -> int:
         "bw_degraded": bw_degraded,
         "passed_util": bool(passed_util),
         "bw_trials": bw_trials,
+        "restore_async_repl": restore_async_repl,
+        "restore_ok": bool(restore_ok),
         # Overall
         "thresholds": {
             "ops_per_sec": 1_000_000,

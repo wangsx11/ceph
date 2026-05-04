@@ -1,0 +1,17 @@
+{
+  "metric": "perf_05_batch_bw",
+  "ops_per_sec": 288740.0,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "val_size": 1024,
+  "mb_per_sec": 295.67,
+  "threshold_mbs": 700.0,
+  "passed": false,
+  "raw": {
+    "ops_per_sec": 288740.0,
+    "ops_ok": 4332288,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "val_size": 1024
+  }
+}

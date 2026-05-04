@@ -1,0 +1,70 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-1",
+  "function": "RDMA 与 TCP/IP 统一通信层",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 1 条",
+  "started_at": "2026-05-05T01:25:56+0800",
+  "finished_at": "2026-05-05T01:25:56+0800",
+  "status": "SKIP",
+  "passed": false,
+  "completion": "未完成",
+  "evidence": [
+    "FN-1 严格 TCP/IP 验收要求数据面以 NR_TRANSPORT=tcp、NR_ASYNC_REPL=0 启动；当前 transport=rdma，请按 TCP 模式重启后重跑本项"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 139790386343936,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140531853553664,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "has_qp": true,
+    "has_tcp": true,
+    "has_oob": true,
+    "peer_meta_ok": true,
+    "checked_recent_log_from_last_start": true
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012556_fn_rdma_FN1_20260505_012556_08c4bb7a/logs/run_20260505_012556.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012556_fn_rdma_FN1_20260505_012556_08c4bb7a/logs/run_20260505_012556.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012556_fn_rdma_FN1_20260505_012556_08c4bb7a/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":139790386343936,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140531853553664,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    }
+  ]
+}

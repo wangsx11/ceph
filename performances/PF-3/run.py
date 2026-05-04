@@ -194,6 +194,7 @@ def main() -> int:
     threads = os.environ.get("THREADS", "4")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
+    restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -272,6 +273,18 @@ def main() -> int:
         and lo_degr == 0
     )
 
+    restore_lines: list[str] = []
+    restore_ok = restart_stack(native_root, {
+        "SLAB_SLOT_SIZE": "4096",
+        "SLAB_TOTAL_BYTES": "4294967296",
+        "NR_ASYNC_REPL": restore_async_repl,
+    }, restore_lines)
+    run_lines.append("\n[restore functional data-plane defaults]\n")
+    run_lines.extend(restore_lines)
+    if not restore_ok:
+        run_lines.append("[ERROR] Failed to restore 4KB functional data-plane defaults\n")
+        passed = False
+
     result = {
         "metric": "perf_03_qos",
         "hi_ops": hi_ops,
@@ -290,6 +303,8 @@ def main() -> int:
         "configured_lo_burst_ms": os.environ.get("NR_QOS_LO_BURST_MS", "data-plane-default"),
         "hi_exit": p_hi.returncode,
         "lo_exit": p_lo.returncode,
+        "restore_async_repl": restore_async_repl,
+        "restore_ok": bool(restore_ok),
         "passed": passed,
         "raw_hi": hi,
         "raw_lo": lo,

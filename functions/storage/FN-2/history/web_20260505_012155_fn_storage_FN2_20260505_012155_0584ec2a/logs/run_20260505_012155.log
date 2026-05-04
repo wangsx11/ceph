@@ -1,0 +1,40 @@
+[01:21:55] start storage/FN-2 多层感知、冷热分离与调度
+[01:21:55] repo_root=/home/wangshouxin/native-rdma-web
+[01:21:55] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[01:21:55] rpc RPC_KV_PUT body_len=66
+[01:21:55] rpc RPC_KV_PUT resp_len=386 resp={"ok":true,"key":"fn_storage_tier_manual_1777915315353_3050345","tenant_id":0,"size":21,"offset":6287360,"repl_ns":26345,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":2,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[01:21:55] rpc RPC_TIER_DEMOTE body_len=49
+[01:21:55] rpc RPC_TIER_DEMOTE resp_len=76 resp={"ok":true,"key":"fn_storage_tier_manual_1777915315353_3050345","to":"nvme"}
+[01:21:55] rpc RPC_KV_GET body_len=44
+[01:21:55] rpc RPC_KV_GET resp_len=72 resp={"ok":true,"hit":"nvme_promote","size":21,"val":"tiering_probe_payload"}
+[01:21:55] rpc RPC_KV_PUT body_len=68
+[01:21:55] rpc RPC_KV_PUT resp_len=385 resp={"ok":true,"key":"fn_storage_tier_cold_1777915315354_3050345","tenant_id":0,"size":25,"offset":8384512,"repl_ns":20964,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":3,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[01:21:55] rpc RPC_KV_PUT body_len=66
+[01:21:55] rpc RPC_KV_PUT resp_len=370 resp={"ok":true,"key":"fn_storage_tier_hot_1777915315354_3050345","tenant_id":0,"size":24,"offset":9433088,"repl_ns":20583,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":4,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[01:21:55] rpc RPC_KV_GET body_len=41
+[01:21:55] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:55] rpc RPC_TIER_STATS body_len=0
+[01:21:55] rpc RPC_TIER_STATS resp_len=774 resp={"ok":true,"dram":5,"nvme":0,"hdd":0,"demoted_d_n":3,"demoted_n_h":0,"events":[{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050322","from":"hdd","to":"dram","bytes":19},{"ts_ns":7545368534114945,"key":"fn_storage_iface_hdd_1777915314344_30503
+[01:21:56] rpc RPC_KV_GET body_len=41
+[01:21:56] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:56] rpc RPC_TIER_STATS body_len=0
+[01:21:56] rpc RPC_TIER_STATS resp_len=774 resp={"ok":true,"dram":5,"nvme":0,"hdd":0,"demoted_d_n":3,"demoted_n_h":0,"events":[{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050322","from":"hdd","to":"dram","bytes":19},{"ts_ns":7545368534114945,"key":"fn_storage_iface_hdd_1777915314344_30503
+[01:21:57] rpc RPC_KV_GET body_len=41
+[01:21:57] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:57] rpc RPC_TIER_STATS body_len=0
+[01:21:57] rpc RPC_TIER_STATS resp_len=774 resp={"ok":true,"dram":5,"nvme":0,"hdd":0,"demoted_d_n":3,"demoted_n_h":0,"events":[{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050322","from":"hdd","to":"dram","bytes":19},{"ts_ns":7545368534114945,"key":"fn_storage_iface_hdd_1777915314344_30503
+[01:21:58] rpc RPC_KV_GET body_len=41
+[01:21:58] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:58] rpc RPC_TIER_STATS body_len=0
+[01:21:58] rpc RPC_TIER_STATS resp_len=774 resp={"ok":true,"dram":5,"nvme":0,"hdd":0,"demoted_d_n":3,"demoted_n_h":0,"events":[{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050322","from":"hdd","to":"dram","bytes":19},{"ts_ns":7545368534114945,"key":"fn_storage_iface_hdd_1777915314344_30503
+[01:21:59] rpc RPC_KV_GET body_len=41
+[01:21:59] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:59] rpc RPC_TIER_STATS body_len=0
+[01:21:59] rpc RPC_TIER_STATS resp_len=889 resp={"ok":true,"dram":4,"nvme":1,"hdd":0,"demoted_d_n":4,"demoted_n_h":0,"events":[{"ts_ns":7545372698553494,"key":"fn_storage_tier_cold_1777915315354_3050345","from":"dram","to":"nvme","bytes":25},{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050
+[01:21:59] rpc RPC_TIER_STATS body_len=0
+[01:21:59] rpc RPC_TIER_STATS resp_len=889 resp={"ok":true,"dram":4,"nvme":1,"hdd":0,"demoted_d_n":4,"demoted_n_h":0,"events":[{"ts_ns":7545372698553494,"key":"fn_storage_tier_cold_1777915315354_3050345","from":"dram","to":"nvme","bytes":25},{"ts_ns":7545369543834525,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"nvme","to":"dram","bytes":21},{"ts_ns":7545369543724509,"key":"fn_storage_tier_manual_1777915315353_3050345","from":"dram","to":"nvme","bytes":21},{"ts_ns":7545368534297817,"key":"fn_storage_iface_hdd_1777915314344_3050
+[01:21:59] rpc RPC_KV_GET body_len=42
+[01:21:59] rpc RPC_KV_GET resp_len=76 resp={"ok":true,"hit":"nvme_promote","size":25,"val":"auto-cold-tiering-payload"}
+[01:21:59] rpc RPC_KV_GET body_len=41
+[01:21:59] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[01:21:59] result=PASS completion=完成

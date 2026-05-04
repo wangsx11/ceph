@@ -1,0 +1,1031 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-5",
+  "function": "分布式节点路由转发与负载均衡",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 5 条",
+  "started_at": "2026-05-05T01:26:00+0800",
+  "finished_at": "2026-05-05T01:26:00+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "64 个 key 路由查询成功，primary 分布: {'192.168.0.218': 54, '192.168.0.214': 10}",
+    "本地 primary 写入未转发: key=fn_route_1777915560517_3058198_0 primary=192.168.0.218",
+    "远端 primary 写入已转发到 peer: key=fn_route_1777915560518_3058198_10 primary=192.168.0.214 transport=tcp_data_channel",
+    "本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=23"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 139790386343936,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140531853553664,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "counts": {
+      "192.168.0.218": 54,
+      "192.168.0.214": 10
+    },
+    "items": [
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_0",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_1",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_2",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_3",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_4",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560517_3058198_5",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_6",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_7",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_8",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_9",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_10",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_11",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_12",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_13",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_14",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_15",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_16",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_17",
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_18",
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560518_3058198_19",
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_20",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_21",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_22",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_23",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_24",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_25",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_26",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_27",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_28",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_29",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_30",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_31",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_32",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_33",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560519_3058198_34",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_35",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_36",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_37",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_38",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_39",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_40",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_41",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_42",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_43",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_44",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_45",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_46",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_47",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_48",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_49",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560520_3058198_50",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_51",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_52",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_53",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_54",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_55",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_56",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_57",
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_58",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_59",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_60",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_61",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_62",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      },
+      {
+        "ok": true,
+        "key": "fn_route_1777915560521_3058198_63",
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true,
+        "self": "192.168.0.218"
+      }
+    ],
+    "local_put": {
+      "ok": true,
+      "key": "fn_route_1777915560517_3058198_0",
+      "route_forwarded": false,
+      "forward_transport": "local",
+      "primary": "192.168.0.218",
+      "replica": "192.168.0.214",
+      "local_is_primary": true,
+      "size": 19,
+      "offset": 34631680,
+      "route_ns": 13243
+    },
+    "remote_put": {
+      "ok": true,
+      "key": "fn_route_1777915560518_3058198_10",
+      "route_forwarded": true,
+      "forward_transport": "tcp_data_channel",
+      "primary": "192.168.0.214",
+      "replica": "192.168.0.218",
+      "local_is_primary": false,
+      "size": 20,
+      "route_ns": 16241485
+    },
+    "local_get": {
+      "ok": true,
+      "hit": "local",
+      "size": 19,
+      "val": "route-local-primary"
+    },
+    "remote_peer_get": {
+      "ok": true,
+      "transport": "tcp",
+      "key": "fn_route_1777915560518_3058198_10",
+      "size": 20,
+      "tcp_ns": 206367,
+      "val": "route-remote-primary"
+    },
+    "empty_replica": 23
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-5/history/web_20260505_012600_fn_rdma_FN5_20260505_012600_552dba35/logs/run_20260505_012600.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-5/history/web_20260505_012600_fn_rdma_FN5_20260505_012600_552dba35/logs/run_20260505_012600.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-5/history/web_20260505_012600_fn_rdma_FN5_20260505_012600_552dba35/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":139790386343936,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140531853553664,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_0\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_1\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_2\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_3\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_4\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_5\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_6\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_7\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_8\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 32,
+      "response_len": 151,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_9\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_10\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_11\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_12\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_13\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_14\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_15\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_16\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 153,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_17\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 140,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_18\",\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 140,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_19\",\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_20\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_21\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_22\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_23\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_24\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_25\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_26\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_27\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_28\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_29\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_30\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_31\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_32\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_33\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560519_3058198_34\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_35\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_36\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_37\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_38\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_39\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_40\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_41\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_42\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_43\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_44\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_45\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_46\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_47\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_48\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_49\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560520_3058198_50\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_51\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_52\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_53\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_54\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_55\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_56\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 139,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_57\",\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_58\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_59\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_60\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_61\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_62\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_QUERY",
+      "body_len": 33,
+      "response_len": 152,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560521_3058198_63\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"self\":\"192.168.0.218\"}"
+    },
+    {
+      "kind": "RPC_ROUTE_PUT",
+      "body_len": 52,
+      "response_len": 225,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560517_3058198_0\",\"route_forwarded\":false,\"forward_transport\":\"local\",\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true,\"size\":19,\"offset\":34631680,\"route_ns\":13243}"
+    },
+    {
+      "kind": "RPC_ROUTE_PUT",
+      "body_len": 54,
+      "response_len": 222,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_route_1777915560518_3058198_10\",\"route_forwarded\":true,\"forward_transport\":\"tcp_data_channel\",\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false,\"size\":20,\"route_ns\":16241485}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 32,
+      "response_len": 63,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":19,\"val\":\"route-local-primary\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 33,
+      "response_len": 126,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_route_1777915560518_3058198_10\",\"size\":20,\"tcp_ns\":206367,\"val\":\"route-remote-primary\"}"
+    }
+  ]
+}

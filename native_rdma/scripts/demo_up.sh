@@ -25,6 +25,7 @@ cd "$ROOT"
 ROLE="${ROLE:-A}"
 FLASK_PORT_DEFAULT=$([ "$ROLE" = "A" ] && echo 5000 || echo 5001)
 FLASK_PORT="${FLASK_PORT:-$FLASK_PORT_DEFAULT}"
+SKIP_FLASK="${NR_SKIP_FLASK:-0}"
 
 # 默认演示用 4KB slot / 4GB slab：M5 的 1万/5万/10万 1KB 对象可真实常驻，
 # M6 的 4KB 对象也能正常迁移。perf_06 的 1MB 带宽测试请显式覆盖
@@ -73,24 +74,33 @@ fi
 say "清理残留进程 / IPC"
 pkill -9 -f "$BUILD_DIR/bin/native_rdma_dp" 2>/dev/null || true
 pkill -9 -f "$ROOT/build/bin/native_rdma_dp" 2>/dev/null || true
-pkill -f  "python3 $ROOT/control_plane/app.py" 2>/dev/null || true
+if [ "$SKIP_FLASK" != "1" ]; then
+    pkill -f  "python3 $ROOT/control_plane/app.py" 2>/dev/null || true
+fi
 # 同一台机器上可能残留来自旧 checkout 的 native_rdma_dp，占用相同 UDS。
 # 只清理监听当前 UDS 的 native_rdma_dp，避免误杀其它无关进程。
 UDS_OWNER_PID=$(ss -xlp 2>/dev/null | awk -v s="${UDS_PATH:-/tmp/native_rdma-dp.sock}" '$0 ~ s && $0 ~ /native_rdma_dp/ { if (match($0, /pid=[0-9]+/)) { print substr($0, RSTART+4, RLENGTH-4); exit } }')
 [ -n "${UDS_OWNER_PID:-}" ] && kill -9 "$UDS_OWNER_PID" 2>/dev/null || true
 # 端口上的 Flask 也可能是别的拷贝，显式终结
-PORT_PID=$(ss -tlnp 2>/dev/null | awk -v p=":$FLASK_PORT" '$4 ~ p {print $0}' \
-           | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
-[ -n "${PORT_PID:-}" ] && kill -9 "$PORT_PID" 2>/dev/null || true
+if [ "$SKIP_FLASK" != "1" ]; then
+    PORT_PID=$(ss -tlnp 2>/dev/null | awk -v p=":$FLASK_PORT" '$4 ~ p {print $0}' \
+               | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
+    [ -n "${PORT_PID:-}" ] && kill -9 "$PORT_PID" 2>/dev/null || true
+fi
 rm -f /tmp/native_rdma-dp.sock /tmp/native_rdma-metrics.shm
 sleep 1
 
 # 5) 启动 Data Plane（后台 + 日志 tee 到 logs/dp_$ROLE.log）
-# 关键：</dev/null + disown 双保险，防止通过 `ssh host "bash demo_up.sh"` 远程
-# 启动时，SSH 会话退出后把 DP 和 Flask 一起 SIGHUP 杀掉。
+# 关键：</dev/null + 独立 session + disown，防止通过 SSH 或自动化执行器
+# 启动时，父会话退出后把 DP 和 Flask 一起带走。
 say "启动 native_rdma_dp (role=$ROLE)"
-nohup bash "$ROOT/scripts/start_node.sh" --role="$ROLE" \
-    </dev/null > "logs/dp_${ROLE}.stdout.log" 2>&1 &
+if command -v setsid >/dev/null 2>&1; then
+    setsid bash "$ROOT/scripts/start_node.sh" --role="$ROLE" \
+        </dev/null > "logs/dp_${ROLE}.stdout.log" 2>&1 &
+else
+    nohup bash "$ROOT/scripts/start_node.sh" --role="$ROLE" \
+        </dev/null > "logs/dp_${ROLE}.stdout.log" 2>&1 &
+fi
 DP_PID=$!
 disown "$DP_PID" 2>/dev/null || true
 say "  DP pid=$DP_PID"
@@ -146,6 +156,10 @@ else
 fi
 
 # 6) 启动 Flask 控制面
+if [ "$SKIP_FLASK" = "1" ]; then
+    ok "跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面"
+    exit 0
+fi
 say "启动 Flask (port=$FLASK_PORT, role=$ROLE)"
 # 对端 Flask URL 根据约定：A 端默认 5000，B 端默认 5001；对端端口取"反向"默认值
 PEER_FLASK_PORT=$([ "$ROLE" = "A" ] && echo 5001 || echo 5000)
@@ -156,13 +170,23 @@ say "  peer url = $PEER_URL （将作为反向代理目标注入 Flask）"
 # （之前错写成 ../../dashboard 会跑到 $HOME/dashboard，导致 Flask 加载错面板。）
 NR_DASH_DIR_RESOLVED="${NR_DASH_DIR:-$(cd "$ROOT/.." && pwd)/dashboard}"
 
-NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
-NR_UDS_PATH=/tmp/native_rdma-dp.sock \
-NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
-NR_DASH_DIR="$NR_DASH_DIR_RESOLVED" \
-NR_PEER_URL="$PEER_URL" \
-    nohup python3 "$ROOT/control_plane/app.py" \
-    </dev/null > "logs/cp_${ROLE}.stdout.log" 2>&1 &
+if command -v setsid >/dev/null 2>&1; then
+    NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
+    NR_UDS_PATH=/tmp/native_rdma-dp.sock \
+    NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
+    NR_DASH_DIR="$NR_DASH_DIR_RESOLVED" \
+    NR_PEER_URL="$PEER_URL" \
+        setsid python3 "$ROOT/control_plane/app.py" \
+        </dev/null > "logs/cp_${ROLE}.stdout.log" 2>&1 &
+else
+    NR_ROLE="$ROLE" NR_CTRL_PORT="$FLASK_PORT" \
+    NR_UDS_PATH=/tmp/native_rdma-dp.sock \
+    NR_METRICS_SHM=/tmp/native_rdma-metrics.shm \
+    NR_DASH_DIR="$NR_DASH_DIR_RESOLVED" \
+    NR_PEER_URL="$PEER_URL" \
+        nohup python3 "$ROOT/control_plane/app.py" \
+        </dev/null > "logs/cp_${ROLE}.stdout.log" 2>&1 &
+fi
 CP_PID=$!
 disown "$CP_PID" 2>/dev/null || true
 say "  Flask pid=$CP_PID  dash_dir=$NR_DASH_DIR_RESOLVED"

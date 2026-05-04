@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-5/run.sh
+
+storage/FN-5 PASS - IO 调度与优先级管理
+- 数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- 前台 NVMe I/O 计数增加: fg_write_ops +1, fg_read_ops +1
+- 后台 HDD I/O 计数增加: bg_write_ops +1, bg_read_ops +1
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260505_012554_fn_storage_FN5_20260505_012554_eefc7a2c/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260505_012554_fn_storage_FN5_20260505_012554_eefc7a2c/logs/run_20260505_012554.log

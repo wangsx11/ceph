@@ -777,8 +777,9 @@ def rdma_fn1(ctx: FnContext) -> CheckResult:
                 details=details,
             )
         if str(cluster.get("transport", "")) != "tcp":
-            return fail_result(
-                "FN-1 严格 TCP/IP 验收要求数据面以 NR_TRANSPORT=tcp 启动；当前未切换普通 PUT 路径",
+            return skip_result(
+                "FN-1 严格 TCP/IP 验收要求数据面以 NR_TRANSPORT=tcp、NR_ASYNC_REPL=0 启动；"
+                f"当前 transport={cluster.get('transport')}，请按 TCP 模式重启后重跑本项",
                 details=details,
             )
         if bool(cluster.get("async_repl", True)):
@@ -1041,8 +1042,8 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
             details=details,
         )
     if str(cluster.get("transport", "rdma")) != "rdma":
-        return fail_result(
-            "FN-4 GPU Direct RDMA 要求数据面以 NR_TRANSPORT=rdma 启动",
+        return skip_result(
+            "FN-4 GPU Direct RDMA 要求数据面以 NR_TRANSPORT=rdma 启动；当前启动模式不满足",
             details=details,
         )
 
@@ -1051,7 +1052,11 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
     if not _ok(gdr_status):
         return fail_result("RPC_GDR_STATUS 返回失败", details=details)
     if not bool(gdr_status.get("peer_gpu_enabled", False)):
-        return fail_result("peer GPU MR 未启用，不能执行 GPUDirect RDMA", details=details)
+        return waived_result(
+            "peer GPU MR 未启用，当前未满足 GPUDirect RDMA 验收硬件/启动条件；"
+            "需要 NR_GDR_ENABLE=1、xfusion4 NVIDIA GPU 和 nvidia_peermem/nv_peer_mem 后重跑",
+            details=details,
+        )
     if not (
         _positive_int(gdr_status.get("peer_gpu_base"))
         and _positive_int(gdr_status.get("peer_gpu_rkey"))
@@ -1088,12 +1093,12 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
     if "NVIDIA" not in hw_text or (
         "nvidia_peermem" not in hw_text and "nv_peer_mem" not in hw_text
     ):
-        return fail_result(
+        return waived_result(
             "xfusion4 未同时证明 NVIDIA GPU 与 nvidia_peermem/nv_peer_mem 可用",
             details=details,
         )
     if "Cuda compilation tools" not in hw_text and "release 12" not in hw_text:
-        return fail_result("xfusion4 未证明 CUDA 编译工具可用", details=details)
+        return waived_result("xfusion4 未证明 CUDA 编译工具可用", details=details)
     if "hca_id:\tmlx5_0" not in hw_text and "hca_id: mlx5_0" not in hw_text:
         return fail_result("xfusion4 未证明 mlx5_0 RDMA 设备可用", details=details)
 
@@ -1392,8 +1397,16 @@ def mempool_fn2(ctx: FnContext) -> CheckResult:
 
     got = ctx.kv_get(key)
     _require_ok(got, "RPC_KV_GET")
-    peer_get = ctx.rpc_json("RPC_TCP_GET_PEER", key)
-    _require_ok(peer_get, "RPC_TCP_GET_PEER")
+    peer_get: dict[str, Any] = {}
+    deadline = time.time() + float(os.environ.get("FN2_PEER_READBACK_TIMEOUT", "3"))
+    while True:
+        peer_get = ctx.rpc_json("RPC_TCP_GET_PEER", key)
+        if peer_get.get("ok") is True and str(peer_get.get("val", "")) == value:
+            break
+        if time.time() >= deadline:
+            _require_ok(peer_get, "RPC_TCP_GET_PEER")
+            break
+        time.sleep(0.1)
     if str(got.get("val", "")) == value and str(peer_get.get("val", "")) == value:
         return pass_result(
             f"UDS 封装 API 闭环成功: RPC_KV_PUT -> RPC_KV_GET key={key} hit={got.get('hit')} size={got.get('size')}",

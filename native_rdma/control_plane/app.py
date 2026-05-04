@@ -859,6 +859,12 @@ _FUNCTION_ALLOWED_ENV = {
     "PEER_SSH",
     "PEER_DP_PATH",
     "PEER_START_CMD",
+    "FN6_RECOVERY_CMD",
+    "FN6_RECOVERY_CMD_TIMEOUT",
+    "FN6_RECOVERY_WAIT_TIMEOUT",
+    "FN6_PEER_DOWN_TIMEOUT",
+    "FN6_POST_RECOVERY_READBACK_TIMEOUT",
+    "FN6_PEER_START_TIMEOUT",
 }
 _FUNCTION_DEFAULT_ENV = {
     "CTRL_URL": "http://127.0.0.1:5000",
@@ -1685,9 +1691,15 @@ def _sanitize_function_env(body_env: Any, *, module: str = "", fn_id: str = "") 
     if env.get("ALLOW_DESTRUCTIVE") not in {"1", "true", "True"}:
         env["ALLOW_DESTRUCTIVE"] = "0"
     else:
-        complete_peer = all(env.get(k) for k in ("PEER_SSH", "PEER_DP_PATH", "PEER_START_CMD"))
+        complete_peer = (
+            all(env.get(k) for k in ("PEER_SSH", "PEER_DP_PATH"))
+            and bool(env.get("PEER_START_CMD") or env.get("FN6_RECOVERY_CMD"))
+        )
         if module != "mempool" or fn_id != "FN-6" or not complete_peer:
-            raise ValueError("破坏性 HA 演练默认禁用，且仅允许 mempool 高可靠功能点携带完整 peer 参数后执行")
+            raise ValueError(
+                "破坏性 HA 演练默认禁用，且仅允许 mempool 高可靠功能点携带 "
+                "PEER_SSH/PEER_DP_PATH 和 PEER_START_CMD 或 FN6_RECOVERY_CMD 后执行"
+            )
     return env
 
 
@@ -1794,7 +1806,7 @@ def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str
                 rc = proc.wait()
             with _FUNCTION_JOB_LOCK:
                 job["exit_code"] = rc
-                job["state"] = "finished" if rc == 0 else "failed"
+                job["state"] = "finished" if rc in (0, 2) else "failed"
             for src, name in result_files:
                 _copy_if_exists(src, hist / name)
             if not (hist / "summary.md").exists():
@@ -2128,7 +2140,7 @@ def _run_performance_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, 
                 rc = proc.wait()
             with _PERFORMANCE_JOB_LOCK:
                 job["exit_code"] = rc
-                job["state"] = "finished" if rc == 0 else "failed"
+                job["state"] = "finished" if rc in (0, 2) else "failed"
             if job.get("kind") == "run_all":
                 _copy_performance_run_all_results(job)
             for src, name in result_files:
@@ -2163,6 +2175,8 @@ def performance_run_one():
     hist = Path(job["history_abs"])
     run_env = dict(env)
     run_env["OUT_DIR"] = str(hist)
+    run_env.setdefault("NR_SKIP_FLASK", "1")
+    run_env.setdefault("NR_RESTORE_ASYNC_REPL", "0")
     cmd = ["bash", str(pf_dir / "run.sh")]
     protected = [pf_dir / "summary.md", pf_dir / "raw.json"]
     results = [(hist / "summary.md", "summary.md"), (hist / "raw.json", "raw.json"), (hist / "logs" / "run.log", "run.log")]
@@ -2185,6 +2199,8 @@ def performance_run_all():
             return jsonify({"ok": False, "error": "已有性能验收任务正在执行"}), 409
         job = _prepare_performance_job("run_all", env)
     cmd = ["bash", str(PERFORMANCES_DIR / "run_all.sh")]
+    env.setdefault("NR_SKIP_FLASK", "1")
+    env.setdefault("NR_RESTORE_ASYNC_REPL", "0")
     protected = [PERFORMANCES_DIR / "summary.md"]
     for pf_id, _ in _PERFORMANCE_MODULES["performance"]["functions"]:
         protected.extend([

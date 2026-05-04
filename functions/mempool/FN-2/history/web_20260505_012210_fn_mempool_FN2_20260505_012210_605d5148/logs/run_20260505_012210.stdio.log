@@ -1,0 +1,4 @@
+mempool/FN-2 FAIL - 分布式内存池 API
+- RPC_TCP_GET_PEER 返回失败: {'ok': False, 'transport': 'tcp', 'err': 'not found', 'tcp_ns': 197812}
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_012210_fn_mempool_FN2_20260505_012210_605d5148/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_012210_fn_mempool_FN2_20260505_012210_605d5148/logs/run_20260505_012210.log

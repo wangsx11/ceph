@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/run.sh
+
+rdma/FN-1 SKIP - RDMA 与 TCP/IP 统一通信层
+- FN-1 严格 TCP/IP 验收要求数据面以 NR_TRANSPORT=tcp、NR_ASYNC_REPL=0 启动；当前 transport=rdma，请按 TCP 模式重启后重跑本项
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012556_fn_rdma_FN1_20260505_012556_08c4bb7a/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012556_fn_rdma_FN1_20260505_012556_08c4bb7a/logs/run_20260505_012556.log

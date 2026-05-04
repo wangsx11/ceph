@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+
+rdma/FN-4 FAIL - CPU 与 GPU 高速直通访问
+- peer GPU MR 未启用，不能执行 GPUDirect RDMA
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260505_012207_fn_rdma_FN4_20260505_012207_3371d956/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260505_012207_fn_rdma_FN4_20260505_012207_3371d956/logs/run_20260505_012207.log

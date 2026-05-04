@@ -1,0 +1,4 @@
+rdma/FN-1 FAIL - RDMA 与 TCP/IP 统一通信层
+- FN-1 严格 TCP/IP 验收要求数据面以 NR_TRANSPORT=tcp 启动；当前未切换普通 PUT 路径
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012204_fn_rdma_FN1_20260505_012204_055af326/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260505_012204_fn_rdma_FN1_20260505_012204_055af326/logs/run_20260505_012204.log
