@@ -1,0 +1,23 @@
+# FN-2 Summary
+
+- Module: 一致性总线内存池化仿真计算模块
+- Function: 分布式内存池 API
+- Source: docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 2 条
+- Last Run: 2026-05-05T06:58:49+0800
+- Result: PASS
+- Completion: 完成
+- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_065849_fn_mempool_FN2_20260505_065849_37ade18e/logs/run_20260505_065849.log
+- Raw: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_065849_fn_mempool_FN2_20260505_065849_37ade18e/raw.json
+
+## 关键证据
+
+- UDS 封装 API 闭环成功: RPC_KV_PUT -> RPC_KV_GET key=fn_pool_api_1777935529521_317789 hit=local size=26
+- RPC_KV_PUT 屏蔽底层 RDMA 细节但返回 transport=rdma degraded=False offset=4190208
+- 本地与 peer slab/MR 元数据有效，offset/size 同时落在两端 slab 范围内
+- RPC_TCP_GET_PEER 从 peer 读回同一 value，证明分布式内存池 API 的远端副本可见
+
+## 统计口径
+
+- 验证数据面 UDS API 闭环，不只验证 Flask 参数解析。
+- 验证普通 PUT API 屏蔽底层 RDMA 复制细节，但实际落到 C++ 数据面和 peer 副本。
+- 不统计 API 吞吐或延迟性能。

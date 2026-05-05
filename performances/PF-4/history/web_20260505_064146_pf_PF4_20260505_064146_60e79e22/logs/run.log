@@ -1,0 +1,50 @@
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=20 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=100
+
+==== nr_bench result ====
+  elapsed       : 0.02 s
+  elapsed_ms    : 19.41
+  threads       : 8
+  op            : put
+  ops ok/fail   : 2000 / 0
+  ops degraded  : 0
+  ops/s         : 103019
+  req_bytes     : 2075860 (106.93 MB/s)
+  resp_bytes    : 3961 (0.20 MB/s)
+  latency us    : avg=9.46  p50=9.64  p90=9.87  p99=12.88  p99.9=12.88  max=12.88
+
+
+[scenario-A] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=1000 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=100
+
+==== nr_bench result ====
+  elapsed       : 0.85 s
+  elapsed_ms    : 851.40
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0
+  ops/s         : 117453
+  req_bytes     : 103793000 (121.91 MB/s)
+  resp_bytes    : 198000 (0.23 MB/s)
+  latency us    : avg=8.35  p50=8.35  p90=8.45  p99=8.58  p99.9=9.12  max=9.12
+
+
+[scenario-B] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=100 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=1000
+
+==== nr_bench result ====
+  elapsed       : 0.83 s
+  elapsed_ms    : 831.91
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0
+  ops/s         : 120205
+  req_bytes     : 103789400 (124.76 MB/s)
+  resp_bytes    : 20200 (0.02 MB/s)
+  latency us    : avg=8.16  p50=8.14  p90=8.23  p99=8.69  p99.9=8.69  max=8.69
+

@@ -1,0 +1,7 @@
+mempool/FN-2 PASS - 分布式内存池 API
+- UDS 封装 API 闭环成功: RPC_KV_PUT -> RPC_KV_GET key=fn_pool_api_1777935335312_311295 hit=local size=26
+- RPC_KV_PUT 屏蔽底层 RDMA 细节但返回 transport=rdma degraded=False offset=4190208
+- 本地与 peer slab/MR 元数据有效，offset/size 同时落在两端 slab 范围内
+- RPC_TCP_GET_PEER 从 peer 读回同一 value，证明分布式内存池 API 的远端副本可见
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_065535_fn_mempool_FN2_20260505_065535_47a5b299/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/history/web_20260505_065535_fn_mempool_FN2_20260505_065535_47a5b299/logs/run_20260505_065535.log

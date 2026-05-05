@@ -1,0 +1,26 @@
+[06:36:31] start storage/FN-4 可配置压缩与去重
+[06:36:31] repo_root=/home/wangshouxin/native-rdma-web
+[06:36:31] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[06:36:31] rpc RPC_COMPRESS_STATS body_len=0
+[06:36:31] rpc RPC_COMPRESS_STATS resp_len=82 resp={"ok":true,"raw_bytes":0,"cmp_bytes":0,"objects":0,"ratio":0.0000,"saved_bytes":0}
+[06:36:31] rpc RPC_DEDUP_STATS body_len=0
+[06:36:31] rpc RPC_DEDUP_STATS resp_len=104 resp={"ok":true,"unique_objects":2,"duplicate_objects":10435,"saved_bytes":10685440,"logical_bytes":10686483}
+[06:36:31] rpc RPC_KV_PUT body_len=4137
+[06:36:31] rpc RPC_KV_PUT resp_len=386 resp={"ok":true,"key":"fn_compress_dedup_a_1777934191485_204089","tenant_id":0,"size":4096,"offset":276983808,"repl_ns":27591,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":8,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[06:36:31] rpc RPC_KV_PUT body_len=4137
+[06:36:31] rpc RPC_KV_PUT resp_len=374 resp={"ok":true,"key":"fn_compress_dedup_b_1777934191485_204089","tenant_id":0,"size":4096,"offset":286134272,"repl_ns":24692,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":9,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[06:36:31] rpc RPC_TIER_DEMOTE body_len=44
+[06:36:31] rpc RPC_TIER_DEMOTE resp_len=71 resp={"ok":true,"key":"fn_compress_dedup_a_1777934191485_204089","to":"hdd"}
+[06:36:31] rpc RPC_COMPRESS_STATS body_len=0
+[06:36:31] rpc RPC_COMPRESS_STATS resp_len=89 resp={"ok":true,"raw_bytes":4096,"cmp_bytes":19,"objects":1,"ratio":0.0046,"saved_bytes":4077}
+[06:36:31] rpc RPC_TIER_DEMOTE body_len=44
+[06:36:31] rpc RPC_TIER_DEMOTE resp_len=71 resp={"ok":true,"key":"fn_compress_dedup_b_1777934191485_204089","to":"hdd"}
+[06:36:31] rpc RPC_COMPRESS_STATS body_len=0
+[06:36:31] rpc RPC_COMPRESS_STATS resp_len=89 resp={"ok":true,"raw_bytes":4096,"cmp_bytes":19,"objects":1,"ratio":0.0046,"saved_bytes":4077}
+[06:36:31] rpc RPC_DEDUP_STATS body_len=0
+[06:36:31] rpc RPC_DEDUP_STATS resp_len=104 resp={"ok":true,"unique_objects":3,"duplicate_objects":10436,"saved_bytes":10685459,"logical_bytes":10694675}
+[06:36:31] rpc RPC_KV_GET body_len=40
+[06:36:31] rpc RPC_KV_GET resp_len=116 resp={"ok":true,"hit":"hdd_promote","size":4096,"val":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+[06:36:31] rpc RPC_KV_GET body_len=40
+[06:36:31] rpc RPC_KV_GET resp_len=116 resp={"ok":true,"hit":"hdd_promote","size":4096,"val":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+[06:36:31] result=PASS completion=完成

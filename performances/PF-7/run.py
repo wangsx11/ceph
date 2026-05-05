@@ -34,6 +34,8 @@ def is_true(value: str | None) -> bool:
 
 
 def write_json(path: Path, data: dict) -> None:
+    if "passed" in data and "status" not in data:
+        data["status"] = "PASS" if data.get("passed") else "FAIL"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

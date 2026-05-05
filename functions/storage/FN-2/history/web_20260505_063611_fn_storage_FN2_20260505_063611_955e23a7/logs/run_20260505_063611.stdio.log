@@ -1,0 +1,4 @@
+storage/FN-2 FAIL - 多层感知、冷热分离与调度
+- 自动冷热分离未将冷对象下沉到 NVMe: cold_hit=local
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260505_063611_fn_storage_FN2_20260505_063611_955e23a7/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260505_063611_fn_storage_FN2_20260505_063611_955e23a7/logs/run_20260505_063611.log

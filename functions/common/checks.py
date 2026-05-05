@@ -122,6 +122,9 @@ def storage_fn1(ctx: FnContext) -> CheckResult:
 
 
 def storage_fn2(ctx: FnContext) -> CheckResult:
+    flush = ctx.rpc_json("RPC_ADMIN_FLUSH")
+    _require_ok(flush, "RPC_ADMIN_FLUSH before FN-2")
+
     manual_key = _unique("fn_storage_tier_manual")
     manual_value = "tiering_probe_payload"
     manual_put = ctx.kv_put(manual_key, manual_value)
@@ -192,6 +195,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
             f"自动冷热分离未将冷对象下沉到 NVMe: cold_hit={cold_hit}",
             details={
                 "manual": {"put": manual_put, "demote": manual_demote, "get": manual_get},
+                "flush": flush,
                 "auto": {
                     "cold_put": cold_put,
                     "hot_put": hot_put,
@@ -209,6 +213,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
             "热对象在持续访问期间发生下沉或读时提升，不符合热数据保留预期",
             details={
                 "manual": {"put": manual_put, "demote": manual_demote, "get": manual_get},
+                "flush": flush,
                 "auto": {
                     "cold_put": cold_put,
                     "hot_put": hot_put,
@@ -229,6 +234,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
         f"自动冷热分离成功: 冷对象 {auto_cold_key} 等待 {wait_s:.1f}s 后 GET hit={cold_hit}",
         f"热对象 {auto_hot_key} 持续访问期间未发生下沉，最终 hit={hot_final.get('hit')}",
         details={
+            "flush": flush,
             "manual": {"put": manual_put, "demote": manual_demote, "get": manual_get},
             "auto": {
                 "cold_put": cold_put,
@@ -968,8 +974,26 @@ def rdma_fn3(ctx: FnContext) -> CheckResult:
             details=details,
         )
 
-    hi_key = _unique("fn_qos_hi")
-    lo_key = _unique("fn_qos_lo")
+    def choose_local_primary_key(prefix: str) -> tuple[str, dict[str, Any], list[dict[str, Any]]]:
+        samples: list[dict[str, Any]] = []
+        for i in range(128):
+            key = f"{prefix}_{time.time_ns()}_{os.getpid()}_{i}"
+            route = ctx.rpc_json("RPC_ROUTE_QUERY", key)
+            _require_ok(route, f"RPC_ROUTE_QUERY {key}")
+            samples.append(route)
+            if bool(route.get("local_is_primary", False)):
+                return key, route, samples
+        raise FailCheck(
+            f"128 个 {prefix} 样本未找到本地 primary key，无法用 peer 读回验证 RDMA 副本",
+            {"cluster": cluster, "route_samples": samples},
+        )
+
+    hi_key, hi_route, hi_route_samples = choose_local_primary_key("fn_qos_hi")
+    lo_key, lo_route, lo_route_samples = choose_local_primary_key("fn_qos_lo")
+    details["hi_route_selected"] = hi_route
+    details["lo_route_selected"] = lo_route
+    details["hi_route_samples"] = hi_route_samples
+    details["lo_route_samples"] = lo_route_samples
     hi_value = "hi-priority"
     lo_value = "lo-priority"
     hi = ctx.kv_put(hi_key, hi_value, "RPC_KV_PUT_HI")

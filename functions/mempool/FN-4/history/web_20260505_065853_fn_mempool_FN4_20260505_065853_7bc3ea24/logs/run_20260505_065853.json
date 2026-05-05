@@ -1,0 +1,230 @@
+{
+  "module": "mempool",
+  "module_name": "一致性总线内存池化仿真计算模块",
+  "fn_id": "FN-4",
+  "function": "跨节点内存自适应分配与热数据迁移",
+  "source": "docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 4 条",
+  "started_at": "2026-05-05T06:58:53+0800",
+  "finished_at": "2026-05-05T06:58:53+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "冷对象自适应放置到远端 RDMA slab: remote_offset=67108864 size=32",
+    "首次访问保持远端放置并通过 RDMA READ 读取: hit=remote_rdma_read access_count=1",
+    "热点阈值 3 次访问后迁回本地 slab: local_offset=8384512 rdma_read_ns=9244",
+    "迁移后普通 RPC_KV_GET 本地命中: hit=local"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 139947384999936,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140444385705984,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "before": {
+      "ok": true,
+      "hot_threshold": 3,
+      "remote_objects": 0,
+      "local_objects": 0,
+      "remote_puts": 0,
+      "remote_reads": 0,
+      "local_hits": 0,
+      "migrations": 0
+    },
+    "put": {
+      "ok": true,
+      "key": "fn_adapt_hot_1777935533540_317962",
+      "policy": "cold_remote_first",
+      "placement": "remote",
+      "placement_reason": "cold_object",
+      "transport": "rdma",
+      "degraded": false,
+      "local_cached": false,
+      "size": 32,
+      "remote_offset": 67108864,
+      "remote_addr": 140444452814848,
+      "peer_slab_base": 140444385705984,
+      "peer_slab_rkey": 71936,
+      "write_ns": 19029,
+      "hot_threshold": 3
+    },
+    "peer_get": {
+      "ok": true,
+      "transport": "tcp",
+      "key": "fn_adapt_hot_1777935533540_317962",
+      "size": 32,
+      "tcp_ns": 242137,
+      "val": "adaptive-remote-to-local-payload"
+    },
+    "adaptive_gets": [
+      {
+        "ok": true,
+        "key": "fn_adapt_hot_1777935533540_317962",
+        "hit": "remote_rdma_read",
+        "placement_before": "remote",
+        "placement_after": "remote",
+        "migrated": false,
+        "transport": "rdma",
+        "remote_offset": 67108864,
+        "size": 32,
+        "access_count": 1,
+        "hot_threshold": 3,
+        "rdma_read_ns": 12342,
+        "val": "adaptive-remote-to-local-payload"
+      },
+      {
+        "ok": true,
+        "key": "fn_adapt_hot_1777935533540_317962",
+        "hit": "remote_rdma_read",
+        "placement_before": "remote",
+        "placement_after": "remote",
+        "migrated": false,
+        "transport": "rdma",
+        "remote_offset": 67108864,
+        "size": 32,
+        "access_count": 2,
+        "hot_threshold": 3,
+        "rdma_read_ns": 10153,
+        "val": "adaptive-remote-to-local-payload"
+      },
+      {
+        "ok": true,
+        "key": "fn_adapt_hot_1777935533540_317962",
+        "hit": "remote_to_local_migrate",
+        "placement_before": "remote",
+        "placement_after": "local",
+        "migrated": true,
+        "transport": "rdma",
+        "remote_offset": 67108864,
+        "local_offset": 8384512,
+        "size": 32,
+        "access_count": 3,
+        "hot_threshold": 3,
+        "rdma_read_ns": 9244,
+        "val": "adaptive-remote-to-local-payload"
+      }
+    ],
+    "migrated_get": {
+      "ok": true,
+      "key": "fn_adapt_hot_1777935533540_317962",
+      "hit": "remote_to_local_migrate",
+      "placement_before": "remote",
+      "placement_after": "local",
+      "migrated": true,
+      "transport": "rdma",
+      "remote_offset": 67108864,
+      "local_offset": 8384512,
+      "size": 32,
+      "access_count": 3,
+      "hot_threshold": 3,
+      "rdma_read_ns": 9244,
+      "val": "adaptive-remote-to-local-payload"
+    },
+    "local_get": {
+      "ok": true,
+      "hit": "local",
+      "size": 32,
+      "val": "adaptive-remote-to-local-payload"
+    },
+    "after": {
+      "ok": true,
+      "hot_threshold": 3,
+      "remote_objects": 0,
+      "local_objects": 1,
+      "remote_puts": 1,
+      "remote_reads": 3,
+      "local_hits": 0,
+      "migrations": 1
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260505_065853_fn_mempool_FN4_20260505_065853_7bc3ea24/logs/run_20260505_065853.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260505_065853_fn_mempool_FN4_20260505_065853_7bc3ea24/logs/run_20260505_065853.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260505_065853_fn_mempool_FN4_20260505_065853_7bc3ea24/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":139947384999936,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140444385705984,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_STATS",
+      "body_len": 0,
+      "response_len": 129,
+      "response_preview": "{\"ok\":true,\"hot_threshold\":3,\"remote_objects\":0,\"local_objects\":0,\"remote_puts\":0,\"remote_reads\":0,\"local_hits\":0,\"migrations\":0}"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_PUT",
+      "body_len": 66,
+      "response_len": 349,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_adapt_hot_1777935533540_317962\",\"policy\":\"cold_remote_first\",\"placement\":\"remote\",\"placement_reason\":\"cold_object\",\"transport\":\"rdma\",\"degraded\":false,\"local_cached\":false,\"size\":32,\"remote_offset\":67108864,\"remote_addr\":140444452814848,\"peer_slab_base\":140444385705984,\"peer_slab_rkey\":71936,\"write_ns\":19029,\"hot_threshold\":3}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 33,
+      "response_len": 138,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_adapt_hot_1777935533540_317962\",\"size\":32,\"tcp_ns\":242137,\"val\":\"adaptive-remote-to-local-payload\"}"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_GET",
+      "body_len": 33,
+      "response_len": 301,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_adapt_hot_1777935533540_317962\",\"hit\":\"remote_rdma_read\",\"placement_before\":\"remote\",\"placement_after\":\"remote\",\"migrated\":false,\"transport\":\"rdma\",\"remote_offset\":67108864,\"size\":32,\"access_count\":1,\"hot_threshold\":3,\"rdma_read_ns\":12342,\"val\":\"adaptive-remote-to-local-payload\"}"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_GET",
+      "body_len": 33,
+      "response_len": 301,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_adapt_hot_1777935533540_317962\",\"hit\":\"remote_rdma_read\",\"placement_before\":\"remote\",\"placement_after\":\"remote\",\"migrated\":false,\"transport\":\"rdma\",\"remote_offset\":67108864,\"size\":32,\"access_count\":2,\"hot_threshold\":3,\"rdma_read_ns\":10153,\"val\":\"adaptive-remote-to-local-payload\"}"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_GET",
+      "body_len": 33,
+      "response_len": 328,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_adapt_hot_1777935533540_317962\",\"hit\":\"remote_to_local_migrate\",\"placement_before\":\"remote\",\"placement_after\":\"local\",\"migrated\":true,\"transport\":\"rdma\",\"remote_offset\":67108864,\"local_offset\":8384512,\"size\":32,\"access_count\":3,\"hot_threshold\":3,\"rdma_read_ns\":9244,\"val\":\"adaptive-remote-to-local-payload\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 33,
+      "response_len": 76,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":32,\"val\":\"adaptive-remote-to-local-payload\"}"
+    },
+    {
+      "kind": "RPC_MEMPOOL_ADAPT_STATS",
+      "body_len": 0,
+      "response_len": 129,
+      "response_preview": "{\"ok\":true,\"hot_threshold\":3,\"remote_objects\":0,\"local_objects\":1,\"remote_puts\":1,\"remote_reads\":3,\"local_hits\":0,\"migrations\":1}"
+    }
+  ]
+}

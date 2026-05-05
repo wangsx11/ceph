@@ -314,14 +314,19 @@ int main(int argc, char** argv) {
     // Adaptive QoS: low-priority traffic runs freely when there is no recent
     // high-priority pressure. Once high-priority PUTs arrive, low-priority is
     // shaped by a token bucket so it cannot occupy the replication path.
-    // Optional env vars are kept for controlled experiments, not required by
-    // the PF-3 acceptance script.
-    const char* lo_env = std::getenv("NR_LO_RATE_KOPS");
-    qcfg.lo_rate_limit_kops = lo_env ? (uint32_t)std::atoi(lo_env) : 160;
-    const char* hi_win_env = std::getenv("NR_QOS_HI_WINDOW_US");
-    qcfg.hi_activity_window_us = hi_win_env ? (uint32_t)std::atoi(hi_win_env) : 200000;
-    const char* burst_env = std::getenv("NR_QOS_LO_BURST_MS");
-    qcfg.lo_burst_ms = burst_env ? (uint32_t)std::atoi(burst_env) : 50;
+    // Optional env vars are kept for controlled PF-3 acceptance runs and
+    // experiments; unset or empty values fall back to the production defaults.
+    auto env_u32 = [](const char* name, uint32_t def) -> uint32_t {
+        const char* raw = std::getenv(name);
+        if (!raw || !*raw) return def;
+        char* end = nullptr;
+        unsigned long parsed = std::strtoul(raw, &end, 10);
+        if (end == raw) return def;
+        return static_cast<uint32_t>(parsed);
+    };
+    qcfg.lo_rate_limit_kops = env_u32("NR_LO_RATE_KOPS", 160);
+    qcfg.hi_activity_window_us = env_u32("NR_QOS_HI_WINDOW_US", 200000);
+    qcfg.lo_burst_ms = env_u32("NR_QOS_LO_BURST_MS", 50);
     qos.init(core, qcfg);
 
     // W5 write-path upgrade: a single dedicated poller thread drains all
@@ -2492,21 +2497,26 @@ int main(int argc, char** argv) {
                                             uint64_t remote_addr, uint64_t wr_id,
                                             bool signaled) -> int {
                     int rc = 0;
-                    for (int attempt = 0; attempt < 256; ++attempt) {
+                    for (int attempt = 0; attempt < 20000; ++attempt) {
                         rc = core.post_write(qp_idx, slot, vlen, slab.lkey(),
                                              remote_addr, peer.slab_rkey, 0,
                                              wr_id, signaled);
                         if (rc == 0) return 0;
-                        std::this_thread::yield();
+                        if ((attempt & 0x3f) == 0) {
+                            std::this_thread::sleep_for(std::chrono::microseconds(1));
+                        } else {
+                            std::this_thread::yield();
+                        }
                     }
                     return rc;
                 };
 
-                // Async replication: post all WRITEs, but only request CQEs for
+                // Batch replication: post all WRITEs, but only request CQEs for
                 // each QP's tail WR in this batch. The unsignaled WRs are still
-                // real RDMA WRITE operations; the signaled tail completion
-                // proves that all earlier WRs on the same QP have retired.
-                if (!rdma_items.empty() && args.async_repl) {
+                // real RDMA WRITE operations; in sync mode waiting for every
+                // tail completion proves that all earlier WRs on that QP have
+                // retired without turning the batch back into per-object waits.
+                if (!rdma_items.empty()) {
                     std::vector<int> item_qps(rdma_items.size(), 0);
                     std::vector<int> last_for_qp((size_t)core.num_qp(), -1);
                     for (size_t i = 0; i < rdma_items.size(); ++i) {
@@ -2516,6 +2526,10 @@ int main(int argc, char** argv) {
                             last_for_qp[(size_t)qp_idx] = (int)i;
                         }
                     }
+                    std::vector<std::future<bool>> tail_futures;
+                    if (!args.async_repl) {
+                        tail_futures.reserve((size_t)core.num_qp());
+                    }
                     uint64_t t0 = nr::now_ns();
                     for (size_t i = 0; i < rdma_items.size(); ++i) {
                         auto& ri = rdma_items[i];
@@ -2524,9 +2538,11 @@ int main(int argc, char** argv) {
                         bool signaled = (qp_idx >= 0 && qp_idx < core.num_qp() &&
                                          last_for_qp[(size_t)qp_idx] == (int)i);
                         uint64_t wr_id = 0;
+                        std::future<bool> fut;
                         if (signaled) {
                             auto reserved = repl_waiter.reserve_wr_id();
                             wr_id = reserved.first;
+                            fut = std::move(reserved.second);
                         }
                         int rc = post_write_retry(qp_idx, ri.slot, ri.vlen,
                                                   remote_addr, wr_id, signaled);
@@ -2534,37 +2550,22 @@ int main(int argc, char** argv) {
                             if (signaled) repl_waiter.cancel_wr_id(wr_id);
                             ++repl_failed_n;
                         } else {
+                            if (signaled && !args.async_repl) {
+                                tail_futures.push_back(std::move(fut));
+                            }
                             ++replicated_n;
                             send_kv_index(ri.key, ri.slot_off, ri.vlen);
                             bytes_tx_1s.fetch_add(ri.vlen);
+                        }
+                    }
+                    if (!args.async_repl) {
+                        for (auto& fut : tail_futures) {
+                            if (!fut.get()) {
+                                ++repl_failed_n;
+                            }
                         }
                     }
                     repl_total_ns = nr::now_ns() - t0;
-                } else if (!rdma_items.empty()) {
-                    // Sync mode: per-item replication
-                    for (auto& ri : rdma_items) {
-                        int qp_idx = qos.pick_qp(true);
-                        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
-                        uint64_t remote_addr = peer.slab_base + ri.slot_off;
-                        uint64_t t0 = nr::now_ns();
-                        int rc = core.post_write(qp_idx, ri.slot, ri.vlen,
-                                                 slab.lkey(), remote_addr,
-                                                 peer.slab_rkey, 0, wr_id, true);
-                        bool repl_ok = false;
-                        if (rc == 0) {
-                            repl_ok = fut.get();
-                        } else {
-                            repl_waiter.cancel_wr_id(wr_id);
-                        }
-                        repl_total_ns += nr::now_ns() - t0;
-                        if (repl_ok) {
-                            ++replicated_n;
-                            send_kv_index(ri.key, ri.slot_off, ri.vlen);
-                            bytes_tx_1s.fetch_add(ri.vlen);
-                        } else {
-                            ++repl_failed_n;
-                        }
-                    }
                 }
                 if (repl_total_ns > 0) {
                     uint64_t avg_ns = repl_total_ns / std::max<size_t>(1, rdma_items.size());

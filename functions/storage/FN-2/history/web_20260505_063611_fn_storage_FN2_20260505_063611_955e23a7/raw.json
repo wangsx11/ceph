@@ -1,0 +1,2546 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-2",
+  "function": "多层感知、冷热分离与调度",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 2 条",
+  "started_at": "2026-05-05T06:36:11+0800",
+  "finished_at": "2026-05-05T06:36:27+0800",
+  "status": "FAIL",
+  "passed": false,
+  "completion": "未完成",
+  "evidence": [
+    "自动冷热分离未将冷对象下沉到 NVMe: cold_hit=local"
+  ],
+  "details": {
+    "manual": {
+      "put": {
+        "ok": true,
+        "key": "fn_storage_tier_manual_1777934171427_203415",
+        "tenant_id": 0,
+        "size": 21,
+        "offset": 277159936,
+        "repl_ns": 26312,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 11,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.218",
+          "replica": "",
+          "local_is_primary": true
+        }
+      },
+      "demote": {
+        "ok": true,
+        "key": "fn_storage_tier_manual_1777934171427_203415",
+        "to": "nvme"
+      },
+      "get": {
+        "ok": true,
+        "hit": "nvme_promote",
+        "size": 21,
+        "val": "tiering_probe_payload"
+      }
+    },
+    "auto": {
+      "cold_put": {
+        "ok": true,
+        "key": "fn_storage_tier_cold_1777934171427_203415",
+        "tenant_id": 0,
+        "size": 25,
+        "offset": 295579648,
+        "repl_ns": 22431,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 12,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.214",
+          "replica": "",
+          "local_is_primary": false
+        }
+      },
+      "hot_put": {
+        "ok": true,
+        "key": "fn_storage_tier_hot_1777934171427_203415",
+        "tenant_id": 0,
+        "size": 24,
+        "offset": 258174976,
+        "repl_ns": 20524,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 13,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.214",
+          "replica": "192.168.0.218",
+          "local_is_primary": false
+        }
+      },
+      "hot_hits": [
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        },
+        {
+          "ok": true,
+          "hit": "local",
+          "size": 24,
+          "val": "auto-hot-tiering-payload"
+        }
+      ],
+      "stats_samples": [
+        {
+          "ok": true,
+          "dram": 70089,
+          "nvme": 8,
+          "hdd": 9908,
+          "demoted_d_n": 9919,
+          "demoted_n_h": 9908,
+          "events": [
+            {
+              "ts_ns": 7564225617178673,
+              "key": "fn_storage_tier_manual_1777934171427_203415",
+              "from": "nvme",
+              "to": "dram",
+              "bytes": 21
+            },
+            {
+              "ts_ns": 7564225617060644,
+              "key": "fn_storage_tier_manual_1777934171427_203415",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 21
+            },
+            {
+              "ts_ns": 7564225423705848,
+              "key": "bk_3_7456",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423703005,
+              "key": "bk_3_7305",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423699673,
+              "key": "bk_0_7467",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423696813,
+              "key": "bk_2_7467",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423694348,
+              "key": "bk_6_7533",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423691475,
+              "key": "bk_5_7497",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423688994,
+              "key": "bk_2_7716",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423686004,
+              "key": "bk_6_9582",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423678865,
+              "key": "bk_7_7539",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423676521,
+              "key": "bk_1_7565",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423673793,
+              "key": "bk_0_7468",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423671329,
+              "key": "bk_4_7449",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423668570,
+              "key": "bk_5_7498",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564225423665712,
+              "key": "bk_7_7540",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 70065,
+          "nvme": 8,
+          "hdd": 9932,
+          "demoted_d_n": 9943,
+          "demoted_n_h": 9932,
+          "events": [
+            {
+              "ts_ns": 7564226341198195,
+              "key": "bk_2_7462",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341194520,
+              "key": "bk_3_7301",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341190477,
+              "key": "bk_4_7443",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341186510,
+              "key": "bk_5_7492",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341183998,
+              "key": "bk_7_7534",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341180090,
+              "key": "bk_0_7463",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341177472,
+              "key": "bk_0_9098",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341170242,
+              "key": "bk_5_7493",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341166781,
+              "key": "bk_7_7535",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341164443,
+              "key": "bk_7_7536",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341161556,
+              "key": "bk_1_7562",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341158847,
+              "key": "bk_0_7465",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341155945,
+              "key": "bk_6_8128",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341153519,
+              "key": "bk_2_7465",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341150655,
+              "key": "bk_4_7446",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564226341147271,
+              "key": "bk_6_7531",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 70033,
+          "nvme": 8,
+          "hdd": 9964,
+          "demoted_d_n": 9975,
+          "demoted_n_h": 9964,
+          "events": [
+            {
+              "ts_ns": 7564227569151122,
+              "key": "bk_7_7527",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569148799,
+              "key": "bk_5_7486",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569144867,
+              "key": "bk_2_7456",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569141080,
+              "key": "bk_3_7295",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569133073,
+              "key": "bk_4_7437",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569130350,
+              "key": "bk_2_7457",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569128023,
+              "key": "bk_3_8130",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569124757,
+              "key": "bk_0_7457",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569119411,
+              "key": "bk_6_7524",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569116153,
+              "key": "bk_5_7488",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569113566,
+              "key": "bk_5_9826",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569110653,
+              "key": "bk_0_7459",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569108076,
+              "key": "bk_6_7526",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569105025,
+              "key": "bk_3_7298",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569101790,
+              "key": "bk_7_7828",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564227569097240,
+              "key": "bk_1_7557",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 70009,
+          "nvme": 8,
+          "hdd": 9988,
+          "demoted_d_n": 9999,
+          "demoted_n_h": 9988,
+          "events": [
+            {
+              "ts_ns": 7564228486713358,
+              "key": "bk_5_7482",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486705972,
+              "key": "bk_1_7549",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486703124,
+              "key": "bk_6_8315",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486700287,
+              "key": "bk_3_8702",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486697104,
+              "key": "bk_3_7291",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486694415,
+              "key": "bk_0_7452",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486691571,
+              "key": "bk_3_7495",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486688490,
+              "key": "bk_7_7524",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486684927,
+              "key": "bk_2_7453",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486682401,
+              "key": "bk_4_7434",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486679772,
+              "key": "bk_4_8821",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486677240,
+              "key": "bk_6_7520",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486674540,
+              "key": "bk_5_7484",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486671435,
+              "key": "bk_1_7551",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486668578,
+              "key": "bk_2_7454",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564228486664797,
+              "key": "bk_4_7435",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69984,
+          "nvme": 10,
+          "hdd": 10011,
+          "demoted_d_n": 10024,
+          "demoted_n_h": 10011,
+          "events": [
+            {
+              "ts_ns": 7564229402254903,
+              "key": "bk_6_7513",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402252443,
+              "key": "bk_5_8381",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402249485,
+              "key": "bk_7_7518",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402247063,
+              "key": "bk_4_9362",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402244174,
+              "key": "bk_0_7447",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402241808,
+              "key": "bk_1_8237",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402237943,
+              "key": "bk_5_7477",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402235086,
+              "key": "bk_6_7514",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402232251,
+              "key": "bk_0_7448",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402225486,
+              "key": "bk_2_7448",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402222379,
+              "key": "bk_0_7449",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402219568,
+              "key": "bk_1_7546",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402217022,
+              "key": "bk_6_9140",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402214503,
+              "key": "bk_6_7516",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402211680,
+              "key": "bk_0_7450",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564229402207703,
+              "key": "bk_5_7480",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69952,
+          "nvme": 10,
+          "hdd": 10043,
+          "demoted_d_n": 10056,
+          "demoted_n_h": 10043,
+          "events": [
+            {
+              "ts_ns": 7564230621877198,
+              "key": "bk_4_7421",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621874290,
+              "key": "bk_0_7441",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621871969,
+              "key": "bk_1_7538",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621867837,
+              "key": "bk_5_7471",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621864897,
+              "key": "bk_2_7441",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621859259,
+              "key": "bk_3_7280",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621856025,
+              "key": "bk_4_7422",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621852741,
+              "key": "bk_0_7442",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621849892,
+              "key": "bk_6_7509",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621846433,
+              "key": "bk_7_7514",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621843823,
+              "key": "bk_0_7443",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621841155,
+              "key": "bk_1_7540",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621838904,
+              "key": "bk_2_8626",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621836343,
+              "key": "bk_4_9830",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621833894,
+              "key": "bk_0_7444",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564230621830405,
+              "key": "bk_2_8875",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69929,
+          "nvme": 8,
+          "hdd": 10068,
+          "demoted_d_n": 10079,
+          "demoted_n_h": 10068,
+          "events": [
+            {
+              "ts_ns": 7564231537909533,
+              "key": "bk_2_7434",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537905645,
+              "key": "bk_3_7274",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537903251,
+              "key": "bk_5_7466",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537900468,
+              "key": "bk_6_7504",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537897437,
+              "key": "bk_1_9350",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537890796,
+              "key": "bk_2_7436",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537888129,
+              "key": "bk_2_7546",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537884522,
+              "key": "bk_1_7534",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537881871,
+              "key": "bk_5_7470",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537879450,
+              "key": "bk_6_7505",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537876420,
+              "key": "bk_0_7438",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537873839,
+              "key": "bk_6_7506",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537871017,
+              "key": "bk_7_7510",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537868301,
+              "key": "bk_3_7277",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537865470,
+              "key": "bk_7_8280",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564231537861467,
+              "key": "bk_2_7439",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69904,
+          "nvme": 10,
+          "hdd": 10091,
+          "demoted_d_n": 10104,
+          "demoted_n_h": 10091,
+          "events": [
+            {
+              "ts_ns": 7564232453379333,
+              "key": "bk_7_7502",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453376796,
+              "key": "bk_5_7461",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453374136,
+              "key": "bk_1_7528",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453371577,
+              "key": "bk_6_7499",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453369020,
+              "key": "bk_3_7270",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453361798,
+              "key": "bk_5_7462",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453359508,
+              "key": "bk_0_9396",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453356591,
+              "key": "bk_4_7414",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453353786,
+              "key": "bk_1_7529",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453350499,
+              "key": "bk_5_8928",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453347398,
+              "key": "bk_7_7504",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453344753,
+              "key": "bk_4_9915",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453342109,
+              "key": "bk_5_7463",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453339257,
+              "key": "bk_0_9253",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453336120,
+              "key": "bk_4_7415",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564232453332239,
+              "key": "bk_1_7530",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69872,
+          "nvme": 10,
+          "hdd": 10123,
+          "demoted_d_n": 10136,
+          "demoted_n_h": 10123,
+          "events": [
+            {
+              "ts_ns": 7564233679977645,
+              "key": "bk_7_7496",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679974949,
+              "key": "bk_5_7455",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679972508,
+              "key": "bk_4_7407",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679969803,
+              "key": "bk_6_7493",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679967002,
+              "key": "bk_1_7523",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679964050,
+              "key": "bk_3_7264",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679961209,
+              "key": "bk_5_7456",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679958387,
+              "key": "bk_4_7408",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679955271,
+              "key": "bk_2_7426",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679951440,
+              "key": "bk_7_7498",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679948965,
+              "key": "bk_3_7265",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679946094,
+              "key": "bk_0_7427",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679943678,
+              "key": "bk_4_7409",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679940714,
+              "key": "bk_0_7428",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679937696,
+              "key": "bk_5_7458",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564233679933989,
+              "key": "bk_4_7410",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69849,
+          "nvme": 8,
+          "hdd": 10148,
+          "demoted_d_n": 10159,
+          "demoted_n_h": 10148,
+          "events": [
+            {
+              "ts_ns": 7564234597567872,
+              "key": "bk_6_7487",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597565098,
+              "key": "bk_7_7491",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597562250,
+              "key": "bk_1_7517",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597557765,
+              "key": "bk_6_7488",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597554647,
+              "key": "bk_0_7421",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597551946,
+              "key": "bk_2_9509",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597548227,
+              "key": "bk_3_7259",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597544952,
+              "key": "bk_7_9284",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597542322,
+              "key": "bk_5_7451",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597539501,
+              "key": "bk_2_7421",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597537078,
+              "key": "bk_6_7489",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597534533,
+              "key": "bk_7_7493",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597531760,
+              "key": "bk_1_7519",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597528891,
+              "key": "bk_1_8733",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597526186,
+              "key": "bk_2_9146",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564234597522537,
+              "key": "bk_0_7422",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69824,
+          "nvme": 10,
+          "hdd": 10171,
+          "demoted_d_n": 10184,
+          "demoted_n_h": 10171,
+          "events": [
+            {
+              "ts_ns": 7564235526567780,
+              "key": "bk_3_8909",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526565200,
+              "key": "bk_0_7415",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526562706,
+              "key": "bk_7_7486",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526560225,
+              "key": "bk_2_7798",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526557517,
+              "key": "bk_3_7253",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526554737,
+              "key": "bk_4_7397",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526552179,
+              "key": "bk_2_7415",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526548438,
+              "key": "bk_0_7416",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526544989,
+              "key": "bk_5_9439",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526536109,
+              "key": "bk_6_7483",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526533092,
+              "key": "bk_7_7487",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526530307,
+              "key": "bk_5_7446",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526527411,
+              "key": "bk_6_7484",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526524761,
+              "key": "bk_7_7488",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526521763,
+              "key": "bk_5_7447",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564235526517704,
+              "key": "bk_4_7399",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69792,
+          "nvme": 10,
+          "hdd": 10203,
+          "demoted_d_n": 10216,
+          "demoted_n_h": 10203,
+          "events": [
+            {
+              "ts_ns": 7564236750809139,
+              "key": "bk_0_7410",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750805379,
+              "key": "bk_4_7392",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750801450,
+              "key": "bk_2_7410",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750798909,
+              "key": "bk_0_7411",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750796047,
+              "key": "bk_6_7478",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750793568,
+              "key": "bk_5_7441",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750790910,
+              "key": "bk_1_7508",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750787767,
+              "key": "bk_4_7393",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750780851,
+              "key": "bk_2_7411",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750777637,
+              "key": "bk_6_7479",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750774966,
+              "key": "bk_0_7915",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750772238,
+              "key": "bk_1_7509",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750769455,
+              "key": "bk_7_7483",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750766458,
+              "key": "bk_5_7442",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750763491,
+              "key": "bk_2_7412",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564236750759982,
+              "key": "bk_0_7413",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69769,
+          "nvme": 8,
+          "hdd": 10228,
+          "demoted_d_n": 10239,
+          "demoted_n_h": 10228,
+          "events": [
+            {
+              "ts_ns": 7564237667013179,
+              "key": "bk_1_7502",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237667010688,
+              "key": "bk_2_7405",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237667008056,
+              "key": "bk_3_7244",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237667005209,
+              "key": "bk_1_7503",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237667002498,
+              "key": "bk_7_7477",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666999359,
+              "key": "bk_6_7474",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666992069,
+              "key": "bk_0_7407",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666988278,
+              "key": "bk_3_7245",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666985521,
+              "key": "bk_5_7786",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666983172,
+              "key": "bk_5_8467",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666980409,
+              "key": "bk_7_7478",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666977681,
+              "key": "bk_2_7407",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666975190,
+              "key": "bk_0_7408",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666971985,
+              "key": "bk_5_7438",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666969059,
+              "key": "bk_6_7475",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564237666964845,
+              "key": "bk_5_9474",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69744,
+          "nvme": 10,
+          "hdd": 10251,
+          "demoted_d_n": 10264,
+          "demoted_n_h": 10251,
+          "events": [
+            {
+              "ts_ns": 7564238586763606,
+              "key": "bk_5_7432",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586759881,
+              "key": "bk_1_8604",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586755953,
+              "key": "bk_7_7473",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586753168,
+              "key": "bk_5_7433",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586750430,
+              "key": "bk_1_9775",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586745699,
+              "key": "bk_4_7385",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586742869,
+              "key": "bk_7_8974",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586740249,
+              "key": "bk_7_7474",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586732560,
+              "key": "bk_5_7434",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586728854,
+              "key": "bk_3_8299",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586726341,
+              "key": "bk_3_9232",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586723517,
+              "key": "bk_2_7403",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586720387,
+              "key": "bk_6_7471",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586717786,
+              "key": "bk_0_8367",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586714510,
+              "key": "bk_3_7242",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564238586710470,
+              "key": "bk_1_9469",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69719,
+          "nvme": 3,
+          "hdd": 10283,
+          "demoted_d_n": 10287,
+          "demoted_n_h": 10282,
+          "events": [
+            {
+              "ts_ns": 7564239811919388,
+              "key": "bk_7_7468",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239811916628,
+              "key": "bk_1_7494",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239811913797,
+              "key": "bk_2_7397",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239811910783,
+              "key": "bk_0_7399",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239811908164,
+              "key": "bk_3_9457",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239811903992,
+              "key": "bk_4_7380",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506184364,
+              "key": "bk_3_7235",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506181402,
+              "key": "bk_7_7468",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506178773,
+              "key": "bk_1_7494",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506175993,
+              "key": "bk_2_7397",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506173281,
+              "key": "bk_0_7399",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506169017,
+              "key": "bk_3_9457",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506165870,
+              "key": "bk_4_7380",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506162219,
+              "key": "bk_7_7469",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506159578,
+              "key": "bk_2_8252",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564239506156852,
+              "key": "bk_3_9730",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        },
+        {
+          "ok": true,
+          "dram": 69689,
+          "nvme": 8,
+          "hdd": 10308,
+          "demoted_d_n": 10319,
+          "demoted_n_h": 10308,
+          "events": [
+            {
+              "ts_ns": 7564240746228798,
+              "key": "bk_5_7421",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746225839,
+              "key": "bk_2_7390",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746223579,
+              "key": "bk_6_7458",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746220788,
+              "key": "bk_1_7489",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746217887,
+              "key": "bk_4_7373",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746215202,
+              "key": "bk_2_7447",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746211883,
+              "key": "bk_0_7393",
+              "from": "dram",
+              "to": "nvme",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746208286,
+              "key": "bk_1_9760",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746205209,
+              "key": "bk_2_7391",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746202815,
+              "key": "bk_1_7490",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746200307,
+              "key": "bk_3_7230",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746197625,
+              "key": "bk_2_7392",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746194560,
+              "key": "bk_1_7491",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746191653,
+              "key": "bk_3_7231",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746188453,
+              "key": "bk_2_7393",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            },
+            {
+              "ts_ns": 7564240746184627,
+              "key": "bk_6_7461",
+              "from": "nvme",
+              "to": "hdd",
+              "bytes": 1024
+            }
+          ]
+        }
+      ],
+      "stats_after_wait": {
+        "ok": true,
+        "dram": 69664,
+        "nvme": 10,
+        "hdd": 10331,
+        "demoted_d_n": 10344,
+        "demoted_n_h": 10331,
+        "events": [
+          {
+            "ts_ns": 7564241666821430,
+            "key": "bk_6_7453",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666817883,
+            "key": "bk_3_7224",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666815324,
+            "key": "bk_4_8576",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666811330,
+            "key": "bk_4_7368",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666808462,
+            "key": "bk_5_7908",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666804659,
+            "key": "bk_1_7485",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666800943,
+            "key": "bk_7_7457",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666797154,
+            "key": "bk_2_7386",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666792787,
+            "key": "bk_6_7454",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666788112,
+            "key": "bk_0_7389",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666784079,
+            "key": "bk_6_7455",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666780232,
+            "key": "bk_1_7486",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666777289,
+            "key": "bk_7_9481",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666773537,
+            "key": "bk_5_7419",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666769258,
+            "key": "bk_2_7388",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          },
+          {
+            "ts_ns": 7564241666761995,
+            "key": "bk_6_7456",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 1024
+          }
+        ]
+      },
+      "cold_get": {
+        "ok": true,
+        "hit": "local",
+        "size": 25,
+        "val": "auto-cold-tiering-payload"
+      },
+      "hot_final": {
+        "ok": true,
+        "hit": "local",
+        "size": 24,
+        "val": "auto-hot-tiering-payload"
+      },
+      "wait_s": 16.0
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260505_063611_fn_storage_FN2_20260505_063611_955e23a7/logs/run_20260505_063611.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260505_063611_fn_storage_FN2_20260505_063611_955e23a7/logs/run_20260505_063611.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260505_063611_fn_storage_FN2_20260505_063611_955e23a7/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 65,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_manual_1777934171427_203415\",\"tenant_id\":0,\"size\":21,\"offset\":277159936,\"repl_ns\":26312,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":11,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 48,
+      "response_len": 75,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_manual_1777934171427_203415\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 72,
+      "response_preview": "{\"ok\":true,\"hit\":\"nvme_promote\",\"size\":21,\"val\":\"tiering_probe_payload\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 67,
+      "response_len": 374,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_cold_1777934171427_203415\",\"tenant_id\":0,\"size\":25,\"offset\":295579648,\"repl_ns\":22431,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":12,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 65,
+      "response_len": 386,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_tier_hot_1777934171427_203415\",\"tenant_id\":0,\"size\":24,\"offset\":258174976,\"repl_ns\":20524,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":13,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1495,
+      "response_preview": "{\"ok\":true,\"dram\":70089,\"nvme\":8,\"hdd\":9908,\"demoted_d_n\":9919,\"demoted_n_h\":9908,\"events\":[{\"ts_ns\":7564225617178673,\"key\":\"fn_storage_tier_manual_1777934171427_203415\",\"from\":\"nvme\",\"to\":\"dram\",\"bytes\":21},{\"ts_ns\":7564225617060644,\"key\":\"fn_storage_tier_manual_1777934171427_203415\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":21},{\"ts_ns\":7564225423705848,\"key\":\"bk_3_7456\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564225423703005,\"key\":\"bk_3_7305\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\""
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1429,
+      "response_preview": "{\"ok\":true,\"dram\":70065,\"nvme\":8,\"hdd\":9932,\"demoted_d_n\":9943,\"demoted_n_h\":9932,\"events\":[{\"ts_ns\":7564226341198195,\"key\":\"bk_2_7462\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564226341194520,\"key\":\"bk_3_7301\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564226341190477,\"key\":\"bk_4_7443\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564226341186510,\"key\":\"bk_5_7492\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564226341183998,\"key\":\"bk_7_7534\",\"from\":\"dram\",\"to\":\"nvme\",\"b"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1429,
+      "response_preview": "{\"ok\":true,\"dram\":70033,\"nvme\":8,\"hdd\":9964,\"demoted_d_n\":9975,\"demoted_n_h\":9964,\"events\":[{\"ts_ns\":7564227569151122,\"key\":\"bk_7_7527\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564227569148799,\"key\":\"bk_5_7486\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564227569144867,\"key\":\"bk_2_7456\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564227569141080,\"key\":\"bk_3_7295\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564227569133073,\"key\":\"bk_4_7437\",\"from\":\"dram\",\"to\":\"nvme\",\"b"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1429,
+      "response_preview": "{\"ok\":true,\"dram\":70009,\"nvme\":8,\"hdd\":9988,\"demoted_d_n\":9999,\"demoted_n_h\":9988,\"events\":[{\"ts_ns\":7564228486713358,\"key\":\"bk_5_7482\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564228486705972,\"key\":\"bk_1_7549\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564228486703124,\"key\":\"bk_6_8315\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564228486700287,\"key\":\"bk_3_8702\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564228486697104,\"key\":\"bk_3_7291\",\"from\":\"dram\",\"to\":\"nvme\",\"b"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69984,\"nvme\":10,\"hdd\":10011,\"demoted_d_n\":10024,\"demoted_n_h\":10011,\"events\":[{\"ts_ns\":7564229402254903,\"key\":\"bk_6_7513\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564229402252443,\"key\":\"bk_5_8381\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564229402249485,\"key\":\"bk_7_7518\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564229402247063,\"key\":\"bk_4_9362\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564229402244174,\"key\":\"bk_0_7447\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69952,\"nvme\":10,\"hdd\":10043,\"demoted_d_n\":10056,\"demoted_n_h\":10043,\"events\":[{\"ts_ns\":7564230621877198,\"key\":\"bk_4_7421\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564230621874290,\"key\":\"bk_0_7441\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564230621871969,\"key\":\"bk_1_7538\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564230621867837,\"key\":\"bk_5_7471\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564230621864897,\"key\":\"bk_2_7441\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1431,
+      "response_preview": "{\"ok\":true,\"dram\":69929,\"nvme\":8,\"hdd\":10068,\"demoted_d_n\":10079,\"demoted_n_h\":10068,\"events\":[{\"ts_ns\":7564231537909533,\"key\":\"bk_2_7434\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564231537905645,\"key\":\"bk_3_7274\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564231537903251,\"key\":\"bk_5_7466\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564231537900468,\"key\":\"bk_6_7504\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564231537897437,\"key\":\"bk_1_9350\",\"from\":\"dram\",\"to\":\"nvme\""
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69904,\"nvme\":10,\"hdd\":10091,\"demoted_d_n\":10104,\"demoted_n_h\":10091,\"events\":[{\"ts_ns\":7564232453379333,\"key\":\"bk_7_7502\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564232453376796,\"key\":\"bk_5_7461\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564232453374136,\"key\":\"bk_1_7528\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564232453371577,\"key\":\"bk_6_7499\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564232453369020,\"key\":\"bk_3_7270\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69872,\"nvme\":10,\"hdd\":10123,\"demoted_d_n\":10136,\"demoted_n_h\":10123,\"events\":[{\"ts_ns\":7564233679977645,\"key\":\"bk_7_7496\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564233679974949,\"key\":\"bk_5_7455\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564233679972508,\"key\":\"bk_4_7407\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564233679969803,\"key\":\"bk_6_7493\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564233679967002,\"key\":\"bk_1_7523\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1431,
+      "response_preview": "{\"ok\":true,\"dram\":69849,\"nvme\":8,\"hdd\":10148,\"demoted_d_n\":10159,\"demoted_n_h\":10148,\"events\":[{\"ts_ns\":7564234597567872,\"key\":\"bk_6_7487\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564234597565098,\"key\":\"bk_7_7491\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564234597562250,\"key\":\"bk_1_7517\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564234597557765,\"key\":\"bk_6_7488\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564234597554647,\"key\":\"bk_0_7421\",\"from\":\"dram\",\"to\":\"nvme\""
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69824,\"nvme\":10,\"hdd\":10171,\"demoted_d_n\":10184,\"demoted_n_h\":10171,\"events\":[{\"ts_ns\":7564235526567780,\"key\":\"bk_3_8909\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564235526565200,\"key\":\"bk_0_7415\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564235526562706,\"key\":\"bk_7_7486\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564235526560225,\"key\":\"bk_2_7798\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564235526557517,\"key\":\"bk_3_7253\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69792,\"nvme\":10,\"hdd\":10203,\"demoted_d_n\":10216,\"demoted_n_h\":10203,\"events\":[{\"ts_ns\":7564236750809139,\"key\":\"bk_0_7410\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564236750805379,\"key\":\"bk_4_7392\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564236750801450,\"key\":\"bk_2_7410\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564236750798909,\"key\":\"bk_0_7411\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564236750796047,\"key\":\"bk_6_7478\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1431,
+      "response_preview": "{\"ok\":true,\"dram\":69769,\"nvme\":8,\"hdd\":10228,\"demoted_d_n\":10239,\"demoted_n_h\":10228,\"events\":[{\"ts_ns\":7564237667013179,\"key\":\"bk_1_7502\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564237667010688,\"key\":\"bk_2_7405\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564237667008056,\"key\":\"bk_3_7244\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564237667005209,\"key\":\"bk_1_7503\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564237667002498,\"key\":\"bk_7_7477\",\"from\":\"dram\",\"to\":\"nvme\""
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69744,\"nvme\":10,\"hdd\":10251,\"demoted_d_n\":10264,\"demoted_n_h\":10251,\"events\":[{\"ts_ns\":7564238586763606,\"key\":\"bk_5_7432\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564238586759881,\"key\":\"bk_1_8604\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564238586755953,\"key\":\"bk_7_7473\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564238586753168,\"key\":\"bk_5_7433\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564238586750430,\"key\":\"bk_1_9775\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1431,
+      "response_preview": "{\"ok\":true,\"dram\":69719,\"nvme\":3,\"hdd\":10283,\"demoted_d_n\":10287,\"demoted_n_h\":10282,\"events\":[{\"ts_ns\":7564239811919388,\"key\":\"bk_7_7468\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":1024},{\"ts_ns\":7564239811916628,\"key\":\"bk_1_7494\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":1024},{\"ts_ns\":7564239811913797,\"key\":\"bk_2_7397\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":1024},{\"ts_ns\":7564239811910783,\"key\":\"bk_0_7399\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":1024},{\"ts_ns\":7564239811908164,\"key\":\"bk_3_9457\",\"from\":\"nvme\",\"to\":\"hdd\",\"byt"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1431,
+      "response_preview": "{\"ok\":true,\"dram\":69689,\"nvme\":8,\"hdd\":10308,\"demoted_d_n\":10319,\"demoted_n_h\":10308,\"events\":[{\"ts_ns\":7564240746228798,\"key\":\"bk_5_7421\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564240746225839,\"key\":\"bk_2_7390\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564240746223579,\"key\":\"bk_6_7458\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564240746220788,\"key\":\"bk_1_7489\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564240746217887,\"key\":\"bk_4_7373\",\"from\":\"dram\",\"to\":\"nvme\""
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 1434,
+      "response_preview": "{\"ok\":true,\"dram\":69664,\"nvme\":10,\"hdd\":10331,\"demoted_d_n\":10344,\"demoted_n_h\":10331,\"events\":[{\"ts_ns\":7564241666821430,\"key\":\"bk_6_7453\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564241666817883,\"key\":\"bk_3_7224\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564241666815324,\"key\":\"bk_4_8576\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564241666811330,\"key\":\"bk_4_7368\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":1024},{\"ts_ns\":7564241666808462,\"key\":\"bk_5_7908\",\"from\":\"dram\",\"to\":\"nvme"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 41,
+      "response_len": 69,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":25,\"val\":\"auto-cold-tiering-payload\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 68,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":24,\"val\":\"auto-hot-tiering-payload\"}"
+    }
+  ]
+}

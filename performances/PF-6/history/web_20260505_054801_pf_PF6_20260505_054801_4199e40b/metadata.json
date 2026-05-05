@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "job_id": "pf_PF6_20260505_054801_4199e40b",
+  "kind": "run_one",
+  "module": "performance",
+  "fn_id": "PF-6",
+  "state": "failed",
+  "exit_code": 1,
+  "started_at": "2026-05-05T05:48:01+0800",
+  "finished_at": "2026-05-05T05:48:56+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/performances/PF-6/history/web_20260505_054801_pf_PF6_20260505_054801_4199e40b",
+  "history_dir": "performances/PF-6/history/web_20260505_054801_pf_PF6_20260505_054801_4199e40b",
+  "job_log": "performances/PF-6/history/web_20260505_054801_pf_PF6_20260505_054801_4199e40b/stdout.log",
+  "env": {
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "CURRENT_NODE": "A",
+    "NR_ASYNC_REPL": "1",
+    "NR_SKIP_FLASK": "1",
+    "NR_TRANSPORT": "rdma",
+    "REQUIRE_PEER": "1",
+    "NR_RESTORE_ASYNC_REPL": "0",
+    "NR_GDR_ENABLE": "0",
+    "UDS": "/tmp/native_rdma-dp.sock"
+  }
+}

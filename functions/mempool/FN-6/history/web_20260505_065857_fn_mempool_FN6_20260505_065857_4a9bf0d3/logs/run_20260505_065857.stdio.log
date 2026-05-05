@@ -1,0 +1,5 @@
+mempool/FN-6 PASS - 内存池高可靠机制
+- HA 字段完备: peer_alive=True degraded_puts=0 degraded_bytes=0
+- 默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1、PEER_SSH/PEER_DP_PATH 和 FN6_RECOVERY_CMD
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260505_065857_fn_mempool_FN6_20260505_065857_4a9bf0d3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260505_065857_fn_mempool_FN6_20260505_065857_4a9bf0d3/logs/run_20260505_065857.log

@@ -1,0 +1,50 @@
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=20 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=100
+
+==== nr_bench result ====
+  elapsed       : 0.00 s
+  elapsed_ms    : 1.99
+  threads       : 8
+  op            : put
+  ops ok/fail   : 2000 / 0
+  ops degraded  : 2000
+  ops/s         : 1005477
+  req_bytes     : 2075860 (1043.61 MB/s)
+  resp_bytes    : 3840 (1.93 MB/s)
+  latency us    : avg=0.77  p50=0.79  p90=0.87  p99=1.44  p99.9=1.44  max=1.44
+
+
+[scenario-A] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=1000 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=100
+
+==== nr_bench result ====
+  elapsed       : 0.07 s
+  elapsed_ms    : 66.91
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 100000
+  ops/s         : 1494537
+  req_bytes     : 103793000 (1551.23 MB/s)
+  resp_bytes    : 192000 (2.87 MB/s)
+  latency us    : avg=0.51  p50=0.51  p90=0.55  p99=0.65  p99.9=2.20  max=2.20
+
+
+[scenario-B] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=100 --val-size=1024 --keyspace=1000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=false batch=1000
+
+==== nr_bench result ====
+  elapsed       : 0.05 s
+  elapsed_ms    : 51.66
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 100000
+  ops/s         : 1935597
+  req_bytes     : 103789400 (2008.94 MB/s)
+  resp_bytes    : 19500 (0.38 MB/s)
+  latency us    : avg=0.35  p50=0.34  p90=0.38  p99=0.88  p99.9=0.88  max=0.88
+

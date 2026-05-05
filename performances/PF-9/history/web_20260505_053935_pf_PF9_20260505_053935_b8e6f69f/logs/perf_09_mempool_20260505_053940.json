@@ -1,0 +1,66 @@
+{
+  "metric": "perf_09_mempool",
+  "threads_multi": 8,
+  "malloc_ops_1t": 15687528,
+  "slab_ops_1t": 47186681,
+  "overhead_pct": 0.0,
+  "malloc_ops_Nt": 14405460,
+  "slab_ops_Nt": 19085832,
+  "scale_gain_pct": 32.49,
+  "malloc_rss_kb": 5100,
+  "malloc_live_rss_kb": 303592,
+  "slab_live_rss_kb": 268784,
+  "live_objects": 262144,
+  "live_requested_kb": 262144,
+  "baseline_metadata_bytes": 128,
+  "throughput_metadata_bytes": 16,
+  "malloc_usable_kb": 296960,
+  "slab_usable_kb": 263168,
+  "savings_pct": 11.47,
+  "thresholds": {
+    "overhead_pct": 5.0,
+    "savings_pct": 7.0,
+    "scale_gain_pct": 20.0
+  },
+  "passed_overhead": true,
+  "passed_savings": true,
+  "passed_scale": true,
+  "passed": true,
+  "measured_runs_requested": 3,
+  "measured_runs_executed": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "exit_code": 0,
+      "result": {
+        "metric": "perf_09_mempool",
+        "threads_multi": 8,
+        "malloc_ops_1t": 15687528,
+        "slab_ops_1t": 47186681,
+        "overhead_pct": 0.0,
+        "malloc_ops_Nt": 14405460,
+        "slab_ops_Nt": 19085832,
+        "scale_gain_pct": 32.49,
+        "malloc_rss_kb": 5100,
+        "malloc_live_rss_kb": 303592,
+        "slab_live_rss_kb": 268784,
+        "live_objects": 262144,
+        "live_requested_kb": 262144,
+        "baseline_metadata_bytes": 128,
+        "throughput_metadata_bytes": 16,
+        "malloc_usable_kb": 296960,
+        "slab_usable_kb": 263168,
+        "savings_pct": 11.47,
+        "thresholds": {
+          "overhead_pct": 5.0,
+          "savings_pct": 7.0,
+          "scale_gain_pct": 20.0
+        },
+        "passed_overhead": true,
+        "passed_savings": true,
+        "passed_scale": true,
+        "passed": true
+      }
+    }
+  ]
+}

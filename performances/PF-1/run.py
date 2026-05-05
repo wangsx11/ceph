@@ -150,6 +150,8 @@ def run_with_network_samples(cmd: list[str], metrics_shm: str, sample_interval_s
 
 
 def write_json(path: Path, data: dict) -> None:
+    if "passed" in data and "status" not in data:
+        data["status"] = "PASS" if data.get("passed") else "FAIL"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

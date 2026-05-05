@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/run.sh
+
+rdma/FN-3 FAIL - 流量优先级机制
+- 128 个 fn_qos_hi 样本未找到本地 primary key，无法用 peer 读回验证 RDMA 副本
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/history/web_20260505_065445_fn_rdma_FN3_20260505_065445_4b5a6061/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/history/web_20260505_065445_fn_rdma_FN3_20260505_065445_4b5a6061/logs/run_20260505_065445.log

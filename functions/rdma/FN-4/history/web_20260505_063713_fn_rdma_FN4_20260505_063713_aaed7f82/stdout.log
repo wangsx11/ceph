@@ -1,0 +1,154 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+
+[function-dashboard] restart stack before function
+[function-dashboard] restart command: bash /home/wangshouxin/native-rdma-web/native_rdma/start.sh
+
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+
+sent 149,650 bytes  received 402 bytes  100,034.67 bytes/sec
+total size is 141,401,237  speedup is 942.35
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : ON
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+[1/3] Linking CXX static library data_plane/libnr_gpu.a
+[2/3] Building CXX object data_plane/CMakeFiles/native_rdma_dp.dir/main.cpp.o
+[3/3] Linking CXX executable bin/native_rdma_dp
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=1  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=4163508
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=1  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=206055
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+[function-dashboard] restart exit=0
+
+[function-dashboard] wait 5.0s for heartbeat stabilization
+
+rdma/FN-4 PASS - CPU 与 GPU 高速直通访问
+- xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用
+- RPC_GDR_STATUS peer GPU MR 有效: base=140368288940032 len=67108864 rkey=87285
+- A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=69177，degraded=false
+- xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=272087
+- A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=17203 checksum=522240
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260505_063713_fn_rdma_FN4_20260505_063713_aaed7f82/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260505_063713_fn_rdma_FN4_20260505_063713_aaed7f82/logs/run_20260505_063713.log
+
+[function-dashboard] restore stack after function
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+
+sent 149,662 bytes  received 414 bytes  100,050.67 bytes/sec
+total size is 141,401,237  speedup is 942.20
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+[1/3] Linking CXX static library data_plane/libnr_gpu.a
+[2/3] Building CXX object data_plane/CMakeFiles/native_rdma_dp.dir/main.cpp.o
+[3/3] Linking CXX executable bin/native_rdma_dp
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=4164186
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=206837
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+[function-dashboard] restore exit=0

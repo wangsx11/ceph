@@ -74,6 +74,8 @@ def parse_bench_output(text: str) -> dict:
 
 
 def write_json(path: Path, data: dict) -> None:
+    if "passed" in data and "status" not in data:
+        data["status"] = "PASS" if data.get("passed") else "FAIL"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -158,7 +160,8 @@ def main() -> int:
     native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    dur = os.environ.get("DUR", "10")
+    write_dur = os.environ.get("WRITE_DUR", os.environ.get("DUR", "5"))
+    read_dur = os.environ.get("READ_DUR", os.environ.get("DUR", "10"))
     val_size = os.environ.get("VAL_SIZE", "1048576")
     keyspace = os.environ.get("KEYSPACE", "512")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
@@ -167,6 +170,7 @@ def main() -> int:
     put_threads = os.environ.get("PUT_THREADS", "5")
     put_batch = os.environ.get("PUT_BATCH", "2")
     get_threads = os.environ.get("GET_THREADS", "8")
+    drain_seconds = float(os.environ.get("PF6_DRAIN_SECONDS", "8"))
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -198,24 +202,18 @@ def main() -> int:
         time.sleep(0.5)
     time.sleep(3)
 
-    # Warmup: populate keyspace + stabilize heartbeat
-    run_lines.append("[warmup]\n")
-    run_bench(bin_path, uds, "put", "5", put_threads, val_size, keyspace, "0",
-              batch=put_batch, run_lines=run_lines)
-
     # WRITE phase
-    run_lines.append("\n[write]\n")
-    jw, _ = run_bench(bin_path, uds, "put", dur, put_threads, val_size, keyspace,
+    run_lines.append("[write]\n")
+    jw, _ = run_bench(bin_path, uds, "put", write_dur, put_threads, val_size, keyspace,
                       require_peer, batch=put_batch, run_lines=run_lines)
 
-    # WARMUP for read: ensure all keys populated (no require_peer for speed)
-    run_lines.append("\n[warmup-read]\n")
-    run_bench(bin_path, uds, "put", "3", put_threads, val_size, keyspace, "0",
-              batch=put_batch, run_lines=run_lines)
+    if drain_seconds > 0:
+        run_lines.append(f"\n[drain] wait {drain_seconds:.1f}s for async RDMA completions before read phase\n")
+        time.sleep(drain_seconds)
 
     # READ phase
     run_lines.append("\n[read]\n")
-    jr, _ = run_bench(bin_path, uds, "get-raw", dur, get_threads, val_size, keyspace,
+    jr, _ = run_bench(bin_path, uds, "get-raw", read_dur, get_threads, val_size, keyspace,
                       require_peer, run_lines=run_lines)
 
     # Compute metrics
@@ -253,6 +251,8 @@ def main() -> int:
         "metric": "perf_06_tier_bw",
         "val_size": vsz,
         "keyspace": int(keyspace),
+        "write_duration_s": float(write_dur),
+        "read_duration_s": float(read_dur),
         "write_gbs": round(w_gbs, 3),
         "write_ops": float(jw.get("ops_per_sec", 0)),
         "write_fail": wfail,

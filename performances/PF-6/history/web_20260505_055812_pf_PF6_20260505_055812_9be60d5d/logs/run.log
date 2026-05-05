@@ -1,0 +1,87 @@
+[restart] env: {'SLAB_SLOT_SIZE': '1048576', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+[restart] exit=0
+
+[warmup]
+
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=5 --keyspace=512 --shared-keyspace=1 --require-peer=0 --batch=2
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=5s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=2
+
+==== nr_bench result ====
+  elapsed       : 5.00 s
+  elapsed_ms    : 5001.90
+  threads       : 5
+  op            : put
+  ops ok/fail   : 51630 / 0
+  ops degraded  : 0
+  ops/s         : 10322
+  req_bytes     : 54138690561 (10823.62 MB/s)
+  resp_bytes    : 4888136 (0.98 MB/s)
+  latency us    : avg=425.64  p50=379.14  p90=589.16  p99=893.83  p99.9=945.66  max=14911.38
+
+
+
+[write]
+
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=10 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=2
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=10s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=2
+
+==== nr_bench result ====
+  elapsed       : 10.00 s
+  elapsed_ms    : 10001.41
+  threads       : 5
+  op            : put
+  ops ok/fail   : 70678 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 7067
+  req_bytes     : 74112228796 (7410.18 MB/s)
+  resp_bytes    : 6749453 (0.67 MB/s)
+  latency us    : avg=647.75  p50=647.70  p90=885.31  p99=937.85  p99.9=994.58  max=15282.90
+
+
+
+[warmup-read]
+
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=3 --keyspace=512 --shared-keyspace=1 --require-peer=0 --batch=2
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=3s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=2
+
+==== nr_bench result ====
+  elapsed       : 3.00 s
+  elapsed_ms    : 3001.43
+  threads       : 5
+  op            : put
+  ops ok/fail   : 21280 / 0
+  ops degraded  : 0
+  ops/s         : 7090
+  req_bytes     : 22313990595 (7434.46 MB/s)
+  resp_bytes    : 2033732 (0.68 MB/s)
+  latency us    : avg=644.76  p50=645.15  p90=886.02  p99=918.95  p99.9=954.14  max=968.24
+
+
+
+[read]
+
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=get-raw --threads=8 --val-size=1048576 --duration=10 --keyspace=512 --shared-keyspace=1 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=get-raw threads=8 duration=10s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1
+
+==== nr_bench result ====
+  elapsed       : 10.00 s
+  elapsed_ms    : 10000.78
+  threads       : 8
+  op            : get-raw
+  ops ok/fail   : 197105 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 19709
+  req_bytes     : 1140216 (0.11 MB/s)
+  resp_bytes    : 206680558005 (20666.44 MB/s)
+  latency us    : avg=405.04  p50=397.71  p90=436.80  p99=562.46  p99.9=663.97  max=30034.75
+
+
+
+[restore]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0'}
+[restart] exit=0

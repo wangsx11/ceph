@@ -59,6 +59,8 @@ def parse_bench_output(text: str) -> dict:
 
 
 def write_json(path: Path, data: dict) -> None:
+    if "passed" in data and "status" not in data:
+        data["status"] = "PASS" if data.get("passed") else "FAIL"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -98,36 +100,69 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
     (path / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def fail_early(path: Path, message: str, code: int = 2) -> int:
+def fail_early(path: Path, message: str, code: int = 2, run_lines: list[str] | None = None) -> int:
     logs = log_dir()
     result = {"metric": "perf_05_batch_bw", "passed": False, "error": message}
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
     write_json(raw_json, result)
-    run_log.write_text(message + "\n", encoding="utf-8")
+    content = ""
+    if run_lines:
+        content = "\n".join(run_lines)
+        if content and not content.endswith("\n"):
+            content += "\n"
+    run_log.write_text(content + message + "\n", encoding="utf-8")
     write_summary(path, result, run_log, raw_json)
     return code
+
+
+def restart_stack(native_root: Path, env_extra: dict, run_lines: list[str]) -> bool:
+    env = os.environ.copy()
+    env.update(env_extra)
+    proc = subprocess.run(
+        ["bash", str(native_root / "start.sh")],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        cwd=str(native_root), env=env, timeout=120,
+    )
+    run_lines.append(f"[restart] env: {env_extra}\n[restart] exit={proc.returncode}\n{proc.stdout[-1200:]}\n")
+    return proc.returncode == 0
 
 
 def main() -> int:
     root = repo_root()
     path = out_dir()
     logs = log_dir()
+    native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
     dur = os.environ.get("DUR", "15")
     threads = os.environ.get("THREADS", "4")
     batch = os.environ.get("BATCH", "64")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
+    async_repl = os.environ.get("NR_ASYNC_REPL", "1")
+    restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
     if not os.access(bin_path, os.X_OK):
         return fail_early(path, f"nr_bench missing: {bin_path}")
-    if not can_connect_uds(uds):
-        return fail_early(path, f"data plane UDS is not connectable: {uds}; this test requires the data plane.")
 
     run_lines: list[str] = []
+    restart_ok = restart_stack(native_root, {
+        "SLAB_SLOT_SIZE": "4096",
+        "SLAB_TOTAL_BYTES": "4294967296",
+        "NR_ASYNC_REPL": async_repl,
+    }, run_lines)
+    if not restart_ok:
+        return fail_early(path, "Failed to restart data plane for PF-5 async batch mode", run_lines=run_lines)
+
+    for _ in range(30):
+        if can_connect_uds(uds):
+            break
+        time.sleep(0.5)
+    time.sleep(3)
+    if not can_connect_uds(uds):
+        return fail_early(path, f"data plane UDS is not connectable: {uds}; this test requires the data plane.", run_lines=run_lines)
 
     # Warmup
     warmup_cmd = [
@@ -169,6 +204,20 @@ def main() -> int:
     }
     if proc.returncode != 0:
         result["note"] = f"nr_bench exited with {proc.returncode}"
+
+    restore_lines: list[str] = []
+    restore_ok = restart_stack(native_root, {
+        "SLAB_SLOT_SIZE": "4096",
+        "SLAB_TOTAL_BYTES": "4294967296",
+        "NR_ASYNC_REPL": restore_async_repl,
+    }, restore_lines)
+    run_lines.append("\n[restore functional data-plane defaults]\n")
+    run_lines.extend(restore_lines)
+    result["restore_async_repl"] = restore_async_repl
+    result["restore_ok"] = bool(restore_ok)
+    if not restore_ok:
+        result["passed"] = False
+        result["note"] = (str(result.get("note") or "") + " restore failed").strip()
 
     ts = time.strftime("%Y%m%d_%H%M%S")
     write_json(logs / f"perf_05_batch_bw_{ts}.json", result)

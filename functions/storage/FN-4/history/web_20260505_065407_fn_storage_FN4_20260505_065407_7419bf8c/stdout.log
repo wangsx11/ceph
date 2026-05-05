@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-4/run.sh
+
+storage/FN-4 PASS - 可配置压缩与去重
+- 压缩统计增加: objects 0->1, saved_bytes 0->4077
+- 去重统计增加: duplicate_objects 0->1, saved_bytes 0->19
+- HDD 读回闭环成功: A hit=hdd_promote, B hit=hdd_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260505_065407_fn_storage_FN4_20260505_065407_7419bf8c/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260505_065407_fn_storage_FN4_20260505_065407_7419bf8c/logs/run_20260505_065407.log

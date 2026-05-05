@@ -207,10 +207,13 @@ int main(int argc, char** argv) {
                 std::string kind = "RPC_KV_PUT_BATCH";
                 kind += prio_suffix;
                 uint64_t t0 = now_ns();
+                bool degraded = false;
                 int64_t recv = rpc_call(fd, kind.c_str(), batch_body.data(),
-                                        batch_body.size(), nullptr);
+                                        batch_body.size(), &degraded);
                 uint64_t dt = now_ns() - t0;
-                if (recv >= 0) {
+                if (degraded) ops_degraded.fetch_add(batch_n, std::memory_order_relaxed);
+                bool ok = (recv >= 0) && !(o.require_peer && degraded);
+                if (ok) {
                     ops_done.fetch_add(batch_n, std::memory_order_relaxed);
                     bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
                     bytes_req.fetch_add(batch_body.size(), std::memory_order_relaxed);

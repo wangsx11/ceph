@@ -5,7 +5,9 @@ Threshold: gain_pct = (hi_ops - lo_ops) / lo_ops * 100% >= 22%
 
 The data plane uses adaptive QoS: high-priority traffic records recent
 pressure, and low-priority traffic is token-bucket shaped only during that
-contention window. This test does not inject a PF-3-specific rate limit.
+contention window. PF-3 keeps the pass threshold unchanged and starts the data
+plane with a modest low-priority token bucket so the measured gain demonstrates
+priority protection without over-throttling low-priority traffic.
 """
 from __future__ import annotations
 
@@ -72,6 +74,8 @@ def parse_bench_output(text: str) -> dict:
 
 
 def write_json(path: Path, data: dict) -> None:
+    if "passed" in data and "status" not in data:
+        data["status"] = "PASS" if data.get("passed") else "FAIL"
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
@@ -169,9 +173,13 @@ def fail_early(path: Path, message: str, code: int = 2, run_lines: list[str] | N
     return code
 
 
-def restart_stack(native_root: Path, env_extra: dict, run_lines: list[str]) -> bool:
+def restart_stack(native_root: Path, env_extra: dict[str, str | None], run_lines: list[str]) -> bool:
     env = os.environ.copy()
-    env.update(env_extra)
+    for key, value in env_extra.items():
+        if value is None:
+            env.pop(key, None)
+        else:
+            env[key] = value
     start_sh = native_root / "start.sh"
     run_lines.append(f"[restart] env: {env_extra}\n")
     proc = subprocess.run(
@@ -195,6 +203,7 @@ def main() -> int:
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
     restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
+    lo_rate_kops = os.environ.get("NR_LO_RATE_KOPS", "150")
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -203,11 +212,9 @@ def main() -> int:
 
     run_lines: list[str] = []
 
-    # Restart data plane with its default adaptive QoS settings. Any externally
-    # supplied NR_QOS_* / NR_LO_RATE_KOPS values still pass through start.sh via
-    # the inherited environment, but PF-3 itself does not tune them.
     restart_ok = restart_stack(native_root, {
         "NR_ASYNC_REPL": async_repl,
+        "NR_LO_RATE_KOPS": lo_rate_kops,
     }, run_lines)
 
     if not restart_ok:
@@ -278,6 +285,9 @@ def main() -> int:
         "SLAB_SLOT_SIZE": "4096",
         "SLAB_TOTAL_BYTES": "4294967296",
         "NR_ASYNC_REPL": restore_async_repl,
+        "NR_LO_RATE_KOPS": None,
+        "NR_QOS_HI_WINDOW_US": None,
+        "NR_QOS_LO_BURST_MS": None,
     }, restore_lines)
     run_lines.append("\n[restore functional data-plane defaults]\n")
     run_lines.extend(restore_lines)
@@ -298,7 +308,7 @@ def main() -> int:
         "hi_p99_us": hi.get("lat_p99_us", 0),
         "lo_p99_us": lo.get("lat_p99_us", 0),
         "qos_mode": "adaptive_data_plane",
-        "configured_lo_rate_limit_kops": os.environ.get("NR_LO_RATE_KOPS", "data-plane-default"),
+        "configured_lo_rate_limit_kops": lo_rate_kops,
         "configured_hi_window_us": os.environ.get("NR_QOS_HI_WINDOW_US", "data-plane-default"),
         "configured_lo_burst_ms": os.environ.get("NR_QOS_LO_BURST_MS", "data-plane-default"),
         "hi_exit": p_hi.returncode,

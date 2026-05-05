@@ -30,6 +30,27 @@ export NR_CUDA_DEVICE="${NR_CUDA_DEVICE:-0}"
 export NR_GDR_BYTES="${NR_GDR_BYTES:-67108864}"
 export NR_SKIP_FLASK="${NR_SKIP_FLASK:-0}"
 
+REMOTE_EXTRA_ENV=""
+LOCAL_EXTRA_ENV=()
+add_optional_env() {
+    local name="$1"
+    local value="${!name:-}"
+    if [ -n "$value" ]; then
+        REMOTE_EXTRA_ENV+=" ${name}='${value}'"
+        LOCAL_EXTRA_ENV+=("${name}=${value}")
+    fi
+}
+
+for optional_name in \
+    SLAB_SLOT_SIZE \
+    SLAB_TOTAL_BYTES \
+    NR_LO_RATE_KOPS \
+    NR_QOS_HI_WINDOW_US \
+    NR_QOS_LO_BURST_MS
+do
+    add_optional_env "${optional_name}"
+done
+
 LOCAL_CUDA_FLAG="-DNR_USE_CUDA=OFF"
 PEER_CUDA_FLAG="-DNR_USE_CUDA=OFF"
 if [ "${NR_GDR_ENABLE}" = "1" ] || [ "${NR_GDR_ENABLE}" = "true" ]; then
@@ -78,12 +99,12 @@ say "stop old peer stack"
 ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_down.sh" 2>/dev/null || true
 
 say "start peer role B"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}' ROLE=B bash scripts/demo_up.sh"
+ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} ROLE=B bash scripts/demo_up.sh"
 sleep 3
 
 say "start local role A"
 if [ -n "${LOCAL_HOST}" ]; then
-    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_up.sh"
+    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} bash scripts/demo_up.sh"
 else
-    ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_up.sh"
+    env "${LOCAL_EXTRA_ENV[@]}" ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_up.sh"
 fi

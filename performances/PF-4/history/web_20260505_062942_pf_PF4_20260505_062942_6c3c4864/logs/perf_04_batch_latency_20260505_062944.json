@@ -1,0 +1,18 @@
+{
+  "metric": "perf_04_batch_latency",
+  "scenario_a": {
+    "elapsed_ms": 1056.99,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0
+  },
+  "scenario_b": {
+    "elapsed_ms": 959.24,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0
+  },
+  "passed_a": false,
+  "passed_b": false,
+  "passed": false
+}

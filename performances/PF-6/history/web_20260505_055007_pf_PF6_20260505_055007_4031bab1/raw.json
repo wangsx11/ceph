@@ -1,0 +1,40 @@
+{
+  "metric": "perf_06_tier_bw",
+  "val_size": 1048576,
+  "keyspace": 512,
+  "write_gbs": 7.061,
+  "write_ops": 6733.0,
+  "write_fail": 36278,
+  "write_degraded": 0,
+  "write_tx_bytes": 70612036074,
+  "read_gbs": 20.696,
+  "read_ops_total": 197367,
+  "read_fail": 0,
+  "read_rx_bytes": 206955286227,
+  "read_avg_resp_bytes": 1048581,
+  "read_hit_ratio": 1.0,
+  "passed": false,
+  "note": "",
+  "raw_put": {
+    "elapsed_s": 10.0,
+    "ops_per_sec": 6733.0,
+    "ops_ok": 67340,
+    "ops_fail": 36278,
+    "ops_degraded": 0,
+    "req_bytes": 70612036074,
+    "resp_bytes": 6366273,
+    "val_size": 1048576
+  },
+  "raw_get": {
+    "elapsed_s": 10.0,
+    "ops_per_sec": 19735.0,
+    "ops_ok": 197367,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "req_bytes": 1141748,
+    "resp_bytes": 206955286227,
+    "val_size": 1048576
+  },
+  "restore_async_repl": "0",
+  "restore_ok": true
+}

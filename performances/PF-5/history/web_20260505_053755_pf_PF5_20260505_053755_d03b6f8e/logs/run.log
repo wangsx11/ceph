@@ -1,0 +1,92 @@
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0'}
+[restart] exit=0
+已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=4128964
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3462608
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=3 --batch=64
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=3s val_size=1024 keyspace=10000 prio=default require_peer=false batch=64
+
+==== nr_bench result ====
+  elapsed       : 3.00 s
+  elapsed_ms    : 3000.91
+  threads       : 4
+  op            : put
+  ops ok/fail   : 797568 / 0
+  ops degraded  : 0
+  ops/s         : 265776
+  req_bytes     : 828632034 (276.13 MB/s)
+  resp_bytes    : 2430103 (0.81 MB/s)
+  latency us    : avg=14.88  p50=14.36  p90=16.44  p99=20.07  p99.9=98.93  max=466.36
+
+
+[measured] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=15 --require-peer=1 --batch=64
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=15s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64
+
+==== nr_bench result ====
+  elapsed       : 15.00 s
+  elapsed_ms    : 15000.58
+  threads       : 4
+  op            : put
+  ops ok/fail   : 4832384 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 322146
+  req_bytes     : 5020611141 (334.69 MB/s)
+  resp_bytes    : 14723711 (0.98 MB/s)
+  latency us    : avg=12.25  p50=12.02  p90=14.49  p99=16.52  p99.9=105.69  max=451.64
+
+
+
+[restore functional data-plane defaults]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0'}
+[restart] exit=0
+已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=4129399
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3463575
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+

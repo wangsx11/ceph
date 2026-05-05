@@ -856,9 +856,24 @@ _FUNCTION_ALLOWED_ENV = {
     "REQUIRE_PEER",
     "ALLOW_DESTRUCTIVE",
     "CURRENT_NODE",
+    "NR_TRANSPORT",
+    "NR_ASYNC_REPL",
+    "NR_GDR_ENABLE",
+    "NR_SKIP_FLASK",
+    "NR_RESTART_BEFORE_FUNCTION",
+    "NR_RESTART_STABILIZE_SECONDS",
+    "NR_RESTORE_AFTER_FUNCTION",
+    "NR_RESTORE_TRANSPORT",
+    "NR_RESTORE_ASYNC_REPL",
+    "NR_RESTORE_GDR_ENABLE",
+    "PEER_HOST",
+    "NR_PEER_HOST",
     "PEER_SSH",
     "PEER_DP_PATH",
     "PEER_START_CMD",
+    "GDR_TEST_BYTES",
+    "GDR_TEST_OFFSET",
+    "GDR_TEST_SEED",
     "FN6_RECOVERY_CMD",
     "FN6_RECOVERY_CMD_TIMEOUT",
     "FN6_RECOVERY_WAIT_TIMEOUT",
@@ -899,6 +914,14 @@ _PERFORMANCE_ALLOWED_ENV = {
     "UDS",
     "REQUIRE_PEER",
     "CURRENT_NODE",
+    "NR_TRANSPORT",
+    "NR_ASYNC_REPL",
+    "NR_RESTORE_ASYNC_REPL",
+    "NR_GDR_ENABLE",
+    "NR_SKIP_FLASK",
+    "NR_LO_RATE_KOPS",
+    "NR_QOS_HI_WINDOW_US",
+    "NR_QOS_LO_BURST_MS",
     "DUR",
     "THREADS",
     "LINK_GBPS",
@@ -928,6 +951,8 @@ _PERFORMANCE_DEFAULT_ENV = {
     "UDS": "/tmp/native_rdma-dp.sock",
     "REQUIRE_PEER": "1",
     "CURRENT_NODE": ROLE,
+    "NR_TRANSPORT": "rdma",
+    "NR_GDR_ENABLE": "0",
 }
 _PERFORMANCE_JOBS: dict[str, dict[str, Any]] = {}
 _PERFORMANCE_JOB_LOCK = threading.Lock()
@@ -1762,15 +1787,58 @@ def _copy_if_exists(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
-def _restore_baseline(saved: dict[Path, bytes | None]) -> None:
-    for path, data in saved.items():
-        if data is None:
+def _restore_baseline(saved: dict[Path, Any]) -> None:
+    for path, snapshot in saved.items():
+        if snapshot is None:
             try:
                 path.unlink()
             except FileNotFoundError:
                 pass
         else:
+            data, atime, mtime = snapshot
             path.write_bytes(data)
+            try:
+                os.utime(path, (atime, mtime))
+            except OSError:
+                pass
+
+
+def _saved_file_snapshot(path: Path):
+    if not path.exists():
+        return None
+    st = path.stat()
+    return (path.read_bytes(), st.st_atime, st.st_mtime)
+
+
+def _apply_function_run_mode(module: str, fn_id: str, env: dict[str, str]) -> dict[str, str]:
+    run_env = dict(env)
+    if module == "rdma" and fn_id == "FN-1":
+        run_env.update({
+            "NR_TRANSPORT": "tcp",
+            "NR_ASYNC_REPL": "0",
+            "NR_GDR_ENABLE": "0",
+            "NR_SKIP_FLASK": "1",
+            "NR_RESTART_BEFORE_FUNCTION": "1",
+            "NR_RESTART_STABILIZE_SECONDS": "5",
+            "NR_RESTORE_AFTER_FUNCTION": "1",
+            "NR_RESTORE_TRANSPORT": "rdma",
+            "NR_RESTORE_ASYNC_REPL": "0",
+            "NR_RESTORE_GDR_ENABLE": "0",
+        })
+    elif module == "rdma" and fn_id == "FN-4":
+        run_env.update({
+            "NR_TRANSPORT": "rdma",
+            "NR_ASYNC_REPL": "0",
+            "NR_GDR_ENABLE": "1",
+            "NR_SKIP_FLASK": "1",
+            "NR_RESTART_BEFORE_FUNCTION": "1",
+            "NR_RESTART_STABILIZE_SECONDS": "5",
+            "NR_RESTORE_AFTER_FUNCTION": "1",
+            "NR_RESTORE_TRANSPORT": "rdma",
+            "NR_RESTORE_ASYNC_REPL": "0",
+            "NR_RESTORE_GDR_ENABLE": "0",
+        })
+    return run_env
 
 
 def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str],
@@ -1778,7 +1846,7 @@ def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str
     job = _FUNCTION_JOBS[job_id]
     hist = Path(job["history_abs"])
     stdout_log = hist / "stdout.log"
-    saved = {p: (p.read_bytes() if p.exists() else None) for p in protected_files}
+    saved = {p: _saved_file_snapshot(p) for p in protected_files}
     run_env = os.environ.copy()
     run_env.update(env)
     run_env["REPO_ROOT"] = str(REPO_ROOT)
@@ -1794,6 +1862,32 @@ def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str
             with open(stdout_log, "w", encoding="utf-8", errors="replace") as out:
                 out.write("Command: " + " ".join(cmd) + "\n\n")
                 out.flush()
+                if run_env.get("NR_RESTART_BEFORE_FUNCTION") == "1":
+                    restart_cmd = ["bash", str(REPO_ROOT / "native_rdma" / "start.sh")]
+                    out.write("[function-dashboard] restart stack before function\n")
+                    out.write("[function-dashboard] restart command: " + " ".join(restart_cmd) + "\n\n")
+                    out.flush()
+                    restart_proc = subprocess.run(
+                        restart_cmd,
+                        cwd=str(REPO_ROOT),
+                        env=run_env,
+                        stdout=out,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        timeout=240,
+                    )
+                    out.write(f"\n[function-dashboard] restart exit={restart_proc.returncode}\n\n")
+                    out.flush()
+                    if restart_proc.returncode != 0:
+                        raise RuntimeError(f"restart stack failed with exit {restart_proc.returncode}")
+                    try:
+                        stabilize_s = float(run_env.get("NR_RESTART_STABILIZE_SECONDS", "0") or "0")
+                    except ValueError:
+                        stabilize_s = 0.0
+                    if stabilize_s > 0:
+                        out.write(f"[function-dashboard] wait {stabilize_s:.1f}s for heartbeat stabilization\n\n")
+                        out.flush()
+                        time.sleep(stabilize_s)
                 proc = subprocess.Popen(
                     cmd,
                     cwd=str(cwd),
@@ -1806,7 +1900,6 @@ def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str
                 rc = proc.wait()
             with _FUNCTION_JOB_LOCK:
                 job["exit_code"] = rc
-                job["state"] = "finished" if rc in (0, 2) else "failed"
             for src, name in result_files:
                 _copy_if_exists(src, hist / name)
             if not (hist / "summary.md").exists():
@@ -1825,6 +1918,30 @@ def _run_function_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, str
                 _copy_if_exists(p, hist / "run.json")
             for p in hist.glob("logs/run_all_*.log"):
                 _copy_if_exists(p, hist / "run_all.log")
+            if run_env.get("NR_RESTORE_AFTER_FUNCTION") == "1":
+                restore_env = dict(run_env)
+                restore_env["NR_TRANSPORT"] = run_env.get("NR_RESTORE_TRANSPORT", "rdma")
+                restore_env["NR_ASYNC_REPL"] = run_env.get("NR_RESTORE_ASYNC_REPL", "0")
+                restore_env["NR_GDR_ENABLE"] = run_env.get("NR_RESTORE_GDR_ENABLE", "0")
+                restore_env["NR_SKIP_FLASK"] = "1"
+                restore_cmd = ["bash", str(REPO_ROOT / "native_rdma" / "start.sh")]
+                with open(stdout_log, "a", encoding="utf-8", errors="replace") as out:
+                    out.write("\n[function-dashboard] restore stack after function\n")
+                    out.flush()
+                    restore_proc = subprocess.run(
+                        restore_cmd,
+                        cwd=str(REPO_ROOT),
+                        env=restore_env,
+                        stdout=out,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        timeout=240,
+                    )
+                    out.write(f"\n[function-dashboard] restore exit={restore_proc.returncode}\n")
+                    if restore_proc.returncode != 0:
+                        job["error"] = f"restore stack failed with exit {restore_proc.returncode}"
+            with _FUNCTION_JOB_LOCK:
+                job["state"] = "finished" if rc in (0, 2) else "failed"
         except Exception as exc:
             with _FUNCTION_JOB_LOCK:
                 job["state"] = "failed"
@@ -1846,6 +1963,7 @@ def functions_run_one():
     try:
         fn_dir = _safe_fn_dir(module, fn_id)
         env = _sanitize_function_env(body.get("env", {}), module=module, fn_id=fn_id)
+        env = _apply_function_run_mode(module, fn_id, env)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     with _FUNCTION_JOB_LOCK:
@@ -2026,6 +2144,20 @@ def _sanitize_performance_env(body_env: Any) -> dict[str, str]:
     return env
 
 
+def _apply_performance_run_mode(module: str, pf_id: str, env: dict[str, str]) -> dict[str, str]:
+    run_env = dict(env)
+    run_env.setdefault("NR_SKIP_FLASK", "1")
+    run_env.setdefault("NR_RESTORE_ASYNC_REPL", "0")
+    run_env["NR_TRANSPORT"] = "rdma"
+    run_env["NR_GDR_ENABLE"] = "0"
+    if module == "performance" and pf_id in {"PF-1", "PF-3", "PF-5", "PF-6"}:
+        run_env["NR_ASYNC_REPL"] = "1"
+    if module == "performance" and pf_id == "PF-3":
+        run_env.setdefault("THREADS", "4")
+        run_env.setdefault("NR_LO_RATE_KOPS", "150")
+    return run_env
+
+
 def _active_performance_job_exists() -> bool:
     return any(job.get("state") in {"queued", "running"} for job in _PERFORMANCE_JOBS.values())
 
@@ -2112,7 +2244,7 @@ def _run_performance_job(job_id: str, cmd: list[str], cwd: Path, env: dict[str, 
     job = _PERFORMANCE_JOBS[job_id]
     hist = Path(job["history_abs"])
     stdout_log = hist / "stdout.log"
-    saved = {p: (p.read_bytes() if p.exists() else None) for p in protected_files}
+    saved = {p: _saved_file_snapshot(p) for p in protected_files}
     run_env = os.environ.copy()
     run_env.update(env)
     run_env["REPO_ROOT"] = str(REPO_ROOT)
@@ -2166,6 +2298,7 @@ def performance_run_one():
     try:
         pf_dir = _safe_pf_dir(module, pf_id)
         env = _sanitize_performance_env(body.get("env", {}))
+        env = _apply_performance_run_mode(module, pf_id, env)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     with _PERFORMANCE_JOB_LOCK:
@@ -2175,8 +2308,6 @@ def performance_run_one():
     hist = Path(job["history_abs"])
     run_env = dict(env)
     run_env["OUT_DIR"] = str(hist)
-    run_env.setdefault("NR_SKIP_FLASK", "1")
-    run_env.setdefault("NR_RESTORE_ASYNC_REPL", "0")
     cmd = ["bash", str(pf_dir / "run.sh")]
     protected = [pf_dir / "summary.md", pf_dir / "raw.json"]
     results = [(hist / "summary.md", "summary.md"), (hist / "raw.json", "raw.json"), (hist / "logs" / "run.log", "run.log")]

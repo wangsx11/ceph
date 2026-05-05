@@ -1,0 +1,31 @@
+{
+  "metric": "perf_02_latency",
+  "samples": 2272705,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "lat_avg_us": 34.68,
+  "lat_p50_us": 31.41,
+  "lat_p99_us": 48.26,
+  "lat_p99_9_us": 72.39,
+  "lat_max_us": 29382.29,
+  "thresholds": {
+    "samples": 100000,
+    "avg_us": 50.0,
+    "p99_us": 100.0
+  },
+  "passed": true,
+  "raw": {
+    "elapsed_s": 10.0,
+    "threads": 8,
+    "ops_ok": 2272705,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "ops_per_sec": 227260.0,
+    "lat_avg_us": 34.68,
+    "lat_p50_us": 31.41,
+    "lat_p99_us": 48.26,
+    "lat_p99_9_us": 72.39,
+    "lat_max_us": 29382.29,
+    "val_size": 1024
+  }
+}
