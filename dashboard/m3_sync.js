@@ -22,8 +22,7 @@ const D3_STATE = {
     A: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
     B: { name: 'unit_alpha_01', data: '{"kind":"侦察情报","unit":"A-01","ts":""}' },
   },
-  selected: null,        // 被选中查看详情的对象 name
-  mode:    'panels',     // 'panels' | 'detail'
+  detail:   null,        // {node, name, loading, data, editData, meta, error}
   busy:    false,
 };
 
@@ -46,10 +45,7 @@ function renderM3() {
           <div class="dot" style="background:#5a7a96;width:6px;height:6px"></div>等待就绪
         </div>
       </div>
-      <div class="g2" style="gap:10px">
-        <div id="d3-node-A">${d3RenderNodeStatCard('A', cA)}</div>
-        <div id="d3-node-B">${d3RenderNodeStatCard('B', cB)}</div>
-      </div>
+      <div id="d3-cluster-summary">${d3RenderClusterSummary(cA, cB)}</div>
     </div>
 
     <div class="ctrl-panel" style="margin-top:12px">
@@ -57,9 +53,6 @@ function renderM3() {
       <div class="g2" style="gap:10px">
         ${d3RenderOpPanel('A')}
         ${d3RenderOpPanel('B')}
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px">
-        <button class="btn btn-outline btn-sm" onclick="d3FlushAll()">↻ 清空两端</button>
       </div>
     </div>
 
@@ -71,6 +64,8 @@ function renderM3() {
         <div class="card-body"><div id="d3-list-B">${d3RenderObjTable('B')}</div></div>
       </div>
     </div>
+
+    <div id="d3-detail" style="margin-top:14px">${d3RenderDetail()}</div>
 
     <div class="card" style="margin-top:14px">${chead('同步事件时间线', '📜', '#a060ff', tag('LIVE', '#00e888'))}
       <div class="card-body"><div id="d3-events" class="elog" style="max-height:300px">${d3RenderEventsInitial()}</div></div>
@@ -93,7 +88,7 @@ function d3EventHTML(e, withLatest) {
     <span style="color:${e.nodeColor}">${e.node}</span>
     <span style="color:#e4edf6">${esc(e.name)}</span>
     <span style="color:#5a7a96">${e.detail || ''}</span>
-    ${e.lat!=null ? `<span style="color:#ffb020">延迟 ${e.lat}μs</span>` : ''}
+    ${e.lat!=null ? `<span style="color:#ffb020">${e.latLabel || '延迟'} ${e.lat}μs</span>` : ''}
     ${e.hit ? `<span style="color:#00d0f0">hit=${e.hit}</span>` : ''}
     ${e.err ? `<span style="color:#ff4050">err: ${esc(e.err)}</span>` : ''}
   </div>`;
@@ -126,15 +121,35 @@ function d3RenderOpPanel(node) {
     </div>
     <div class="ctrl-row" style="gap:6px">
       <button class="btn btn-success btn-sm" onclick="d3Op('${node}','write')">写入</button>
-      <button class="btn btn-warning btn-sm" onclick="d3Op('${node}','modify')">修改</button>
       <button class="btn btn-outline btn-sm" onclick="d3Op('${node}','read')">读取</button>
-      <button class="btn btn-danger  btn-sm" onclick="d3Op('${node}','delete')">删除</button>
+    </div>
+  </div>`;
+}
+
+function d3NodeOnline(c) {
+  return !!(c && c.ok && c.dp_online);
+}
+
+function d3RenderClusterSummary(cA, cB) {
+  const aOn = d3NodeOnline(cA);
+  const bOn = d3NodeOnline(cB);
+  const online = (aOn ? 1 : 0) + (bOn ? 1 : 0);
+  return `<div class="g3" style="gap:10px">
+    ${d3RenderNodeStatCard('A', cA)}
+    ${d3RenderNodeStatCard('B', cB)}
+    <div style="padding:12px;background:#1b2a3d;border-radius:6px;border:1px solid #2d4a6630">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ${dot(online === 2 ? 'online' : 'warning')}
+        <div style="font-size:1.3rem;color:#c0d8f0;font-weight:700">节点数量</div>
+      </div>
+      ${metric('在线 / 总数', `${online} / 2`, '', online === 2 ? '#00e888' : '#ffb020')}
     </div>
   </div>`;
 }
 
 function d3RenderNodeStatCard(node, c) {
   const color = node === 'A' ? '#00e888' : '#00d0f0';
+  const online = d3NodeOnline(c);
   if (!c) {
     return `<div style="padding:12px;background:#1b2a3d;border-radius:6px;border:1px solid ${color}30">
       <div style="display:flex;align-items:center;gap:8px">
@@ -144,27 +159,13 @@ function d3RenderNodeStatCard(node, c) {
       </div>
     </div>`;
   }
-  const peer = node === 'A' ? 'B' : 'A';
   return `<div style="padding:12px;background:#1b2a3d;border-radius:6px;border:1px solid ${color}30">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      ${dot(c.rdma_connected ? 'online' : 'warning')}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      ${dot(online ? 'online' : 'warning')}
       <div style="font-size:1.3rem;color:${color};font-weight:700">节点 ${node}</div>
-      <div style="color:#5a7a96">${c.self_ip || '-'}</div>
-      <div style="margin-left:auto;display:flex;gap:6px">
-        ${(c.dp_online)
-            ? tag('DP ✓', '#00e888')
-            : tag('DP 离线', '#ff4050')}
-        ${(c.rdma_connected)
-            ? tag(`→ ${peer} RDMA`, '#00d0f0')
-            : tag(`→ ${peer} 未连`, '#ffb020')}
-      </div>
+      <div style="margin-left:auto">${tag(online ? '在线' : '离线', online ? '#00e888' : '#ff4050')}</div>
     </div>
-    <div class="g4" style="gap:8px">
-      ${metric('本端对象',  c.objects_here,                    '',  color)}
-      ${metric('同步延迟', F(c.replica_lag_us || 0, 1),        'μs', '#ffb020')}
-      ${metric('bw_tx',     F((c.metrics && c.metrics.bw_tx_gbps) || 0, 2), 'Gbps', '#00d0f0')}
-      ${metric('QPs',       c.peer_num_qp,                     '',  '#a060ff')}
-    </div>
+    ${metric('节点状态', online ? 'ONLINE' : 'OFFLINE', '', online ? color : '#ff4050')}
   </div>`;
 }
 
@@ -175,24 +176,76 @@ function d3RenderObjTable(node) {
       该节点尚无对象；先点击上方【写入】即可同步观察</div>`;
   }
   const color = node === 'A' ? '#00e888' : '#00d0f0';
-  const rows = list.slice(0, 12).map(o => {
+  const rows = list.map(o => {
     const hit = o.last_hit || '-';
     const hitColor = hit === 'local' ? '#00e888'
                    : hit === 'remote'? '#ffb020'
                    : hit === 'nvme'  ? '#4488ff'
                    : hit === 'hdd'   ? '#a060ff' : '#5a7a96';
-    return `<tr onclick="d3ShowDetail('${node}','${escAttr(o.name)}')" style="cursor:pointer">
+    const selected = D3_STATE.detail &&
+      D3_STATE.detail.node === node && D3_STATE.detail.name === o.name;
+    return `<tr data-node="${escAttr(node)}" data-name="${escAttr(o.name)}" onclick="d3RowClick(event)"
+      style="cursor:pointer;${selected ? 'background:#00e0ff10' : ''}">
       <td class="mono" style="color:${color}">${esc(o.name)}</td>
       <td class="mono" style="color:#c0d8f0">v${o.version}</td>
       <td class="mono" style="color:#ffb020">${o.size}B</td>
-      <td class="mono" style="color:#5a7a96">${o.hash}</td>
       <td class="mono" style="color:${hitColor}">${hit}</td>
       <td class="mono" style="color:#5a7a96">${o.ts}</td>
     </tr>`;
   }).join('');
   return `<table class="dtable">
-    <thead><tr><th>NAME</th><th>VER</th><th>SIZE</th><th>HASH</th><th>LAST HIT</th><th>TS</th></tr></thead>
+    <thead><tr><th>NAME</th><th>VER</th><th>SIZE</th><th>LAST HIT</th><th>TS</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
+}
+
+function d3RenderDetail() {
+  const d = D3_STATE.detail;
+  if (!d) return '';
+  const color = d.node === 'A' ? '#00e888' : '#00d0f0';
+  if (d.loading) {
+    return `<div class="d3-popover card" id="d3-detail-panel">${chead('对象详情', '✎', color, tag('加载中', '#ffb020'))}
+      <div class="card-body" style="color:#5a7a96">正在读取 ${esc(d.name)} ...</div>
+    </div>`;
+  }
+  if (d.error) {
+    return `<div class="d3-popover card" id="d3-detail-panel">${chead('对象详情', '✎', color, tag('读取失败', '#ff4050'))}
+      <div class="card-body">
+        <div style="color:#ff9aa3">${esc(d.error)}</div>
+        <div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="d3CloseDetail()">关闭</button></div>
+      </div>
+    </div>`;
+  }
+  const meta = d.meta || {};
+  const syncTag = d.syncOk == null ? ''
+    : tag(d.syncOk ? '两端一致' : '等待同步确认', d.syncOk ? '#00e888' : '#ffb020');
+  const content = d.editing
+    ? `<textarea id="d3-detail-data" class="ctrl-textarea mono"
+        oninput="if(D3_STATE.detail)D3_STATE.detail.editData=this.value">${esc(d.editData || '')}</textarea>
+      <div class="ctrl-row" style="justify-content:flex-end;margin-top:10px">
+        <button class="btn btn-outline btn-sm" onclick="d3CancelDetailEdit()">取消</button>
+        <button class="btn btn-warning btn-sm" onclick="d3SaveDetail()" ${d.saving?'disabled':''}>
+          ${d.saving ? '保存中...' : '保存修改'}
+        </button>
+      </div>`
+    : `<pre class="d3-detail-data mono">${esc(d.data || '')}</pre>
+      <div class="ctrl-row" style="justify-content:flex-end;margin-top:10px">
+        <button class="btn btn-outline btn-sm" onclick="d3CloseDetail()">关闭</button>
+        <button class="btn btn-danger btn-sm" onclick="d3DeleteDetail()" ${d.deleting?'disabled':''}>
+          ${d.deleting ? '删除中...' : '删除'}
+        </button>
+        <button class="btn btn-warning btn-sm" onclick="d3EditDetail()">修改</button>
+      </div>`;
+  return `<div class="d3-popover card" id="d3-detail-panel">${chead('对象详情', '✎', color,
+      `${tag('节点 ' + d.node, color)}${syncTag}`)}
+    <div class="card-body">
+      <div class="g3" style="gap:10px;margin-bottom:10px">
+        ${metric('KEY', esc(shrink(meta.name || d.name)), '', color)}
+        ${metric('VERSION', 'v' + (meta.version || '-'), '', '#c0d8f0')}
+        ${metric('SIZE', (meta.size || 0) + 'B', '', '#ffb020')}
+      </div>
+      ${content}
+    </div>
+  </div>`;
 }
 
 function d3RenderEvents() {
@@ -233,10 +286,6 @@ async function d3Op(node, op) {
     if (op === 'read') {
       url = `${api}/read?name=${encodeURIComponent(name)}`;
       init = { method: 'GET' };
-    } else if (op === 'delete') {
-      url = `${api}/delete`;
-      init = { method: 'POST', headers: {'Content-Type':'application/json'},
-               body: JSON.stringify({ name }) };
     } else {
       url = `${api}/${op}`;
       init = { method: 'POST', headers: {'Content-Type':'application/json'},
@@ -244,18 +293,20 @@ async function d3Op(node, op) {
     }
     const res = await fetch(url, init);
     const j = await res.json();
+    const latency = d3LatencyFields(op, j);
     d3PushEvent({
       ts:        j.ts || TS(),
       op:        op.toUpperCase(),
       color:     ({ write:'#00e888', modify:'#ffb020',
-                    read:'#00d0f0',  delete:'#ff4050' })[op] || '#c0d8f0',
+                    read:'#00d0f0' })[op] || '#c0d8f0',
       node:      `节点${node}`,
       nodeColor, name,
       detail:    j.ok
         ? (op === 'read' ? `size=${j.size} data="${shrink(j.data)}"`
                          : `size=${j.size||'-'} ver=v${j.version||'-'} hash=${j.hash||'-'}`)
         : '',
-      lat:       j.latency_us != null ? j.latency_us : null,
+      lat:       latency.lat,
+      latLabel:  latency.label,
       hit:       j.hit || null,
       err:       j.ok ? null : (j.error || 'failed'),
     });
@@ -289,14 +340,124 @@ async function d3FlushAll() {
   await d3Refresh();
 }
 
-function d3ShowDetail(node, name) {
-  D3_STATE.selected = { node, name };
-  // 把被点的 name 写入该节点的输入框，让 d3Op('read') 拉到正确 key
+function d3RowClick(ev) {
+  const row = ev.currentTarget;
+  if (!row) return;
+  d3ShowDetail(row.dataset.node, row.dataset.name);
+}
+
+async function d3ShowDetail(node, name) {
+  D3_STATE.detail = { node, name, loading:true, data:'', editData:'', meta:null, error:null, editing:false };
   D3_STATE.forms[node].name = name;
   const el = document.getElementById('d3-name-' + node);
   if (el) el.value = name;
-  // 触发一次读取以刷新 last_hit
-  d3Op(node, 'read');
+  d3UpdatePartial();
+  try {
+    const r = await fetch(`${d3ApiFor(node)}/object?name=${encodeURIComponent(name)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'not found');
+    D3_STATE.detail = {
+      node, name, loading:false, data:j.data || '', editData:j.data || '',
+      meta:j, error:null, syncOk:null, editing:false,
+    };
+  } catch (e) {
+    D3_STATE.detail = { node, name, loading:false, data:'', editData:'', meta:null, error:e.message, editing:false };
+  }
+  d3UpdatePartial();
+}
+
+function d3CloseDetail() {
+  D3_STATE.detail = null;
+  d3UpdatePartial(true);
+}
+
+function d3EditDetail() {
+  if (!D3_STATE.detail) return;
+  D3_STATE.detail.editing = true;
+  D3_STATE.detail.editData = D3_STATE.detail.data || '';
+  d3UpdatePartial(true);
+  const txt = document.getElementById('d3-detail-data');
+  if (txt) txt.focus();
+}
+
+function d3CancelDetailEdit() {
+  if (!D3_STATE.detail) return;
+  D3_STATE.detail.editing = false;
+  D3_STATE.detail.editData = D3_STATE.detail.data || '';
+  d3UpdatePartial(true);
+}
+
+async function d3SaveDetail() {
+  const d = D3_STATE.detail;
+  if (!d || d.loading || d.error) return;
+  const txt = document.getElementById('d3-detail-data');
+  const data = txt ? txt.value : (d.editData || '');
+  d.saving = true;
+  d.syncOk = null;
+  d3UpdatePartial(true);
+  try {
+    const res = await fetch(`${d3ApiFor(d.node)}/modify`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name:d.name, data }),
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'save failed');
+    const latency = d3LatencyFields('modify', j);
+    d3PushEvent({
+      ts:j.ts || TS(), op:'SAVE', color:'#ffb020',
+      node:`节点${d.node}`, nodeColor:d.node === 'A' ? '#00e888' : '#00d0f0',
+      name:d.name, detail:`size=${j.size} ver=v${j.version} hash=${j.hash}`,
+      lat:latency.lat, latLabel:latency.label,
+      err:null,
+    });
+    await sleep(450);
+    await d3Refresh();
+    const peer = d.node === 'A' ? 'B' : 'A';
+    const [selfObj, peerObj] = await Promise.all([
+      fetch(`${d3ApiFor(d.node)}/object?name=${encodeURIComponent(d.name)}`).then(r => r.json()).catch(() => null),
+      fetch(`${d3ApiFor(peer)}/object?name=${encodeURIComponent(d.name)}`).then(r => r.json()).catch(() => null),
+    ]);
+    const ok = !!(selfObj && selfObj.ok && peerObj && peerObj.ok && selfObj.data === peerObj.data);
+    D3_STATE.detail = {
+      node:d.node, name:d.name, loading:false,
+      data:(selfObj && selfObj.data) || data,
+      editData:(selfObj && selfObj.data) || data,
+      meta:(selfObj && selfObj.ok) ? selfObj : j,
+      error:null, syncOk:ok, editing:false,
+    };
+  } catch (e) {
+    D3_STATE.detail = { ...d, loading:false, saving:false, error:e.message };
+  }
+  d3UpdatePartial(true);
+}
+
+async function d3DeleteDetail() {
+  const d = D3_STATE.detail;
+  if (!d || d.loading || d.error) return;
+  if (!confirm(`确定删除对象 ${d.name} 吗？`)) return;
+  d.deleting = true;
+  d3UpdatePartial(true);
+  try {
+    const res = await fetch(`${d3ApiFor(d.node)}/delete`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name:d.name }),
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'delete failed');
+    d3PushEvent({
+      ts:j.ts || TS(), op:'DELETE', color:'#ff4050',
+      node:`节点${d.node}`, nodeColor:d.node === 'A' ? '#00e888' : '#00d0f0',
+      name:d.name, detail:'已删除并同步对端',
+      err:null,
+    });
+    D3_STATE.detail = null;
+    await d3Refresh();
+  } catch (e) {
+    D3_STATE.detail = { ...d, loading:false, deleting:false, error:e.message };
+    d3UpdatePartial(true);
+  }
 }
 
 function d3PushEvent(ev) {
@@ -342,28 +503,37 @@ async function d3Refresh() {
     console.warn('[demo3] refresh error', e);
   }
   // 骨架已建好 → 增量更新子区域；否则（首次或被切走过）完整 renderM3
-  if (document.getElementById('d3-node-A')) {
+  if (document.getElementById('d3-cluster-summary')) {
     d3UpdatePartial();
   } else {
     renderM3();
   }
 }
 
-function d3UpdatePartial() {
+function d3SyncDetailDraft() {
+  const d = D3_STATE.detail;
+  const txt = document.getElementById('d3-detail-data');
+  if (d && d.editing && txt) d.editData = txt.value;
+}
+
+function d3ShouldPreserveDetail() {
+  const d = D3_STATE.detail;
+  return !!(d && d.editing && !d.saving && !d.deleting && !d.error);
+}
+
+function d3UpdatePartial(forceDetail = false) {
+  d3SyncDetailDraft();
   const cA = D3_STATE.cluster.A, cB = D3_STATE.cluster.B;
   // 顶栏 status
   const st = document.getElementById('d3-status');
   if (st) {
-    const ok = cA && cA.rdma_connected;
+    const ok = d3NodeOnline(cA) && d3NodeOnline(cB);
     st.className = 'ctrl-status ' + (ok ? 'running' : 'idle');
     st.innerHTML = `<div class="dot ${ok?'dot-pulse':''}" style="background:${ok?'#00e888':'#ff4050'};width:6px;height:6px"></div>` +
                    (ok ? '双节点在线' : '等待节点就绪');
   }
-  // 节点卡
-  const na = document.getElementById('d3-node-A');
-  if (na) na.innerHTML = d3RenderNodeStatCard('A', cA);
-  const nb = document.getElementById('d3-node-B');
-  if (nb) nb.innerHTML = d3RenderNodeStatCard('B', cB);
+  const summary = document.getElementById('d3-cluster-summary');
+  if (summary) summary.innerHTML = d3RenderClusterSummary(cA, cB);
   // 对象列表 + 计数 tag（重建 card 头部里的 tag 比较麻烦，直接替换整个 head）
   const ha = document.getElementById('d3-head-A');
   if (ha) ha.innerHTML = chead('节点 A 对象列表', '🅰', '#00e888',
@@ -375,6 +545,10 @@ function d3UpdatePartial() {
   if (la) la.innerHTML = d3RenderObjTable('A');
   const lb = document.getElementById('d3-list-B');
   if (lb) lb.innerHTML = d3RenderObjTable('B');
+  const detail = document.getElementById('d3-detail');
+  if (detail && (forceDetail || !d3ShouldPreserveDetail())) {
+    detail.innerHTML = d3RenderDetail();
+  }
 }
 
 function d3StartPoll() {
@@ -403,3 +577,13 @@ function d3StopPoll() {
 function esc(s)     { return String(s==null?'':s).replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
 function escAttr(s) { return esc(s).replace(/\n/g, ' '); }
 function shrink(s)  { s = String(s||''); return s.length > 48 ? s.slice(0, 45) + '...' : s; }
+function sleep(ms)  { return new Promise(resolve => setTimeout(resolve, ms)); }
+function d3LatencyFields(op, j) {
+  if ((op === 'write' || op === 'modify') && j && j.repl_ns != null) {
+    return { lat: Number(j.repl_ns / 1000).toFixed(1), label: 'RDMA' };
+  }
+  return {
+    lat: j && j.latency_us != null ? j.latency_us : null,
+    label: op === 'read' ? '读取' : '延迟',
+  };
+}

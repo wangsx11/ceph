@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "job_id": "fn_storage_FN5_20260507_130812_67eb2af3",
+  "kind": "run_one",
+  "module": "storage",
+  "fn_id": "FN-5",
+  "state": "finished",
+  "exit_code": 0,
+  "started_at": "2026-05-07T13:08:12+0800",
+  "finished_at": "2026-05-07T13:08:12+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260507_130812_fn_storage_FN5_20260507_130812_67eb2af3",
+  "history_dir": "functions/storage/FN-5/history/web_20260507_130812_fn_storage_FN5_20260507_130812_67eb2af3",
+  "job_log": "functions/storage/FN-5/history/web_20260507_130812_fn_storage_FN5_20260507_130812_67eb2af3/stdout.log",
+  "env": {
+    "ALLOW_DESTRUCTIVE": "0",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CURRENT_NODE": "A",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": "1"
+  }
+}

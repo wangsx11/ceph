@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-6/run.sh
+
+storage/FN-6 PASS - 仿真数据运行中采集
+- 仿真采集成功: captured=200 pushed=200 flushed=200
+- 多类型采集成功: ObjectAttr=100, InteractionEvent=100
+- WAL 落盘成功: path=/tmp/nr_sim_capture/sim_A.log, events=200, bytes=11200
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/history/web_20260507_130818_fn_storage_FN6_20260507_130818_7fdf35ee/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/history/web_20260507_130818_fn_storage_FN6_20260507_130818_7fdf35ee/logs/run_20260507_130818.log

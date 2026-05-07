@@ -1,0 +1,22 @@
+[12:55:38] start storage/FN-1 仿真引擎异构存储统一访问接口
+[12:55:38] repo_root=/home/wangshouxin/native-rdma-web
+[12:55:38] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:55:38] rpc RPC_TIER_STATS body_len=0
+[12:55:38] rpc RPC_TIER_STATS resp_len=764 resp={"ok":true,"dram":0,"nvme":0,"hdd":4,"demoted_d_n":4,"demoted_n_h":4,"events":[{"ts_ns":7759338202644640,"key":"unit_alpha_01","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202643413,"key":"unit_alpha_04","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202641928,"key":"unit_alpha_02","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202633833,"key":"unit_alpha_03","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759331301418760,"key":"unit_alpha_01","from":"dram","to":"nvme","bytes"
+[12:55:38] rpc RPC_KV_PUT body_len=64
+[12:55:38] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_storage_iface_nvme_1778129738628_1103808","tenant_id":0,"size":20,"offset":6287360,"repl_ns":56373,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":4,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:55:38] rpc RPC_TIER_DEMOTE body_len=48
+[12:55:38] rpc RPC_TIER_DEMOTE resp_len=75 resp={"ok":true,"key":"fn_storage_iface_nvme_1778129738628_1103808","to":"nvme"}
+[12:55:38] rpc RPC_TIER_STATS body_len=0
+[12:55:38] rpc RPC_TIER_STATS resp_len=880 resp={"ok":true,"dram":0,"nvme":1,"hdd":4,"demoted_d_n":5,"demoted_n_h":4,"events":[{"ts_ns":7759792818394746,"key":"fn_storage_iface_nvme_1778129738628_1103808","from":"dram","to":"nvme","bytes":20},{"ts_ns":7759338202644640,"key":"unit_alpha_01","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202643413,"key":"unit_alpha_04","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202641928,"key":"unit_alpha_02","from":"nvme","to":"hdd","bytes":45},{"ts_ns":7759338202633833,"key":"unit_alpha_03","f
+[12:55:38] rpc RPC_KV_GET body_len=43
+[12:55:38] rpc RPC_KV_GET resp_len=71 resp={"ok":true,"hit":"nvme_promote","size":20,"val":"nvme-interface-probe"}
+[12:55:38] rpc RPC_KV_PUT body_len=62
+[12:55:38] rpc RPC_KV_PUT resp_len=385 resp={"ok":true,"key":"fn_storage_iface_hdd_1778129738629_1103808","tenant_id":0,"size":19,"offset":8384512,"repl_ns":20541,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":5,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[12:55:38] rpc RPC_TIER_DEMOTE body_len=46
+[12:55:38] rpc RPC_TIER_DEMOTE resp_len=73 resp={"ok":true,"key":"fn_storage_iface_hdd_1778129738629_1103808","to":"hdd"}
+[12:55:38] rpc RPC_TIER_STATS body_len=0
+[12:55:38] rpc RPC_TIER_STATS resp_len=1110 resp={"ok":true,"dram":1,"nvme":0,"hdd":5,"demoted_d_n":6,"demoted_n_h":4,"events":[{"ts_ns":7759792818891277,"key":"fn_storage_iface_hdd_1778129738629_1103808","from":"dram","to":"hdd","bytes":19},{"ts_ns":7759792818624641,"key":"fn_storage_iface_nvme_1778129738628_1103808","from":"nvme","to":"dram","bytes":20},{"ts_ns":7759792818394746,"key":"fn_storage_iface_nvme_1778129738628_1103808","from":"dram","to":"nvme","bytes":20},{"ts_ns":7759338202644640,"key":"unit_alpha_01","from":"nvme","to":"hdd","b
+[12:55:38] rpc RPC_KV_GET body_len=42
+[12:55:38] rpc RPC_KV_GET resp_len=69 resp={"ok":true,"hit":"hdd_promote","size":19,"val":"hdd-interface-probe"}
+[12:55:38] result=PASS completion=完成

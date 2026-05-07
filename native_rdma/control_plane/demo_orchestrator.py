@@ -36,9 +36,71 @@ class SharedObjectView:
 
     Kept ordered by most-recent-access so §3 can show "最近活跃对象"."""
 
-    def __init__(self):
+    def __init__(self, store_path: Optional[str] = None):
+        self._store_path = store_path
         self._mu = threading.Lock()
         self._idx: Dict[str, Dict[str, Any]] = {}
+        self._data: Dict[str, str] = {}
+        self._load_from_disk()
+
+    def _load_from_disk(self):
+        if not self._store_path or not os.path.exists(self._store_path):
+            return
+        try:
+            with open(self._store_path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            objects = payload.get("objects", [])
+            if not isinstance(objects, list):
+                return
+            now_ms = int(time.time() * 1000)
+            for item in objects:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "").strip()
+                if not name:
+                    continue
+                data = str(item.get("data", item.get("preview", "")))
+                rec = dict(item)
+                rec.pop("data", None)
+                rec["name"] = name
+                rec["size"] = int(rec.get("size", len(data)) or 0)
+                rec["hash"] = rec.get("hash") or hashlib.sha256(data.encode()).hexdigest()[:10]
+                rec["version"] = int(rec.get("version", 1) or 1)
+                rec["via"] = rec.get("via") or "restored"
+                rec["ts"] = rec.get("ts") or time.strftime("%H:%M:%S")
+                rec["ts_ms"] = int(rec.get("ts_ms", now_ms) or now_ms)
+                rec["preview"] = data if len(data) <= 256 else data[:253] + "..."
+                rec["persisted"] = True
+                self._idx[name] = rec
+                self._data[name] = data
+        except Exception:
+            # Persistence is a demo convenience layer; a corrupt file should not
+            # stop the control plane from serving live RDMA operations.
+            return
+
+    def _persist_locked(self):
+        if not self._store_path:
+            return
+        try:
+            parent = os.path.dirname(self._store_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            payload = {
+                "format": 1,
+                "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "objects": [],
+            }
+            for name, rec in sorted(self._idx.items(),
+                                    key=lambda kv: kv[1].get("ts_ms", 0)):
+                item = dict(rec)
+                item["data"] = self._data.get(name, "")
+                payload["objects"].append(item)
+            tmp = self._store_path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            os.replace(tmp, self._store_path)
+        except Exception:
+            return
 
     def upsert(self, name: str, data: str, via: str,
                extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -59,6 +121,8 @@ class SharedObjectView:
             }
             if extra: rec.update(extra)
             self._idx[name] = rec
+            self._data[name] = data
+            self._persist_locked()
             return rec
 
     def touch(self, name: str, hit: str, lat_us: int):
@@ -69,23 +133,48 @@ class SharedObjectView:
                 self._idx[name]["last_hit"] = hit
                 self._idx[name]["last_lat_us"] = lat_us
                 self._idx[name]["last_read_ts"] = time.strftime("%H:%M:%S")
+                self._persist_locked()
 
     def delete(self, name: str) -> bool:
         with self._mu:
-            return self._idx.pop(name, None) is not None
+            existed = self._idx.pop(name, None) is not None
+            self._data.pop(name, None)
+            if existed:
+                self._persist_locked()
+            return existed
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
         with self._mu:
             return self._idx.get(name)
+
+    def detail(self, name: str) -> Optional[Dict[str, Any]]:
+        with self._mu:
+            rec = self._idx.get(name)
+            if not rec:
+                return None
+            out = dict(rec)
+            out["data"] = self._data.get(name, out.get("preview", ""))
+            return out
 
     def list_all(self) -> List[Dict[str, Any]]:
         with self._mu:
             return sorted(self._idx.values(),
                           key=lambda r: r.get("ts_ms", 0), reverse=True)
 
+    def all_full(self) -> List[Dict[str, Any]]:
+        with self._mu:
+            out = []
+            for name, rec in self._idx.items():
+                item = dict(rec)
+                item["data"] = self._data.get(name, "")
+                out.append(item)
+            return sorted(out, key=lambda r: r.get("ts_ms", 0))
+
     def clear(self):
         with self._mu:
             self._idx.clear()
+            self._data.clear()
+            self._persist_locked()
 
 
 # ================================================================
@@ -135,7 +224,7 @@ class PerfRoundRunner:
                  uds_call: Optional[Callable] = None):
         self.root     = root
         self.role     = role
-        self.nr_bench = os.path.join(root, "build", "bin", "nr_bench")
+        self.nr_bench = self._resolve_nr_bench(root)
         self.uds      = os.environ.get("NR_UDS_PATH",
                                        "/tmp/native_rdma-dp.sock")
         self._uds_call = uds_call
@@ -150,6 +239,25 @@ class PerfRoundRunner:
             "thread_sweep": list(self.PERF_THREAD_SWEEP),
         }
         self._cur: Optional[int] = None
+
+    @staticmethod
+    def _resolve_nr_bench(root: str) -> str:
+        candidates = []
+        build_dir = os.environ.get("NR_BUILD_DIR", "")
+        if build_dir:
+            candidates.append(os.path.join(build_dir, "bin", "nr_bench"))
+        candidates.extend([
+            os.path.join(root, "build-current", "bin", "nr_bench"),
+            os.path.join(root, "build", "bin", "nr_bench"),
+        ])
+        seen = set()
+        for p in candidates:
+            if not p or p in seen:
+                continue
+            seen.add(p)
+            if os.path.exists(p) and os.access(p, os.X_OK):
+                return p
+        return candidates[0] if candidates else os.path.join(root, "build-current", "bin", "nr_bench")
 
     # ---- public API ----
     def start(self, round_id: int) -> Dict[str, Any]:
@@ -175,6 +283,7 @@ class PerfRoundRunner:
                 "start_ts":  time.time(),
                 "count":     self.ROUND_COUNTS[round_id - 1],
                 "duration_s": self.ROUND_DUR_S[round_id - 1],
+                "nr_bench":  self.nr_bench,
             }
         threading.Thread(target=self._run, args=(round_id,),
                          daemon=True).start()
@@ -209,6 +318,7 @@ class PerfRoundRunner:
                 "start_ts": time.time(),
                 "duration_s": self.PERF_DUR_S,
                 "thread_sweep": list(self.PERF_THREAD_SWEEP),
+                "nr_bench": self.nr_bench,
             }
         threading.Thread(target=self._run_perf01, daemon=True).start()
         return {"ok": True, "metric": "perf_01_ops_1kb",
@@ -246,7 +356,8 @@ class PerfRoundRunner:
                                         "samples": [], "summary": None,
                                         "count": self.ROUND_COUNTS[i - 1],
                                         "duration_s": self.ROUND_DUR_S[i - 1],
-                                        "error": None, "raw_tail": ""}
+                                        "error": None, "raw_tail": "",
+                                        "nr_bench": self.nr_bench}
                 else:
                     out["rounds"][i] = {
                         "running":  r["running"],
@@ -257,6 +368,7 @@ class PerfRoundRunner:
                         "summary":  r["summary"],
                         "error":    r.get("error"),
                         "raw_tail": r.get("raw_tail", ""),
+                        "nr_bench": r.get("nr_bench", self.nr_bench),
                     }
             out["bench"] = {
                 "running": self._bench.get("running", False),
@@ -266,6 +378,7 @@ class PerfRoundRunner:
                 "error": self._bench.get("error"),
                 "duration_s": self._bench.get("duration_s", self.PERF_DUR_S),
                 "thread_sweep": list(self._bench.get("thread_sweep", self.PERF_THREAD_SWEEP)),
+                "nr_bench": self._bench.get("nr_bench", self.nr_bench),
             }
             return out
 
@@ -281,6 +394,7 @@ class PerfRoundRunner:
                 "error": None,
                 "duration_s": self.PERF_DUR_S,
                 "thread_sweep": list(self.PERF_THREAD_SWEEP),
+                "nr_bench": self.nr_bench,
             }
 
     # ---- internals ----
@@ -548,6 +662,8 @@ def _bench_error(raw: str, summary: Dict[str, Any]) -> Optional[str]:
         return "nr_bench cannot connect to data-plane UDS"
     if "data plane not running" in raw_l or "no such file" in raw_l:
         return "data plane is not running"
+    if "glibc_" in raw_l and "not found" in raw_l:
+        return "nr_bench runtime library mismatch; rebuild and use build-current/bin/nr_bench"
     if "rejected" in raw_l and int(summary.get("ops_degraded", 0) or 0) > 0:
         return "peer replication degraded; require-peer rejected writes"
     if int(summary.get("ops_fail", 0) or 0) > 0:
@@ -790,7 +906,7 @@ class TierDemoScript:
         if extra: ev.update(extra)
         with self._mu:
             self._state["events"].insert(0, ev)
-            if len(self._state["events"]) > 120:
+            if len(self._state["events"]) > 500:
                 self._state["events"].pop()
         self._push()
 

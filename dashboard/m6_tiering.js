@@ -21,6 +21,18 @@ const D6_STEP_LABELS = [
   '汇总三层分布 & 演示结束',
 ];
 const D6_TOTAL_STEPS = 8;
+const D6_EVENT_TYPES = {
+  BATCH_PUT:    { label:'存入', color:'#00e888' },
+  PUT_DONE:     { label:'存入', color:'#00e888' },
+  BASELINE:     { label:'迁移', color:'#ffb020' },
+  HOT_ACCESS:   { label:'读取', color:'#ff4050' },
+  WARM_ACCESS:  { label:'读取', color:'#ffb020' },
+  REVISIT_COLD: { label:'读取', color:'#00e888' },
+  MIGRATE:      { label:'迁移', color:'#00d0f0' },
+  PROMOTE:      { label:'迁移', color:'#00e888' },
+  SNAP_TRIGGER: { label:'生成快照', color:'#a060ff' },
+  SNAPSHOT:     { label:'生成快照', color:'#a060ff' },
+};
 
 const D6 = {
   running:    false,
@@ -96,16 +108,13 @@ function renderM6() {
     ${d6Tier('❄ 冷层 (HDD)',  D6.tiers.hdd,  total, '#4488ff', '长期无访问·容量层')}
   </div>`;
 
-  // 事件流：过滤掉 snapshot 类条目
-  // （移除了前版的 `latest` 呼吸动画类：polling 每秒重渲染时
-  //   每次都给首行打上 latest 会导致“一直闪个不停”的观感）
-  const migEvents = D6.events.filter(e => !e.snap_name);
-  const migH = migEvents.length === 0
+  const visibleEvents = D6.events.map(d6EventView).filter(Boolean);
+  const migH = visibleEvents.length === 0
     ? '<div style="color:#5a7a96;padding:16px;text-align:center">等待演示开始...</div>'
-    : migEvents.slice(0, 40).map((e) => `
+    : visibleEvents.map((e) => `
         <div class="eitem">
           <span style="color:#5a7a96">${e.ts}</span>
-          <span style="color:${e.color};font-weight:700;min-width:82px;display:inline-block">${e.kind}</span>
+          <span style="color:${e.color};font-weight:700;min-width:82px;display:inline-block">${e.label}</span>
           <span style="color:#e4edf6">${esc(e.text)}</span>
         </div>`).join('');
 
@@ -216,6 +225,17 @@ function d6Tier(title, n, total, color, desc) {
       <div style="margin-top:6px">${prog(n, total, color)}</div>
     </div>
   </div>`;
+}
+
+function d6EventView(e) {
+  const spec = D6_EVENT_TYPES[e.kind];
+  if (!spec) return null;
+  return {
+    ts: e.ts,
+    label: spec.label,
+    color: spec.color || e.color || '#c0d8f0',
+    text: e.text || '',
+  };
 }
 
 function d6RenderSnapDetail(s) {

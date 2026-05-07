@@ -106,6 +106,7 @@ body{background:#1b2a3d;color:#d0dbe8;font-family:'Rajdhani','Microsoft YaHei',s
 .ctrl-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ctrl-label{font-size:1.2rem;color:#7a95b0;min-width:50px}
 .ctrl-input{padding:5px 10px;font-size:1.2rem;font-family:'Share Tech Mono',monospace;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0;width:100px}
+.ctrl-textarea{width:100%;min-height:170px;resize:vertical;padding:9px 10px;font-size:1.2rem;line-height:1.5;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0}
 .ctrl-select{padding:5px 10px;font-size:1.2rem;font-family:'Share Tech Mono',monospace;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0}
 .ctrl-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:5px;font-size:1.3rem;font-family:'Share Tech Mono',monospace}
 .ctrl-status.running{background:#00e88815;border:1px solid #00e88833;color:#00e888}
@@ -121,6 +122,9 @@ body{background:#1b2a3d;color:#d0dbe8;font-family:'Rajdhani','Microsoft YaHei',s
 /* Shared folder (m3) */
 .shared-folder{display:flex;align-items:center;justify-content:center;gap:20px;padding:16px;background:#0d1b2a;border:2px dashed #2d4a66;border-radius:12px;margin:10px 0}
 .shared-folder-icon{font-size:4.8rem;filter:drop-shadow(0 0 8px #00d0f044)}
+.d3-popover{position:fixed;right:24px;bottom:24px;width:min(560px,calc(100vw - 48px));max-height:70vh;z-index:20;box-shadow:0 12px 34px #0d1b2aaa}
+.d3-popover .card-body{max-height:calc(70vh - 48px);overflow:auto}
+.d3-detail-data{min-height:150px;max-height:310px;overflow:auto;white-space:pre-wrap;word-break:break-word;padding:10px;background:#1b2a3d;border:1px solid #3a5068;border-radius:4px;color:#c0d8f0;font-size:1.2rem;line-height:1.5}
 
 /* RDMA labels */
 .border-rdma{border:2px solid #4488ff !important;box-shadow:0 0 8px #4488ff22}

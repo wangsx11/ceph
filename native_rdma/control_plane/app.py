@@ -16,9 +16,10 @@ import socket
 import threading
 import urllib.request
 import urllib.error
+import urllib.parse
 import uuid
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from flask import Flask, jsonify, request, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 
@@ -244,12 +245,22 @@ def admin_flush():
 # ============================================================
 
 _DASH_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-_obj_view  = SharedObjectView()
+
+def _demo3_store_path() -> str:
+    state_dir = os.environ.get(
+        "NR_DEMO3_STATE_DIR",
+        os.environ.get("NR_STATE_DIR",
+                       os.path.expanduser("~/.native_rdma/state")))
+    return os.path.join(state_dir, f"demo3_{ROLE}.json")
+
+_obj_view  = SharedObjectView(_demo3_store_path())
 _perf_run  = PerfRoundRunner(_DASH_ROOT, ROLE, uds_call)
 _tier_demo = TierDemoScript(uds_call, _DASH_ROOT, ROLE)
 
 # peer url: 由 env 注入，例如 "http://192.168.0.214:5001"
 PEER_URL = os.environ.get("NR_PEER_URL", "")
+_demo3_restore_lock = threading.Lock()
+_demo3_restored_once = False
 
 
 def _peer_get(path: str) -> tuple:
@@ -318,6 +329,9 @@ def _cluster_core() -> Dict[str, Any]:
     raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
     try:    cs = json.loads(raw)
     except Exception: cs = {"raw": raw}
+    peer_ready = bool(cs.get("peer_alive", False))
+    if is_dp_online():
+        _demo3_restore_to_dp(peer_ready=(peer_ready or not PEER_URL))
     m = read_metrics()
     return {
         "ok":              True,
@@ -332,23 +346,87 @@ def _cluster_core() -> Dict[str, Any]:
         "metrics":         m,
         "replica_lag_us":  float(m.get("replica_lag_us", 0.0) or 0.0),
         "objects_here":    len(_obj_view.list_all()),
+        "node_count":      2,
     }
 
 
-def _notify_peer_async(kind: str, name: str, data: str = ""):
+def _notify_peer(kind: str, name: str, data: str = "") -> Dict[str, Any]:
     """Tell the peer Flask that we just wrote/modified/deleted <name>,
-    so its SharedObjectView stays in sync. Fire-and-forget; the peer's
-    DP already has the actual bytes via RDMA replication, this is pure
-    metadata so both UIs can show the object."""
+    so its SharedObjectView stays in sync. The peer's DP already has the
+    actual bytes via RDMA replication; this is UI metadata."""
     if not PEER_URL:
-        return
+        return {"ok": False, "skipped": True, "error": "NR_PEER_URL not set"}
     payload = {"op": kind, "name": name, "data": data, "from": ROLE}
-    def _fire():
+    body, status, _ct = _peer_post("/api/demo3/announce", payload)
+    try:
+        j = json.loads(body.decode(errors="replace"))
+    except Exception:
+        j = {"ok": False, "raw": body.decode(errors="replace")}
+    j["status"] = status
+    return j
+
+
+def _demo3_restore_to_dp(force: bool = False,
+                         peer_ready: Optional[bool] = None) -> Dict[str, Any]:
+    """Replay persisted demo3 objects into the in-memory data plane.
+
+    The persisted file is populated only by real /api/demo3 writes or peer
+    announces. Replay is deferred until RDMA peer heartbeat is available so
+    restart recovery does not silently become local-only degraded writes.
+    """
+    global _demo3_restored_once
+    if _demo3_restored_once and not force:
+        return {"ok": True, "restored": 0, "already": True}
+    records = _obj_view.all_full()
+    if not records:
+        _demo3_restored_once = True
+        return {"ok": True, "restored": 0}
+    if peer_ready is False:
+        return {"ok": False, "deferred": True, "error": "peer not ready"}
+    if peer_ready is None and PEER_URL:
+        raw = uds_call("RPC_CLUSTER_STATUS").decode(errors="replace")
         try:
-            _peer_post("/api/demo3/announce", payload)
+            cs = json.loads(raw)
         except Exception:
-            pass
-    threading.Thread(target=_fire, daemon=True).start()
+            cs = {}
+        if not cs.get("ok") or not cs.get("peer_alive"):
+            return {"ok": False, "deferred": True, "error": "peer not ready"}
+
+    with _demo3_restore_lock:
+        if _demo3_restored_once and not force:
+            return {"ok": True, "restored": 0, "already": True}
+        restored = 0
+        errors = []
+        for rec in records:
+            name = rec.get("name") or ""
+            data = rec.get("data") or ""
+            if not name:
+                continue
+            body = name.encode() + b"\x00" + data.encode()
+            raw = uds_call("RPC_KV_PUT", body).decode(errors="replace")
+            try:
+                r = json.loads(raw)
+            except Exception:
+                r = {"ok": False, "err": raw[:160]}
+            if r.get("ok"):
+                restored += 1
+            else:
+                errors.append({"name": name, "error": r.get("err", "restore failed")})
+        if not errors:
+            _demo3_restored_once = True
+        return {"ok": not errors, "restored": restored, "errors": errors[:5]}
+
+
+def _demo3_restore_one(name: str) -> Dict[str, Any]:
+    rec = _obj_view.detail(name)
+    if not rec:
+        return {"ok": False, "error": "object not in persisted view"}
+    body = name.encode() + b"\x00" + (rec.get("data") or "").encode()
+    raw = uds_call("RPC_KV_PUT", body).decode(errors="replace")
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {"ok": False, "err": raw[:160]}
 
 
 @app.route("/api/demo3/cluster")
@@ -358,10 +436,26 @@ def demo3_cluster():
 
 @app.route("/api/demo3/objects")
 def demo3_objects():
+    if is_dp_online():
+        _demo3_restore_to_dp()
     return jsonify({"ok": True,
                     "role":    ROLE,
                     "count":   len(_obj_view.list_all()),
                     "objects": _obj_view.list_all()})
+
+
+@app.route("/api/demo3/object")
+def demo3_object():
+    name = request.args.get("name", "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "name required"}), 400
+    if is_dp_online():
+        _demo3_restore_to_dp()
+    rec = _obj_view.detail(name)
+    if not rec:
+        return jsonify({"ok": False, "error": "not found", "name": name,
+                        "node": ROLE}), 404
+    return jsonify({"ok": True, "node": ROLE, **rec})
 
 
 def _lat_us(t0_ns: int) -> int:
@@ -388,7 +482,7 @@ def demo3_write():
                            extra={"repl_ns": r.get("repl_ns"),
                                   "degraded": bool(r.get("degraded", False)),
                                   "route": r.get("route", {})})
-    _notify_peer_async("write", name, data)
+    peer_sync = _notify_peer("write", name, data)
     return jsonify({
         "ok":          True,
         "op":          "write",
@@ -400,6 +494,7 @@ def demo3_write():
         "repl_ns":     r.get("repl_ns", 0),
         "degraded":    rec.get("degraded", False),
         "route":       r.get("route", {}),
+        "peer_view_synced": bool(peer_sync.get("ok")),
         "node":        ROLE,
         "ts":          rec["ts"],
     })
@@ -424,7 +519,7 @@ def demo3_modify():
                         "latency_us": lat}), 500
     rec = _obj_view.upsert(name, data, via="modify",
                            extra={"repl_ns": r.get("repl_ns")})
-    _notify_peer_async("modify", name, data)
+    peer_sync = _notify_peer("modify", name, data)
     return jsonify({
         "ok":         True,
         "op":         "modify",
@@ -434,6 +529,7 @@ def demo3_modify():
         "version":    rec["version"],
         "latency_us": lat,
         "repl_ns":    r.get("repl_ns", 0),
+        "peer_view_synced": bool(peer_sync.get("ok")),
         "node":       ROLE,
         "ts":         rec["ts"],
     })
@@ -451,14 +547,24 @@ def demo3_read():
     try:    r = json.loads(raw)
     except Exception: r = {"ok": False, "err": raw[:200]}
 
+    if not r.get("ok") and _obj_view.detail(name):
+        rr = _demo3_restore_one(name)
+        if rr.get("ok"):
+            raw = uds_call("RPC_KV_GET", name.encode()).decode(errors="replace")
+            try:    r = json.loads(raw)
+            except Exception: r = {"ok": False, "err": raw[:200]}
+
     if r.get("ok"):
         hit = r.get("hit", "?")
         _obj_view.touch(name, hit, lat)
+        detail = _obj_view.detail(name)
+        data = detail.get("data") if detail else r.get("val", "")
         return jsonify({
             "ok":         True,
             "op":         "read",
             "name":       name,
-            "data":       r.get("val", ""),
+            "data":       data,
+            "complete":   bool(detail),
             "hit":        hit,                    # local / remote / nvme / hdd
             "size":       r.get("size", 0),
             "latency_us": lat,
@@ -470,8 +576,9 @@ def demo3_read():
     # —— ObjectRouter 一致性哈希把这个 key 路由到了 peer，所以 peer
     # 才是写入源头。对端 DP 的 KV index 有记录，我们 HTTP 去问一下。
     if not no_fallback and PEER_URL:
+        qname = urllib.parse.quote(name, safe="")
         body, status, _ct = _peer_get(
-            "/api/demo3/read?name=" + name + "&no_fallback=1")
+            "/api/demo3/read?name=" + qname + "&no_fallback=1")
         if status == 200:
             try:    pj = json.loads(body.decode())
             except Exception: pj = {}
@@ -498,9 +605,10 @@ def demo3_delete():
     if not name:
         return jsonify({"ok": False, "error": "name required"}), 400
     existed = _obj_view.delete(name)
-    _notify_peer_async("delete", name)
+    peer_sync = _notify_peer("delete", name)
     return jsonify({"ok": existed, "op": "delete", "name": name,
                     "node": ROLE, "ts": time.strftime("%H:%M:%S"),
+                    "peer_view_synced": bool(peer_sync.get("ok")),
                     "error": None if existed else "not present in local view"})
 
 
@@ -515,12 +623,13 @@ def demo3_announce():
     name = (j.get("name") or "").strip()
     data = j.get("data") or ""
     frm  = j.get("from") or "peer"
-    if not name or op not in ("write", "modify", "delete"):
+    if not name or op not in ("write", "modify", "delete", "restore"):
         return jsonify({"ok": False, "error": "bad payload"}), 400
     if op == "delete":
         _obj_view.delete(name)
     else:
-        _obj_view.upsert(name, data, via=f"sync_from_{frm}",
+        via = "restore" if op == "restore" else f"sync_from_{frm}"
+        _obj_view.upsert(name, data, via=via,
                          extra={"synced": True, "src_node": frm})
     return jsonify({"ok": True, "op": op, "name": name, "node": ROLE})
 
