@@ -3,16 +3,16 @@
 - Module: RDMA 分布式仿真计算模块
 - Function: 流量优先级机制
 - Source: docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 3 条
-- Last Run: 2026-05-04T14:00:40+0800
+- Last Run: 2026-05-27T14:13:27+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260504_140040.log
+- Log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260527_141327.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/raw.json
 
 ## 关键证据
 
 - QosSched 最近启动日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
-- 高优先级 PUT 走 RDMA QP 0，低优先级 PUT 走 RDMA QP 16
+- 高优先级 PUT 走 RDMA QP 8，低优先级 PUT 走 RDMA QP 16
 - 高低优先级 RDMA PUT 均完成 peer 读回同值校验
 
 ## 统计口径

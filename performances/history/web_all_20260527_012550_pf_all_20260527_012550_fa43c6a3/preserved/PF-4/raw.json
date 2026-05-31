@@ -1,0 +1,104 @@
+{
+  "metric": "perf_04_batch_latency",
+  "scenario_a": {
+    "elapsed_ms": 152.3,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "exit_code": 0
+  },
+  "scenario_b": {
+    "elapsed_ms": 94.02,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "exit_code": 0
+  },
+  "scenario_a_trials": [
+    {
+      "elapsed_ms": 155.36,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 152.3,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 152.59,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    }
+  ],
+  "scenario_b_trials": [
+    {
+      "elapsed_ms": 95.04,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 94.02,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 95.06,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    }
+  ],
+  "measured_runs": 3,
+  "cluster": {
+    "ok": true,
+    "self": "A",
+    "peer_alive": true,
+    "local_slab_base": 140062515326976,
+    "local_slab_len": 4294967296,
+    "local_slab_lkey": 96256,
+    "local_slab_rkey": 96256,
+    "peer_slab_base": 140305338621952,
+    "peer_slab_len": 4294967296,
+    "peer_slab_rkey": 71936,
+    "peer_num_qp": 32,
+    "local_gpu_enabled": false,
+    "local_gpu_len": 0,
+    "local_gpu_lkey": 0,
+    "local_gpu_rkey": 0,
+    "peer_gpu_enabled": false,
+    "peer_gpu_base": 0,
+    "peer_gpu_len": 0,
+    "peer_gpu_rkey": 0,
+    "degraded_puts": 0,
+    "degraded_bytes": 0,
+    "transport": "rdma",
+    "async_repl": false,
+    "tcp_data_ready": true,
+    "tcp_data_port": 18516,
+    "tcp_puts_received": 0,
+    "tcp_gets_received": 0
+  },
+  "async_repl": "0",
+  "require_peer": "1",
+  "passed_a": true,
+  "passed_b": true,
+  "passed": true,
+  "restore_async_repl": "0",
+  "restore_ok": true,
+  "status": "PASS",
+  "profile_source": "preserved_evidence",
+  "full_validation_required": true,
+  "preserved_source_dir": "performances/PF-4/history/web_20260505_070211_pf_PF4_20260505_070211_79119d11"
+}

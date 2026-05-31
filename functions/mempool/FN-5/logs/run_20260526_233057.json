@@ -1,0 +1,312 @@
+{
+  "module": "mempool",
+  "module_name": "一致性总线内存池化仿真计算模块",
+  "fn_id": "FN-5",
+  "function": "任务级与用户级内存隔离",
+  "source": "docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 5 条",
+  "started_at": "2026-05-26T23:30:57+0800",
+  "finished_at": "2026-05-26T23:30:57+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "tenant=10457 完成拒绝->允许->读取->撤销->拒绝闭环",
+    "tenant=10457 与 tenant=110457 使用同一逻辑 key 时读回各自 value，证明命名空间隔离",
+    "RPC_ISO_LIST 证明 ACL 授权/撤销状态生效: 10457|default/slab1k allow 后存在，最终撤销后不存在"
+  ],
+  "details": {
+    "tenant_a": 10457,
+    "tenant_b": 110457,
+    "pool": "default/slab1k",
+    "key": "fn_iso_shared_1779809457943_2502571",
+    "deny_a0": {
+      "ok": true,
+      "action": "deny",
+      "tenant_id": 10457,
+      "pool": "default/slab1k"
+    },
+    "deny_b0": {
+      "ok": true,
+      "action": "deny",
+      "tenant_id": 110457,
+      "pool": "default/slab1k"
+    },
+    "denied_a_before": {
+      "ok": false,
+      "err": "tenant 10457 not allowed on pool default/slab1k"
+    },
+    "denied_b_before": {
+      "ok": false,
+      "err": "tenant 110457 not allowed on pool default/slab1k"
+    },
+    "allow_a": {
+      "ok": true,
+      "action": "allow",
+      "tenant_id": 10457,
+      "pool": "default/slab1k"
+    },
+    "list_after_allow_a": {
+      "ok": true,
+      "allowed": [
+        "10457|default/slab1k",
+        "0|default/slab1k"
+      ]
+    },
+    "allowed_a": {
+      "ok": true,
+      "key": "fn_iso_shared_1779809457943_2502571",
+      "tenant_id": 10457,
+      "size": 22,
+      "offset": 230563840,
+      "repl_ns": 29146,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 2,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false
+      }
+    },
+    "get_a": {
+      "ok": true,
+      "hit": "local",
+      "size": 22,
+      "val": "tenant-a-private-value"
+    },
+    "get_b_before_allow": {
+      "ok": false,
+      "err": "tenant 110457 not allowed on pool default/slab1k"
+    },
+    "allow_b": {
+      "ok": true,
+      "action": "allow",
+      "tenant_id": 110457,
+      "pool": "default/slab1k"
+    },
+    "get_b_before_put": {
+      "ok": false,
+      "err": "not found"
+    },
+    "allowed_b": {
+      "ok": true,
+      "key": "fn_iso_shared_1779809457943_2502571",
+      "tenant_id": 110457,
+      "size": 22,
+      "offset": 231612416,
+      "repl_ns": 17393,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 3,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false
+      }
+    },
+    "get_b": {
+      "ok": true,
+      "hit": "local",
+      "size": 22,
+      "val": "tenant-b-private-value"
+    },
+    "get_a_after_b": {
+      "ok": true,
+      "hit": "local",
+      "size": 22,
+      "val": "tenant-a-private-value"
+    },
+    "deny_a": {
+      "ok": true,
+      "action": "deny",
+      "tenant_id": 10457,
+      "pool": "default/slab1k"
+    },
+    "denied_a_get": {
+      "ok": false,
+      "err": "tenant 10457 not allowed on pool default/slab1k"
+    },
+    "denied_a_after": {
+      "ok": false,
+      "err": "tenant 10457 not allowed on pool default/slab1k"
+    },
+    "get_b_after_deny_a": {
+      "ok": true,
+      "hit": "local",
+      "size": 22,
+      "val": "tenant-b-private-value"
+    },
+    "deny_b": {
+      "ok": true,
+      "action": "deny",
+      "tenant_id": 110457,
+      "pool": "default/slab1k"
+    },
+    "denied_b_after": {
+      "ok": false,
+      "err": "tenant 110457 not allowed on pool default/slab1k"
+    },
+    "list_after_deny": {
+      "ok": true,
+      "allowed": [
+        "0|default/slab1k"
+      ]
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": ""
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260526_233057.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260526_233057.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-5/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_ISO_DENY",
+      "body_len": 20,
+      "response_len": 69,
+      "response_preview": "{\"ok\":true,\"action\":\"deny\",\"tenant_id\":10457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_ISO_DENY",
+      "body_len": 21,
+      "response_len": 70,
+      "response_preview": "{\"ok\":true,\"action\":\"deny\",\"tenant_id\":110457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 62,
+      "response_len": 68,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 10457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 63,
+      "response_len": 69,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 110457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_ISO_ALLOW",
+      "body_len": 20,
+      "response_len": 70,
+      "response_preview": "{\"ok\":true,\"action\":\"allow\",\"tenant_id\":10457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_ISO_LIST",
+      "body_len": 0,
+      "response_len": 65,
+      "response_preview": "{\"ok\":true,\"allowed\":[\"10457|default/slab1k\",\"0|default/slab1k\"]}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 65,
+      "response_len": 371,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_iso_shared_1779809457943_2502571\",\"tenant_id\":10457,\"size\":22,\"offset\":230563840,\"repl_ns\":29146,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 66,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":22,\"val\":\"tenant-a-private-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 69,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 110457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_ISO_ALLOW",
+      "body_len": 21,
+      "response_len": 71,
+      "response_preview": "{\"ok\":true,\"action\":\"allow\",\"tenant_id\":110457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 30,
+      "response_preview": "{\"ok\":false,\"err\":\"not found\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 66,
+      "response_len": 372,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_iso_shared_1779809457943_2502571\",\"tenant_id\":110457,\"size\":22,\"offset\":231612416,\"repl_ns\":17393,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":3,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 66,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":22,\"val\":\"tenant-b-private-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 66,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":22,\"val\":\"tenant-a-private-value\"}"
+    },
+    {
+      "kind": "RPC_ISO_DENY",
+      "body_len": 20,
+      "response_len": 69,
+      "response_preview": "{\"ok\":true,\"action\":\"deny\",\"tenant_id\":10457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 68,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 10457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 68,
+      "response_len": 68,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 10457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 66,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":22,\"val\":\"tenant-b-private-value\"}"
+    },
+    {
+      "kind": "RPC_ISO_DENY",
+      "body_len": 21,
+      "response_len": 70,
+      "response_preview": "{\"ok\":true,\"action\":\"deny\",\"tenant_id\":110457,\"pool\":\"default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 69,
+      "response_len": 69,
+      "response_preview": "{\"ok\":false,\"err\":\"tenant 110457 not allowed on pool default/slab1k\"}"
+    },
+    {
+      "kind": "RPC_ISO_LIST",
+      "body_len": 0,
+      "response_len": 42,
+      "response_preview": "{\"ok\":true,\"allowed\":[\"0|default/slab1k\"]}"
+    }
+  ]
+}

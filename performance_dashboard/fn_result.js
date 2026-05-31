@@ -4,7 +4,7 @@
     const evidence = Array.isArray(detail.evidence)
       ? detail.evidence
       : (Array.isArray(raw.evidence) ? raw.evidence : []);
-    const status = raw.status || detail.status;
+    const status = detail.status || raw.presentation_status || raw.status;
     const body = `
       <div class="result-summary">
         ${window.FDUtils.badge(status, window.FDUtils.statusText[String(status || "").toUpperCase()]).replace("mini-pill", "mini-pill result-badge")}

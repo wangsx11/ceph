@@ -1,0 +1,90 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-4",
+  "function": "CPU 与 GPU 高速直通访问",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 4 条",
+  "started_at": "2026-05-27T01:24:34+0800",
+  "finished_at": "2026-05-27T01:24:34+0800",
+  "status": "WAIVED",
+  "passed": true,
+  "completion": "硬件/环境豁免",
+  "evidence": [
+    "peer GPU MR 未启用，当前未满足 GPUDirect RDMA 验收硬件/启动条件；需要 NR_GDR_ENABLE=1、xfusion4 NVIDIA GPU 和 nvidia_peermem/nv_peer_mem 后重跑"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140105490051072,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 139798985519104,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "gdr_status_local": {
+      "ok": true,
+      "gdr_requested": false,
+      "gdr_compiled": false,
+      "peer_memory_loaded": false,
+      "local_gpu_enabled": false,
+      "local_gpu_device_id": -1,
+      "local_gpu_name": "",
+      "local_gpu_base": 0,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "cuda_driver_version": 0,
+      "cuda_runtime_version": 0,
+      "local_gpu_error": "",
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_012434.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_012434.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140105490051072,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":139798985519104,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_GDR_STATUS",
+      "body_len": 0,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"gdr_requested\":false,\"gdr_compiled\":false,\"peer_memory_loaded\":false,\"local_gpu_enabled\":false,\"local_gpu_device_id\":-1,\"local_gpu_name\":\"\",\"local_gpu_base\":0,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"cuda_driver_version\":0,\"cuda_runtime_version\":0,\"local_gpu_error\":\"\",\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0}"
+    }
+  ]
+}

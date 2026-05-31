@@ -3,16 +3,16 @@
 - Module: 一致性总线内存池化仿真计算模块
 - Function: 内存池高可靠机制
 - Source: docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 6 条
-- Last Run: 2026-05-04T16:03:19+0800
+- Last Run: 2026-05-27T14:14:30+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260504_160302.log
+- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260527_141413.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/raw.json
 
 ## 关键证据
 
 - 主动故障演练成功: peer_alive true->false, degraded_puts 0->1
-- 故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1777881786515_556313
+- 故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1779862457339_3851802
 - 恢复命令执行后 peer_alive=true，后续 PUT 重新走 RDMA 非降级复制并可从 peer 读回
 
 ## 统计口径

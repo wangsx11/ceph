@@ -1,0 +1,7 @@
+mempool/FN-1 PASS - RDMA 语义远程内存访问与零拷贝
+- RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=26755
+- 远端 slab 元数据有效: base=140324846014464 len=4294967296 rkey=71936 qps=32
+- offset/size 在 peer slab 范围内: offset=6320128 size=20
+- RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1779815337404_2667112
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260527_010857.log

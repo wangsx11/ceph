@@ -1,0 +1,4 @@
+rdma/FN-4 WAIVED - CPU 与 GPU 高速直通访问
+- peer GPU MR 未启用，当前未满足 GPUDirect RDMA 验收硬件/启动条件；需要 NR_GDR_ENABLE=1、xfusion4 NVIDIA GPU 和 nvidia_peermem/nv_peer_mem 后重跑
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_012434.log

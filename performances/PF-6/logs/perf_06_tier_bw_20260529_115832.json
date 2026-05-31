@@ -1,0 +1,43 @@
+{
+  "metric": "perf_06_tier_bw",
+  "val_size": 1048576,
+  "keyspace": 512,
+  "write_duration_s": 5.0,
+  "read_duration_s": 10.0,
+  "stabilize_seconds": 0.2,
+  "drain_seconds": 0.0,
+  "write_gbs": 0.0,
+  "write_ops": 0.0,
+  "write_fail": 87002,
+  "write_degraded": 15,
+  "write_tx_bytes": 0,
+  "read_gbs": 0.002,
+  "read_ops_total": 4408876,
+  "read_fail": 0,
+  "read_rx_bytes": 22044380,
+  "read_avg_resp_bytes": 5,
+  "read_hit_ratio": 0.0,
+  "passed": false,
+  "note": "LOW HIT RATIO 0.0000: GETs mostly missed",
+  "raw_put": {
+    "elapsed_s": 5.02,
+    "ops_per_sec": 0.0,
+    "ops_ok": 0,
+    "ops_fail": 87002,
+    "ops_degraded": 15,
+    "req_bytes": 0,
+    "resp_bytes": 0,
+    "val_size": 1048576
+  },
+  "raw_get": {
+    "elapsed_s": 10.0,
+    "ops_per_sec": 440853.0,
+    "ops_ok": 4408876,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "req_bytes": 25505922,
+    "resp_bytes": 22044380,
+    "val_size": 1048576
+  },
+  "status": "FAIL"
+}

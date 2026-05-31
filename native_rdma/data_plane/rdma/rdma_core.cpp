@@ -331,7 +331,7 @@ bool RdmaCore::connect_qp(int qp_idx,
     attr.ah_attr.grh.dgid            = peer_gid;
     attr.ah_attr.grh.sgid_index      = impl_->cfg.gid_index;
     attr.ah_attr.grh.hop_limit       = 64;
-    attr.ah_attr.grh.traffic_class   = 0;
+    attr.ah_attr.grh.traffic_class   = impl_->cfg.traffic_class;
     attr.ah_attr.grh.flow_label      = 0;
     (void)peer_gid_index;  // caller provides; we use our own sgid_index.
 

@@ -1,0 +1,10 @@
+Command: bash /home/wangshouxin/native-rdma-web/performances/PF-3/run.sh
+
+[ssh-probe] pre: PASS host=xfusion4 rc=0 elapsed=0.5s output=xfusion4
+[PF-3] output directory: /home/wangshouxin/native-rdma-web/performances/PF-3/history/web_20260529_123344_pf_PF3_20260529_123344_2c495fdd
+[PF-3] running performance test and updating summary.md
+[ssh-probe] during-1: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-2: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-3: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] post: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[performance-dashboard] ssh_probe_summary total=3 failures=0 post_ok=True

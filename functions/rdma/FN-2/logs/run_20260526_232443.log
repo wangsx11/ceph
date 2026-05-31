@@ -1,0 +1,4 @@
+[23:24:43] start rdma/FN-2 聚合数据传输
+[23:24:43] repo_root=/home/wangshouxin/native-rdma-web
+[23:24:43] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:24:43] result=SKIP completion=未完成

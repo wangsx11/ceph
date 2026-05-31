@@ -1,0 +1,22 @@
+[09:57:30] start mempool/FN-4 跨节点内存自适应分配与热数据迁移
+[09:57:30] repo_root=/home/wangshouxin/native-rdma-web
+[09:57:30] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[09:57:30] rpc RPC_CLUSTER_STATUS body_len=0
+[09:57:30] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140284203241472,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140034484236288,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_STATS body_len=0
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_STATS resp_len=129 resp={"ok":true,"hot_threshold":3,"remote_objects":0,"local_objects":0,"remote_puts":0,"remote_reads":0,"local_hits":0,"migrations":0}
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_PUT body_len=67
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_PUT resp_len=350 resp={"ok":true,"key":"fn_adapt_hot_1779847050336_3433465","policy":"cold_remote_first","placement":"remote","placement_reason":"cold_object","transport":"rdma","degraded":false,"local_cached":false,"size":32,"remote_offset":67108864,"remote_addr":140034551345152,"peer_slab_base":140034484236288,"peer_slab_rkey":71936,"write_ns":30319,"hot_threshold":3}
+[09:57:30] rpc RPC_TCP_GET_PEER body_len=34
+[09:57:30] rpc RPC_TCP_GET_PEER resp_len=139 resp={"ok":true,"transport":"tcp","key":"fn_adapt_hot_1779847050336_3433465","size":32,"tcp_ns":326261,"val":"adaptive-remote-to-local-payload"}
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET body_len=34
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET resp_len=302 resp={"ok":true,"key":"fn_adapt_hot_1779847050336_3433465","hit":"remote_rdma_read","placement_before":"remote","placement_after":"remote","migrated":false,"transport":"rdma","remote_offset":67108864,"size":32,"access_count":1,"hot_threshold":3,"rdma_read_ns":27039,"val":"adaptive-remote-to-local-payload"}
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET body_len=34
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET resp_len=302 resp={"ok":true,"key":"fn_adapt_hot_1779847050336_3433465","hit":"remote_rdma_read","placement_before":"remote","placement_after":"remote","migrated":false,"transport":"rdma","remote_offset":67108864,"size":32,"access_count":2,"hot_threshold":3,"rdma_read_ns":11127,"val":"adaptive-remote-to-local-payload"}
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET body_len=34
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_GET resp_len=330 resp={"ok":true,"key":"fn_adapt_hot_1779847050336_3433465","hit":"remote_to_local_migrate","placement_before":"remote","placement_after":"local","migrated":true,"transport":"rdma","remote_offset":67108864,"local_offset":13660160,"size":32,"access_count":3,"hot_threshold":3,"rdma_read_ns":8373,"val":"adaptive-remote-to-local-payload"}
+[09:57:30] rpc RPC_KV_GET body_len=34
+[09:57:30] rpc RPC_KV_GET resp_len=76 resp={"ok":true,"hit":"local","size":32,"val":"adaptive-remote-to-local-payload"}
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_STATS body_len=0
+[09:57:30] rpc RPC_MEMPOOL_ADAPT_STATS resp_len=129 resp={"ok":true,"hot_threshold":3,"remote_objects":0,"local_objects":1,"remote_puts":1,"remote_reads":3,"local_hits":0,"migrations":1}
+[09:57:30] result=PASS completion=完成

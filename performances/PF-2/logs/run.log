@@ -1,33 +1,33 @@
-[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=8 --val-size=1024 --duration=3
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=3s val_size=1024 keyspace=10000 prio=default require_peer=false batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=false batch=1 max_iops=0
 
 ==== nr_bench result ====
-  elapsed       : 3.00 s
-  elapsed_ms    : 3000.45
-  threads       : 8
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.47
+  threads       : 4
   op            : put
-  ops ok/fail   : 1019750 / 0
+  ops ok/fail   : 112922 / 0
   ops degraded  : 0
-  ops/s         : 339865
-  req_bytes     : 1054303708 (351.38 MB/s)
-  resp_bytes    : 174545227 (58.17 MB/s)
-  latency us    : avg=23.01  p50=20.77  p90=26.34  p99=34.16  p99.9=43.28  max=10257.74
+  ops/s         : 112869
+  req_bytes     : 116748082 (116.69 MB/s)
+  resp_bytes    : 39255815 (39.24 MB/s)
+  latency us    : avg=34.90  p50=30.48  p90=39.48  p99=59.91  p99.9=498.71  max=12153.16
 
 
-[measured] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=8 --val-size=1024 --duration=10 --require-peer=1
+[measured-count] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=1 --max-iops=105000 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=10000 prio=default require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=true batch=1 max_iops=105000
 
 ==== nr_bench result ====
-  elapsed       : 10.00 s
-  elapsed_ms    : 10000.55
-  threads       : 8
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.35
+  threads       : 4
   op            : put
-  ops ok/fail   : 3416731 / 0
+  ops ok/fail   : 103532 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 341654
-  req_bytes     : 3532517447 (353.23 MB/s)
-  resp_bytes    : 584831292 (58.48 MB/s)
-  latency us    : avg=22.86  p50=20.55  p90=26.07  p99=33.95  p99.9=43.58  max=26644.80
+  ops/s         : 103495
+  req_bytes     : 107038822 (107.00 MB/s)
+  resp_bytes    : 35992644 (35.98 MB/s)
+  latency us    : avg=37.61  p50=30.93  p90=43.21  p99=66.55  p99.9=1071.42  max=8853.90
 

@@ -1,0 +1,328 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-4",
+  "function": "可配置压缩与去重",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 4 条",
+  "started_at": "2026-05-29T12:10:35+0800",
+  "finished_at": "2026-05-29T12:10:35+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "压缩统计增加: objects 0->2, saved_bytes 0->8052",
+    "去重统计增加: duplicate_objects 0->1, saved_bytes 0->68",
+    "HDD 读回闭环成功: compress A hit=hdd_promote, compress B hit=hdd_promote, dedup B hit=hdd_promote"
+  ],
+  "details": {
+    "before_compress": {
+      "ok": true,
+      "raw_bytes": 0,
+      "cmp_bytes": 0,
+      "objects": 0,
+      "ratio": 0.0,
+      "saved_bytes": 0
+    },
+    "after_first_compress": {
+      "ok": true,
+      "raw_bytes": 4096,
+      "cmp_bytes": 70,
+      "objects": 1,
+      "ratio": 0.0171,
+      "saved_bytes": 4026
+    },
+    "after_compress": {
+      "ok": true,
+      "raw_bytes": 8192,
+      "cmp_bytes": 140,
+      "objects": 2,
+      "ratio": 0.0171,
+      "saved_bytes": 8052
+    },
+    "before_dedup": {
+      "ok": true,
+      "unique_objects": 0,
+      "duplicate_objects": 0,
+      "saved_bytes": 0,
+      "logical_bytes": 0
+    },
+    "after_dedup": {
+      "ok": true,
+      "unique_objects": 3,
+      "duplicate_objects": 1,
+      "saved_bytes": 68,
+      "logical_bytes": 16384
+    },
+    "after_first_dedup": {
+      "ok": true,
+      "unique_objects": 3,
+      "duplicate_objects": 0,
+      "saved_bytes": 0,
+      "logical_bytes": 12288
+    },
+    "put_a": {
+      "ok": true,
+      "key": "fn_compress_unique_a_1780027835290_3577685",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 2093056,
+      "repl_ns": 92800,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 0,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false
+      }
+    },
+    "put_b": {
+      "ok": true,
+      "key": "fn_compress_unique_b_1780027835290_3577685",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 3141632,
+      "repl_ns": 43147,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 1,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false
+      }
+    },
+    "demote_a": {
+      "ok": true,
+      "key": "fn_compress_unique_a_1780027835290_3577685",
+      "to": "hdd"
+    },
+    "demote_b": {
+      "ok": true,
+      "key": "fn_compress_unique_b_1780027835290_3577685",
+      "to": "hdd"
+    },
+    "get_a": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "compress-a-fn_compress_unique_a_1780027835290_3577685|compress-a"
+    },
+    "get_b": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "compress-b-fn_compress_unique_b_1780027835290_3577685|compress-b"
+    },
+    "dedup_put_a": {
+      "ok": true,
+      "key": "fn_dedup_unique_a_1780027835290_3577685",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 4190208,
+      "repl_ns": 35457,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 2,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true
+      }
+    },
+    "dedup_put_b": {
+      "ok": true,
+      "key": "fn_dedup_unique_b_1780027835290_3577685",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 5238784,
+      "repl_ns": 21067,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 3,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "",
+        "local_is_primary": false
+      }
+    },
+    "dedup_demote_a": {
+      "ok": true,
+      "key": "fn_dedup_unique_a_1780027835290_3577685",
+      "to": "hdd"
+    },
+    "dedup_demote_b": {
+      "ok": true,
+      "key": "fn_dedup_unique_b_1780027835290_3577685",
+      "to": "hdd"
+    },
+    "dedup_get_a": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "dedup-shared-fn_dedup_payload_1780027835290_3577685|dedup-shared"
+    },
+    "dedup_get_b": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "dedup-shared-fn_dedup_payload_1780027835290_3577685|dedup-shared"
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": ""
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260529_121035.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260529_121035.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 82,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":0,\"cmp_bytes\":0,\"objects\":0,\"ratio\":0.0000,\"saved_bytes\":0}"
+    },
+    {
+      "kind": "RPC_DEDUP_STATS",
+      "body_len": 0,
+      "response_len": 86,
+      "response_preview": "{\"ok\":true,\"unique_objects\":0,\"duplicate_objects\":0,\"saved_bytes\":0,\"logical_bytes\":0}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4139,
+      "response_len": 374,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_unique_a_1780027835290_3577685\",\"tenant_id\":0,\"size\":4096,\"offset\":2093056,\"repl_ns\":92800,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":0,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4139,
+      "response_len": 374,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_unique_b_1780027835290_3577685\",\"tenant_id\":0,\"size\":4096,\"offset\":3141632,\"repl_ns\":43147,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":1,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 46,
+      "response_len": 73,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_unique_a_1780027835290_3577685\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 89,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":4096,\"cmp_bytes\":70,\"objects\":1,\"ratio\":0.0171,\"saved_bytes\":4026}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 46,
+      "response_len": 73,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_unique_b_1780027835290_3577685\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 90,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":8192,\"cmp_bytes\":140,\"objects\":2,\"ratio\":0.0171,\"saved_bytes\":8052}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4136,
+      "response_len": 383,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_dedup_unique_a_1780027835290_3577685\",\"tenant_id\":0,\"size\":4096,\"offset\":4190208,\"repl_ns\":35457,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4136,
+      "response_len": 371,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_dedup_unique_b_1780027835290_3577685\",\"tenant_id\":0,\"size\":4096,\"offset\":5238784,\"repl_ns\":21067,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":3,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 43,
+      "response_len": 70,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_dedup_unique_a_1780027835290_3577685\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_DEDUP_STATS",
+      "body_len": 0,
+      "response_len": 90,
+      "response_preview": "{\"ok\":true,\"unique_objects\":3,\"duplicate_objects\":0,\"saved_bytes\":0,\"logical_bytes\":12288}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 43,
+      "response_len": 70,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_dedup_unique_b_1780027835290_3577685\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_DEDUP_STATS",
+      "body_len": 0,
+      "response_len": 91,
+      "response_preview": "{\"ok\":true,\"unique_objects\":3,\"duplicate_objects\":1,\"saved_bytes\":68,\"logical_bytes\":16384}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"compress-a-fn_compress_unique_a_1780027835290_3577685|compress-a\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"compress-b-fn_compress_unique_b_1780027835290_3577685|compress-b\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 39,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"dedup-shared-fn_dedup_payload_1780027835290_3577685|dedup-shared\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 39,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"dedup-shared-fn_dedup_payload_1780027835290_3577685|dedup-shared\"}"
+    }
+  ]
+}

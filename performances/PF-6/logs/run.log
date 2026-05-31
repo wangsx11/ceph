@@ -1,81 +1,50 @@
-[restart] env: {'SLAB_SLOT_SIZE': '1048576', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+[restart] env: {'SLAB_SLOT_SIZE': '1048576', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1', 'NR_SKIP_FLASK': '1'}
 [restart] exit=0
-
-[warmup]
-
-$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=5 --keyspace=512 --shared-keyspace=1 --require-peer=0 --batch=2
-exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=5s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=2
-
-==== nr_bench result ====
-  elapsed       : 5.00 s
-  elapsed_ms    : 5001.01
-  threads       : 5
-  op            : put
-  ops ok/fail   : 55776 / 0
-  ops degraded  : 0
-  ops/s         : 11153
-  req_bytes     : 58486143800 (11694.87 MB/s)
-  resp_bytes    : 725088 (0.14 MB/s)
-  latency us    : avg=388.97  p50=372.97  p90=413.47  p99=482.16  p99.9=1035.63  max=14519.08
-
-
 
 [write]
 
-$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=10 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=2
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=6 --val-size=1048576 --duration=3 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=2
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=10s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=2
-
-==== nr_bench result ====
-  elapsed       : 10.00 s
-  elapsed_ms    : 10001.10
-  threads       : 5
-  op            : put
-  ops ok/fail   : 113478 / 0
-  ops degraded  : 0 (rejected)
-  ops/s         : 11347
-  req_bytes     : 118991871595 (11897.87 MB/s)
-  resp_bytes    : 1475214 (0.15 MB/s)
-  latency us    : avg=382.49  p50=370.88  p90=413.13  p99=477.13  p99.9=738.77  max=14959.69
-
-
-
-[warmup-read]
-
-$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=5 --val-size=1048576 --duration=3 --keyspace=512 --shared-keyspace=1 --require-peer=0 --batch=2
-exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=5 duration=3s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=2
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=6 duration=3s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=2 max_iops=0
 
 ==== nr_bench result ====
   elapsed       : 3.00 s
-  elapsed_ms    : 3001.30
-  threads       : 5
+  elapsed_ms    : 3001.39
+  threads       : 6
   op            : put
-  ops ok/fail   : 34802 / 0
-  ops degraded  : 0
-  ops/s         : 11596
-  req_bytes     : 36493021667 (12159.07 MB/s)
-  resp_bytes    : 452426 (0.15 MB/s)
-  latency us    : avg=372.58  p50=365.55  p90=410.57  p99=452.90  p99.9=478.45  max=797.85
+  ops ok/fail   : 32904 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 10963
+  req_bytes     : 34502798242 (11495.60 MB/s)
+  resp_bytes    : 3110082 (1.04 MB/s)
+  latency us    : avg=474.42  p50=445.47  p90=573.80  p99=802.04  p99.9=1352.37  max=3001.56
 
+
+
+[drain] wait 8.0s for async RDMA completions before read phase
 
 
 [read]
 
-$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=get-raw --threads=8 --val-size=1048576 --duration=10 --keyspace=512 --shared-keyspace=1 --require-peer=1
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=get-raw --threads=12 --val-size=1048576 --duration=3 --keyspace=512 --shared-keyspace=1 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=get-raw threads=8 duration=10s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=get-raw threads=12 duration=3s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1 max_iops=0
 
 ==== nr_bench result ====
-  elapsed       : 10.00 s
-  elapsed_ms    : 10000.89
-  threads       : 8
+  elapsed       : 3.00 s
+  elapsed_ms    : 3001.32
+  threads       : 12
   op            : get-raw
-  ops ok/fail   : 199777 / 0
+  ops ok/fail   : 62044 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 19976
-  req_bytes     : 1155699 (0.12 MB/s)
-  resp_bytes    : 209482366437 (20946.36 MB/s)
-  latency us    : avg=399.61  p50=392.43  p90=431.37  p99=562.15  p99.9=659.34  max=28437.83
+  ops/s         : 20672
+  req_bytes     : 358899 (0.12 MB/s)
+  resp_bytes    : 65058159564 (21676.48 MB/s)
+  latency us    : avg=579.03  p50=565.19  p90=681.29  p99=1007.09  p99.9=1509.49  max=6041.03
 
+
+
+[restore]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0', 'NR_SKIP_FLASK': '1'}
+[restart] exit=0

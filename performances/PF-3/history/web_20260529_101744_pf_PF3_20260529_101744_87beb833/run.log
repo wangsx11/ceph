@@ -1,0 +1,81 @@
+[restart] env: {'NR_ASYNC_REPL': '1', 'NR_LO_RATE_KOPS': '100'}
+
+[restart] exit=0
+ SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3212374
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=1 --keyspace=5000
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.30
+  threads       : 4
+  op            : put
+  ops ok/fail   : 150386 / 0
+  ops degraded  : 0
+  ops/s         : 150341
+  req_bytes     : 155463658 (155.42 MB/s)
+  resp_bytes    : 51992419 (51.98 MB/s)
+  latency us    : avg=25.88  p50=22.77  p90=31.83  p99=47.70  p99.9=127.98  max=9949.67
+
+
+[measured-hi] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=2 --keyspace=5000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=2s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 2.00 s
+  elapsed_ms    : 2000.35
+  threads       : 4
+  op            : put
+  ops ok/fail   : 300121 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 150034
+  req_bytes     : 310256770 (155.10 MB/s)
+  resp_bytes    : 103701975 (51.84 MB/s)
+  latency us    : avg=26.01  p50=23.27  p90=32.58  p99=48.62  p99.9=120.80  max=6277.82
+
+
+[measured-lo] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=lo --threads=4 --val-size=1024 --duration=2 --keyspace=5000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=2s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 2.00 s
+  elapsed_ms    : 2000.34
+  threads       : 4
+  op            : put
+  ops ok/fail   : 168672 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 84322
+  req_bytes     : 174366942 (87.17 MB/s)
+  resp_bytes    : 58392071 (29.19 MB/s)
+  latency us    : avg=46.80  p50=27.31  p90=90.01  p99=200.87  p99.9=386.44  max=14186.86
+
+
+
+[restore functional data-plane defaults]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0', 'NR_LO_RATE_KOPS': None, 'NR_QOS_HI_WINDOW_US': None, 'NR_QOS_LO_BURST_MS': None}
+
+[restart] exit=0
+ SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3212904
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+

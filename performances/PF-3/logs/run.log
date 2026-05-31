@@ -1,4 +1,4 @@
-[restart] env: {'NR_ASYNC_REPL': '1'}
+[restart] env: {'NR_ASYNC_REPL': '1', 'NR_LO_RATE_KOPS': '100'}
 
 [restart] exit=0
 ══════════════════════════════════════════[0m
@@ -22,51 +22,76 @@
 
 [warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=3 --keyspace=5000
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=3s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=3s val_size=1024 keyspace=5000 prio=hi require_peer=false batch=1 max_iops=0
 
 ==== nr_bench result ====
   elapsed       : 3.00 s
-  elapsed_ms    : 3000.30
+  elapsed_ms    : 3000.31
   threads       : 4
   op            : put
-  ops ok/fail   : 579347 / 0
+  ops ok/fail   : 475955 / 0
   ops degraded  : 0
-  ops/s         : 193096
-  req_bytes     : 598914982 (199.62 MB/s)
-  resp_bytes    : 98568021 (32.85 MB/s)
-  latency us    : avg=20.27  p50=19.43  p90=23.02  p99=28.84  p99.9=36.32  max=2227.34
+  ops/s         : 158635
+  req_bytes     : 492030964 (163.99 MB/s)
+  resp_bytes    : 164562570 (54.85 MB/s)
+  latency us    : avg=24.69  p50=21.32  p90=29.50  p99=48.95  p99.9=122.90  max=15857.72
 
 
 [measured-hi] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=hi --threads=4 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=hi require_peer=true batch=1 max_iops=0
 
 ==== nr_bench result ====
   elapsed       : 10.00 s
-  elapsed_ms    : 10000.24
+  elapsed_ms    : 10000.41
   threads       : 4
   op            : put
-  ops ok/fail   : 1828552 / 0
+  ops ok/fail   : 1487916 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 182851
-  req_bytes     : 1890314342 (189.03 MB/s)
-  resp_bytes    : 311346806 (31.13 MB/s)
-  latency us    : avg=21.43  p50=20.18  p90=25.43  p99=32.96  p99.9=43.35  max=19984.63
+  ops/s         : 148786
+  req_bytes     : 1538173064 (153.81 MB/s)
+  resp_bytes    : 514582648 (51.46 MB/s)
+  latency us    : avg=26.20  p50=23.33  p90=31.66  p99=47.28  p99.9=91.55  max=31315.36
 
 
 [measured-lo] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --prio=lo --threads=4 --val-size=1024 --duration=10 --keyspace=5000 --require-peer=1
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=10s val_size=1024 keyspace=5000 prio=lo require_peer=true batch=1 max_iops=0
 
 ==== nr_bench result ====
   elapsed       : 10.00 s
-  elapsed_ms    : 10000.31
+  elapsed_ms    : 10000.30
   threads       : 4
   op            : put
-  ops ok/fail   : 1347092 / 0
+  ops ok/fail   : 818406 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 134705
-  req_bytes     : 1392593225 (139.26 MB/s)
-  resp_bytes    : 229723398 (22.97 MB/s)
-  latency us    : avg=29.14  p50=22.01  p90=43.64  p99=128.99  p99.9=186.20  max=21246.67
+  ops/s         : 81838
+  req_bytes     : 846047598 (84.60 MB/s)
+  resp_bytes    : 283553212 (28.35 MB/s)
+  latency us    : avg=48.22  p50=27.32  p90=90.12  p99=201.56  p99.9=395.87  max=29384.19
+
+
+
+[restore functional data-plane defaults]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0', 'NR_LO_RATE_KOPS': None, 'NR_QOS_HI_WINDOW_US': None, 'NR_QOS_LO_BURST_MS': None}
+
+[restart] exit=0
+══════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.218:5000/
+  ➤ Dashboard:    http://192.168.0.218:5000/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.218:5000/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.218:5000/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
 

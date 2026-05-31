@@ -1,0 +1,4 @@
+rdma/FN-2 SKIP - 聚合数据传输
+- REQUIRE_PEER=1 且 peer_alive=false，不能证明批量 RDMA 聚合传输到 xfusion4
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260527_010338.log

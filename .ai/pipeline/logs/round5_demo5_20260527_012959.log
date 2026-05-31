@@ -1,0 +1,118 @@
+cluster {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+reset {"node": "A", "ok": true}
+start_round 1 {"count": 10000, "duration_s": 12, "ok": true, "round": 1}
+round_poll 1 {"running": true, "phase": "warmup", "samples": 0, "summary": null}
+round_poll 1 {"running": true, "phase": "warmup", "samples": 0, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 3, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 13, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 23, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 33, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 43, "summary": null}
+round_poll 1 {"running": true, "phase": "running_nr_bench", "samples": 53, "summary": null}
+round_poll 1 {"running": false, "phase": "done", "samples": 59, "summary": {"count": 10000, "duration_s": 12, "error": null, "footprint_mb": 9.77, "gbps": 1.643, "iops": 198981, "lat_avg_us": 39.73, "lat_p50_us": 36.93, "lat_p90_us": 46.43, "lat_p99_9_us": 105.75, "lat_p99_us": 60.16, "max_iops": 0, "mb_per_sec": 205.33, "ops_degraded": 0, "ops_fail": 0, "ops_ok": 2387873, "ops_per_sec": 198981.0, "passed": true, "require_peer": true, "shared_keyspace": true, "threads": 8, "tp_mbps": 205.33, "util_pct": 1.64, "val_size": 1024, "warmup_s": 3}}
+cluster {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+start_round 2 {"count": 50000, "duration_s": 12, "ok": true, "round": 2}
+round_poll 2 {"running": true, "phase": "prepare", "samples": 0, "summary": null}
+round_poll 2 {"running": true, "phase": "warmup", "samples": 0, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 3, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 12, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 21, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 31, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 40, "summary": null}
+round_poll 2 {"running": true, "phase": "running_nr_bench", "samples": 50, "summary": null}
+round_poll 2 {"running": false, "phase": "done", "samples": 55, "summary": {"count": 50000, "duration_s": 12, "error": null, "footprint_mb": 48.83, "gbps": 1.532, "iops": 185477, "lat_avg_us": 42.6, "lat_p50_us": 37.4, "lat_p90_us": 47.11, "lat_p99_9_us": 107.39, "lat_p99_us": 61.54, "max_iops": 0, "mb_per_sec": 191.56, "ops_degraded": 0, "ops_fail": 0, "ops_ok": 2225844, "ops_per_sec": 185477.0, "passed": true, "require_peer": true, "shared_keyspace": true, "threads": 8, "tp_mbps": 191.56, "util_pct": 1.53, "val_size": 1024, "warmup_s": 3}}
+cluster {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+start_round 3 {"count": 100000, "duration_s": 12, "ok": true, "round": 3}
+round_poll 3 {"running": true, "phase": "prepare", "samples": 0, "summary": null}
+round_poll 3 {"running": true, "phase": "warmup", "samples": 0, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 3, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 11, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 20, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 28, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 37, "summary": null}
+round_poll 3 {"running": true, "phase": "running_nr_bench", "samples": 46, "summary": null}
+round_poll 3 {"running": false, "phase": "done", "samples": 51, "summary": {"count": 100000, "duration_s": 12, "error": null, "footprint_mb": 97.66, "gbps": 1.355, "iops": 163960, "lat_avg_us": 48.26, "lat_p50_us": 37.92, "lat_p90_us": 48.22, "lat_p99_9_us": 115.45, "lat_p99_us": 63.9, "max_iops": 0, "mb_per_sec": 169.35, "ops_degraded": 0, "ops_fail": 0, "ops_ok": 1967640, "ops_per_sec": 163960.0, "passed": true, "require_peer": true, "shared_keyspace": true, "threads": 8, "tp_mbps": 169.35, "util_pct": 1.35, "val_size": 1024, "warmup_s": 3}}
+cluster {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+PASS demo5 rounds {
+  "1": {
+    "count": 10000,
+    "duration_s": 12,
+    "error": null,
+    "footprint_mb": 9.77,
+    "gbps": 1.643,
+    "iops": 198981,
+    "lat_avg_us": 39.73,
+    "lat_p50_us": 36.93,
+    "lat_p90_us": 46.43,
+    "lat_p99_9_us": 105.75,
+    "lat_p99_us": 60.16,
+    "max_iops": 0,
+    "mb_per_sec": 205.33,
+    "ops_degraded": 0,
+    "ops_fail": 0,
+    "ops_ok": 2387873,
+    "ops_per_sec": 198981.0,
+    "passed": true,
+    "require_peer": true,
+    "shared_keyspace": true,
+    "threads": 8,
+    "tp_mbps": 205.33,
+    "util_pct": 1.64,
+    "val_size": 1024,
+    "warmup_s": 3
+  },
+  "2": {
+    "count": 50000,
+    "duration_s": 12,
+    "error": null,
+    "footprint_mb": 48.83,
+    "gbps": 1.532,
+    "iops": 185477,
+    "lat_avg_us": 42.6,
+    "lat_p50_us": 37.4,
+    "lat_p90_us": 47.11,
+    "lat_p99_9_us": 107.39,
+    "lat_p99_us": 61.54,
+    "max_iops": 0,
+    "mb_per_sec": 191.56,
+    "ops_degraded": 0,
+    "ops_fail": 0,
+    "ops_ok": 2225844,
+    "ops_per_sec": 185477.0,
+    "passed": true,
+    "require_peer": true,
+    "shared_keyspace": true,
+    "threads": 8,
+    "tp_mbps": 191.56,
+    "util_pct": 1.53,
+    "val_size": 1024,
+    "warmup_s": 3
+  },
+  "3": {
+    "count": 100000,
+    "duration_s": 12,
+    "error": null,
+    "footprint_mb": 97.66,
+    "gbps": 1.355,
+    "iops": 163960,
+    "lat_avg_us": 48.26,
+    "lat_p50_us": 37.92,
+    "lat_p90_us": 48.22,
+    "lat_p99_9_us": 115.45,
+    "lat_p99_us": 63.9,
+    "max_iops": 0,
+    "mb_per_sec": 169.35,
+    "ops_degraded": 0,
+    "ops_fail": 0,
+    "ops_ok": 1967640,
+    "ops_per_sec": 163960.0,
+    "passed": true,
+    "require_peer": true,
+    "shared_keyspace": true,
+    "threads": 8,
+    "tp_mbps": 169.35,
+    "util_pct": 1.35,
+    "val_size": 1024,
+    "warmup_s": 3
+  }
+}

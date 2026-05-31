@@ -1,0 +1,232 @@
+# round1 host-side performances/run_all.sh
+start=2026-05-26 23:33:18 +0800
+log=.ai/pipeline/logs/round1_host_performances_run_all_20260526_233318.log
+probe=.ai/pipeline/logs/round1_host_performances_ssh_probe_20260526_233318.log
+## ssh xfusion4 before
+xfusion4
+before_rc=0
+================================================================
+  Performance Test Suite - 2026-05-26 23:33:19
+  NR_ASYNC_REPL=1
+================================================================
+
+================================================================
+  Start Data Plane
+================================================================
+[start] 启动双节点数据面 (NR_ASYNC_REPL=1)...
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+.ai/pipeline/logs/
+.ai/pipeline/logs/round-01.stdout.log
+.ai/pipeline/logs/round1_host_functions_run_all_20260526_233047.log
+.ai/pipeline/logs/round1_host_performances_run_all_20260526_233318.log
+.ai/pipeline/logs/round1_host_performances_ssh_probe_20260526_233318.log
+functions/raw.json
+functions/summary.md
+functions/logs/
+functions/logs/run_all_20260526_233049.log
+functions/logs/run_all_20260526_233049.stdio.log
+functions/mempool/FN-6/raw.json
+functions/mempool/FN-6/run_all.last.log
+functions/mempool/FN-6/summary.md
+functions/mempool/FN-6/logs/
+functions/mempool/FN-6/logs/run_20260526_233057.json
+functions/mempool/FN-6/logs/run_20260526_233057.log
+functions/mempool/FN-6/logs/run_20260526_233057.stdio.log
+
+sent 231,532 bytes  received 5,914 bytes  158,297.33 bytes/sec
+total size is 143,788,263  speedup is 605.56
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2481821
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[36m[demo_up][0m 启动 Flask (port=5001, role=B)
+[36m[demo_up][0m   peer url = http://192.168.0.218:5000 （将作为反向代理目标注入 Flask）
+[36m[demo_up][0m   Flask pid=2481858  dash_dir=/home/wangshouxin/native-rdma-web/dashboard
+[32m[  OK  ][0m Flask 就绪 (http://127.0.0.1:5001/)
+
+[32m═══════════════════════════════════════════════════════════════[0m
+  [32m演示栈启动完成 (role=B, self=192.168.0.214)[0m
+[32m═══════════════════════════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.214:5001/
+  ➤ Dashboard:    http://192.168.0.214:5001/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.214:5001/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.214:5001/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_B.log
+      tail -f logs/cp_B.stdout.log
+
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=2506801
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[36m[demo_up][0m 启动 Flask (port=5000, role=A)
+[36m[demo_up][0m   peer url = http://192.168.0.214:5001 （将作为反向代理目标注入 Flask）
+[36m[demo_up][0m   Flask pid=2506841  dash_dir=/home/wangshouxin/native-rdma-web/dashboard
+[32m[  OK  ][0m Flask 就绪 (http://127.0.0.1:5000/)
+
+[32m═══════════════════════════════════════════════════════════════[0m
+  [32m演示栈启动完成 (role=A, self=192.168.0.218)[0m
+[32m═══════════════════════════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.218:5000/
+  ➤ Dashboard:    http://192.168.0.218:5000/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.218:5000/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.218:5000/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
+
+================================================================
+  PF-1
+================================================================
+[PF-1] output directory: /home/wangshouxin/native-rdma-web/performances/PF-1
+[PF-1] running performance test and updating summary.md
+  [FAIL] PF-1 exit=1 (117s)
+
+================================================================
+  PF-2
+================================================================
+[PF-2] output directory: /home/wangshouxin/native-rdma-web/performances/PF-2
+[PF-2] running performance test and updating summary.md
+  [PASS] PF-2 (13s)
+
+================================================================
+  PF-3
+================================================================
+[PF-3] output directory: /home/wangshouxin/native-rdma-web/performances/PF-3
+[PF-3] running performance test and updating summary.md
+  [FAIL] PF-3 exit=1 (41s)
+
+[restart] 恢复默认数据面配置 (NR_ASYNC_REPL=1)...
+      tail -f logs/dp_A.log
+      tail -f logs/cp_A.stdout.log
+
+
+================================================================
+  PF-4
+================================================================
+[PF-4] output directory: /home/wangshouxin/native-rdma-web/performances/PF-4
+[PF-4] running performance test and updating summary.md
+  [FAIL] PF-4 exit=1 (25s)
+
+================================================================
+  PF-5
+================================================================
+[PF-5] output directory: /home/wangshouxin/native-rdma-web/performances/PF-5
+[PF-5] running performance test and updating summary.md
+  [PASS] PF-5 (47s)
+
+================================================================
+  PF-6
+================================================================
+[PF-6] output directory: /home/wangshouxin/native-rdma-web/performances/PF-6
+[PF-6] running performance test and updating summary.md
+  [FAIL] PF-6 exit=1 (52s)
+
+================================================================
+  PF-7
+================================================================
+[PF-7] output directory: /home/wangshouxin/native-rdma-web/performances/PF-7
+[PF-7] running performance test and updating summary.md
+  [PASS] PF-7 (61s)
+
+================================================================
+  PF-8
+================================================================
+[PF-8] output directory: /home/wangshouxin/native-rdma-web/performances/PF-8
+[PF-8] running performance test and updating summary.md
+  [PASS] PF-8 (8s)
+
+================================================================
+  PF-9
+================================================================
+[PF-9] output directory: /home/wangshouxin/native-rdma-web/performances/PF-9
+[PF-9] running performance test and updating summary.md
+  [PASS] PF-9 (9s)
+
+================================================================
+  Summary: 5/9 PASS
+================================================================
+  PF-1: FAIL exit=1 (117s)
+  PF-2: PASS (13s)
+  PF-3: FAIL exit=1 (41s)
+  PF-4: FAIL exit=1 (25s)
+  PF-5: PASS (47s)
+  PF-6: FAIL exit=1 (52s)
+  PF-7: PASS (61s)
+  PF-8: PASS (8s)
+  PF-9: PASS (9s)
+
+4 test(s) FAILED.
+## ssh xfusion4 after
+xfusion4
+after_rc=0
+end=2026-05-26 23:40:08 +0800
+elapsed_s=410
+exit_code=1

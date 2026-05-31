@@ -3,17 +3,17 @@
 - Module: 一致性总线内存池化仿真计算模块
 - Function: 跨节点内存自适应分配与热数据迁移
 - Source: docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 4 条
-- Last Run: 2026-05-04T15:41:05+0800
+- Last Run: 2026-05-27T14:14:12+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260504_154105.log
+- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260527_141412.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/raw.json
 
 ## 关键证据
 
 - 冷对象自适应放置到远端 RDMA slab: remote_offset=67108864 size=32
 - 首次访问保持远端放置并通过 RDMA READ 读取: hit=remote_rdma_read access_count=1
-- 热点阈值 3 次访问后迁回本地 slab: local_offset=5238784 rdma_read_ns=12752
+- 热点阈值 3 次访问后迁回本地 slab: local_offset=9433088 rdma_read_ns=9002
 - 迁移后普通 RPC_KV_GET 本地命中: hit=local
 
 ## 统计口径

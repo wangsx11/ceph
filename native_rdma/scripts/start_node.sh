@@ -47,6 +47,7 @@ exec "$BIN" \
     --peer-ip="$PEER_IP" \
     --dev="$RDMA_DEV" \
     --gid-idx="$GID_IDX" \
+    --rdma-traffic-class="${NR_RDMA_TRAFFIC_CLASS:-0}" \
     --data-port="$DATA_PORT" \
     --tcp-data-port="${TCP_DATA_PORT:-18516}" \
     --transport="${NR_TRANSPORT:-rdma}" \

@@ -1,0 +1,10 @@
+[20:08:43] start storage/FN-6 仿真数据运行中采集
+[20:08:43] repo_root=/home/wangshouxin/native-rdma-web
+[20:08:43] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[20:08:43] rpc RPC_SIM_CAPTURE_RESET body_len=0
+[20:08:43] rpc RPC_SIM_CAPTURE_RESET resp_len=40 resp={"ok":true,"action":"sim_capture_reset"}
+[20:08:43] rpc RPC_SIM_RUN body_len=54
+[20:08:43] rpc RPC_SIM_RUN resp_len=262 resp={"ok":true,"entities":1000,"entity_size":1024,"entity_bytes":1024000,"events":2000,"threads":2,"step_us":10,"stress":32,"wall_s":0.000277,"sim_s":0.020000,"speedup":72.1462,"events_per_sec":7214617,"capture_every_n":10,"captured_events":200,"captured_dropped":0}
+[20:08:44] rpc RPC_SIM_CAPTURE_STATS body_len=0
+[20:08:44] rpc RPC_SIM_CAPTURE_STATS resp_len=225 resp={"ok":true,"pushed_events":200,"pushed_bytes":11200,"flushed_events":200,"flushed_bytes":11200,"dropped_events":0,"object_attr_events":100,"interaction_events":100,"wal_bytes":11200,"wal_path":"/tmp/nr_sim_capture/sim_A.log"}
+[20:08:44] result=PASS completion=完成

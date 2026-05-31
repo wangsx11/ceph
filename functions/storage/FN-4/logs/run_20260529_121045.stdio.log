@@ -1,0 +1,6 @@
+storage/FN-4 PASS - 可配置压缩与去重
+- 压缩统计增加: objects 0->2, saved_bytes 0->8052
+- 去重统计增加: duplicate_objects 0->1, saved_bytes 0->68
+- HDD 读回闭环成功: compress A hit=hdd_promote, compress B hit=hdd_promote, dedup B hit=hdd_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260529_121045.log

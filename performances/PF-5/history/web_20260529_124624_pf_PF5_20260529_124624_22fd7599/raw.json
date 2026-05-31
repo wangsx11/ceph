@@ -1,0 +1,22 @@
+{
+  "metric": "perf_05_batch_bw",
+  "ops_per_sec": 1493314.0,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "val_size": 1024,
+  "mb_per_sec": 1529.15,
+  "threshold_mbs": 700.0,
+  "passed": true,
+  "did_restart": false,
+  "raw": {
+    "ops_per_sec": 1493314.0,
+    "ops_ok": 1494016,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "val_size": 1024
+  },
+  "restore_async_repl": "0",
+  "restore_ok": true,
+  "restore_skipped": true,
+  "status": "PASS"
+}

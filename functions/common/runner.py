@@ -290,7 +290,7 @@ class FnContext:
             "started_at": self.started_at,
             "finished_at": _now_iso(),
             "status": status,
-            "passed": status in {"PASS", "WAIVED"},
+            "passed": status == "PASS",
             "completion": completion,
             "evidence": evidence,
             "details": _json_safe(result.details),
@@ -360,4 +360,3 @@ def run_from_catalog(module: str, fn_id: str, fn_dir: Path) -> int:
 
 def main_entry(module: str, fn_id: str, file_path: str) -> None:
     raise SystemExit(run_from_catalog(module, fn_id, Path(file_path).resolve().parent))
-

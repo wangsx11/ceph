@@ -1,0 +1,29 @@
+[attempt 1/2]
+$ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_mempool_bench --threads=8
+exit=0
+{
+  "metric":            "perf_09_mempool",
+  "threads_multi":     8,
+  "malloc_ops_1t":     15240218,
+  "slab_ops_1t":       44507526,
+  "overhead_pct":      0.00,
+  "malloc_ops_Nt":     14178777,
+  "slab_ops_Nt":       17598204,
+  "scale_gain_pct":    24.12,
+  "malloc_rss_kb":     5364,
+  "malloc_live_rss_kb": 303556,
+  "slab_live_rss_kb":  268748,
+  "live_objects":      262144,
+  "live_requested_kb": 262144,
+  "baseline_metadata_bytes": 128,
+  "throughput_metadata_bytes": 16,
+  "malloc_usable_kb":  296960,
+  "slab_usable_kb":    263168,
+  "savings_pct":       11.47,
+  "thresholds": { "overhead_pct": 5.0, "savings_pct": 7.0, "scale_gain_pct": 20.0 },
+  "passed_overhead":   true,
+  "passed_savings":    true,
+  "passed_scale":      true,
+  "passed":            true
+}
+

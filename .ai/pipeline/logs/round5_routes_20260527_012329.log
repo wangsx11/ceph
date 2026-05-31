@@ -1,0 +1,48 @@
+[
+  {
+    "path": "/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 3723
+  },
+  {
+    "path": "/function-dashboard/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 2095
+  },
+  {
+    "path": "/performance-dashboard/",
+    "status": 200,
+    "content_type": "text/html; charset=utf-8",
+    "bytes": 2092
+  },
+  {
+    "path": "/api/cluster/status",
+    "status": 200,
+    "content_type": "application/json",
+    "bytes": 872
+  },
+  {
+    "path": "/api/functions/summary",
+    "status": 200,
+    "content_type": "application/json",
+    "bytes": 78941
+  },
+  {
+    "path": "/api/performance/summary",
+    "status": 200,
+    "content_type": "application/json",
+    "bytes": 48280
+  },
+  {
+    "path": "/api/performance/presentation_summary",
+    "status": 200,
+    "content_type": "application/json",
+    "bytes": 54682
+  }
+]
+cluster_ok {'ok': True, 'peer_alive': True, 'rdma_connected': True, 'transport': 'rdma', 'tcp_data_ready': True, 'peer_num_qp': 32}
+functions_summary {}
+performance_strict_summary {}
+performance_presentation_summary {}

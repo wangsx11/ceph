@@ -1,0 +1,23 @@
+[10:08:40] start storage/FN-5 IO 调度与优先级管理
+[10:08:40] repo_root=/home/wangshouxin/native-rdma-web
+[10:08:40] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[10:08:40] rpc RPC_CLUSTER_STATUS body_len=0
+[10:08:40] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140662392127488,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140315338633216,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[10:08:40] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=5815842
+[10:08:40] rpc RPC_IO_STATS body_len=0
+[10:08:40] rpc RPC_IO_STATS resp_len=171 resp={"ok":true,"fg_read_ops":514,"fg_write_ops":548,"fg_read_bytes":508266,"fg_write_bytes":549691,"bg_read_ops":13,"bg_write_ops":8,"bg_read_bytes":273,"bg_write_bytes":1168}
+[10:08:40] rpc RPC_KV_PUT body_len=60
+[10:08:40] rpc RPC_KV_PUT resp_len=366 resp={"ok":true,"key":"fn_io_fg_nvme_1780020520115_3192153","tenant_id":0,"size":24,"offset":83734528,"repl_ns":37471,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":5,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[10:08:40] rpc RPC_TIER_DEMOTE body_len=40
+[10:08:40] rpc RPC_TIER_DEMOTE resp_len=67 resp={"ok":true,"key":"fn_io_fg_nvme_1780020520115_3192153","to":"nvme"}
+[10:08:40] rpc RPC_KV_GET body_len=35
+[10:08:40] rpc RPC_KV_GET resp_len=75 resp={"ok":true,"hit":"nvme_promote","size":24,"val":"foreground-nvme-io-probe"}
+[10:08:40] rpc RPC_KV_PUT body_len=58
+[10:08:40] rpc RPC_KV_PUT resp_len=365 resp={"ok":true,"key":"fn_io_bg_hdd_1780020520116_3192153","tenant_id":0,"size":23,"offset":85831680,"repl_ns":19094,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":6,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[10:08:40] rpc RPC_TIER_DEMOTE body_len=38
+[10:08:40] rpc RPC_TIER_DEMOTE resp_len=65 resp={"ok":true,"key":"fn_io_bg_hdd_1780020520116_3192153","to":"hdd"}
+[10:08:40] rpc RPC_KV_GET body_len=34
+[10:08:40] rpc RPC_KV_GET resp_len=73 resp={"ok":true,"hit":"hdd_promote","size":23,"val":"background-hdd-io-probe"}
+[10:08:40] rpc RPC_IO_STATS body_len=0
+[10:08:40] rpc RPC_IO_STATS resp_len=171 resp={"ok":true,"fg_read_ops":515,"fg_write_ops":549,"fg_read_bytes":508290,"fg_write_bytes":549715,"bg_read_ops":14,"bg_write_ops":9,"bg_read_bytes":296,"bg_write_bytes":1191}
+[10:08:40] result=PASS completion=完成

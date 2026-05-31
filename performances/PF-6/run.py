@@ -160,17 +160,19 @@ def main() -> int:
     native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    write_dur = os.environ.get("WRITE_DUR", os.environ.get("DUR", "5"))
-    read_dur = os.environ.get("READ_DUR", os.environ.get("DUR", "10"))
+    write_dur = os.environ.get("WRITE_DUR", os.environ.get("DUR", "3"))
+    read_dur = os.environ.get("READ_DUR", os.environ.get("DUR", "3"))
     val_size = os.environ.get("VAL_SIZE", "1048576")
     keyspace = os.environ.get("KEYSPACE", "512")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
     restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
-    put_threads = os.environ.get("PUT_THREADS", "5")
+    skip_flask = os.environ.get("NR_SKIP_FLASK", "1")
+    put_threads = os.environ.get("PUT_THREADS", "6")
     put_batch = os.environ.get("PUT_BATCH", "2")
-    get_threads = os.environ.get("GET_THREADS", "8")
+    get_threads = os.environ.get("GET_THREADS", "12")
     drain_seconds = float(os.environ.get("PF6_DRAIN_SECONDS", "8"))
+    stabilize_seconds = float(os.environ.get("PF6_STABILIZE_S", "3"))
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -188,6 +190,7 @@ def main() -> int:
         "SLAB_SLOT_SIZE": val_size,
         "SLAB_TOTAL_BYTES": "4294967296",
         "NR_ASYNC_REPL": async_repl,
+        "NR_SKIP_FLASK": skip_flask,
     }, run_lines)
     if not restart_ok:
         result = {"metric": "perf_06", "passed": False, "error": "restart failed"}
@@ -200,7 +203,8 @@ def main() -> int:
         if Path(uds).is_socket():
             break
         time.sleep(0.5)
-    time.sleep(3)
+    if stabilize_seconds > 0:
+        time.sleep(stabilize_seconds)
 
     # WRITE phase
     run_lines.append("[write]\n")
@@ -210,6 +214,8 @@ def main() -> int:
     if drain_seconds > 0:
         run_lines.append(f"\n[drain] wait {drain_seconds:.1f}s for async RDMA completions before read phase\n")
         time.sleep(drain_seconds)
+    else:
+        run_lines.append("\n[drain] skipped\n")
 
     # READ phase
     run_lines.append("\n[read]\n")
@@ -237,7 +243,7 @@ def main() -> int:
     passed = bool(
         w_gbs >= 10.0 and r_gbs >= 20.0
         and 0.95 <= hit_ratio <= 1.05
-        and w_fail_pct < 10.0
+        and wfail == 0
         and wdegr == 0 and rfail == 0
     )
 
@@ -253,6 +259,8 @@ def main() -> int:
         "keyspace": int(keyspace),
         "write_duration_s": float(write_dur),
         "read_duration_s": float(read_dur),
+        "stabilize_seconds": stabilize_seconds,
+        "drain_seconds": drain_seconds,
         "write_gbs": round(w_gbs, 3),
         "write_ops": float(jw.get("ops_per_sec", 0)),
         "write_fail": wfail,
@@ -282,12 +290,14 @@ def main() -> int:
         "SLAB_SLOT_SIZE": "4096",
         "SLAB_TOTAL_BYTES": "4294967296",
         "NR_ASYNC_REPL": restore_async_repl,
+        "NR_SKIP_FLASK": skip_flask,
     }, run_lines_restore)
     result["restore_async_repl"] = restore_async_repl
     result["restore_ok"] = bool(restore_ok)
     if not restore_ok:
         result["passed"] = False
         result["note"] = (result.get("note") or "") + " restore failed"
+    result["restore_skipped"] = False
     run_log.write_text("\n".join(run_lines + ["\n[restore]\n"] + run_lines_restore), encoding="utf-8")
     write_json(raw_json, result)
     write_summary(path, result, run_log, raw_json)

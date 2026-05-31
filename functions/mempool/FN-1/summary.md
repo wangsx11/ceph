@@ -3,18 +3,18 @@
 - Module: 一致性总线内存池化仿真计算模块
 - Function: RDMA 语义远程内存访问与零拷贝
 - Source: docs/功能要求.md / 一致性总线内存池化仿真计算模块 / 第 1 条
-- Last Run: 2026-05-04T15:11:04+0800
+- Last Run: 2026-05-27T14:14:12+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260504_151104.log
+- Log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260527_141412.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/raw.json
 
 ## 关键证据
 
-- RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=67264
-- 远端 slab 元数据有效: base=139777262522368 len=4294967296 rkey=71936 qps=32
-- offset/size 在 peer slab 范围内: offset=2093056 size=20
-- RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1777878664646_463546
+- RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=25490
+- 远端 slab 元数据有效: base=140609299718144 len=4294967296 rkey=71936 qps=32
+- offset/size 在 peer slab 范围内: offset=4190208 size=20
+- RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1779862452682_3851696
 
 ## 统计口径
 

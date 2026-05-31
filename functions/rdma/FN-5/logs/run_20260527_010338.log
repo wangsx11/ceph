@@ -1,0 +1,6 @@
+[01:03:38] start rdma/FN-5 分布式节点路由转发与负载均衡
+[01:03:38] repo_root=/home/wangshouxin/native-rdma-web
+[01:03:38] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[01:03:38] rpc RPC_CLUSTER_STATUS body_len=0
+[01:03:38] rpc RPC_CLUSTER_STATUS resp_len=574 resp={"ok":true,"self":"A","peer_alive":false,"local_slab_base":140481733931008,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140094485446656,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_read
+[01:03:38] result=SKIP completion=未完成

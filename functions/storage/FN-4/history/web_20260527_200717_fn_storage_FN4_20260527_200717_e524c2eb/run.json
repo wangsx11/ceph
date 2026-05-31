@@ -1,0 +1,207 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-4",
+  "function": "可配置压缩与去重",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 4 条",
+  "started_at": "2026-05-27T20:07:17+0800",
+  "finished_at": "2026-05-27T20:07:17+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "压缩统计增加: objects 0->1, saved_bytes 0->4077",
+    "去重统计增加: duplicate_objects 0->1, saved_bytes 0->19",
+    "HDD 读回闭环成功: A hit=hdd_promote, B hit=hdd_promote"
+  ],
+  "details": {
+    "before_compress": {
+      "ok": true,
+      "raw_bytes": 0,
+      "cmp_bytes": 0,
+      "objects": 0,
+      "ratio": 0.0,
+      "saved_bytes": 0
+    },
+    "after_first_compress": {
+      "ok": true,
+      "raw_bytes": 4096,
+      "cmp_bytes": 19,
+      "objects": 1,
+      "ratio": 0.0046,
+      "saved_bytes": 4077
+    },
+    "after_compress": {
+      "ok": true,
+      "raw_bytes": 4096,
+      "cmp_bytes": 19,
+      "objects": 1,
+      "ratio": 0.0046,
+      "saved_bytes": 4077
+    },
+    "before_dedup": {
+      "ok": true,
+      "unique_objects": 3,
+      "duplicate_objects": 0,
+      "saved_bytes": 0,
+      "logical_bytes": 42
+    },
+    "after_dedup": {
+      "ok": true,
+      "unique_objects": 4,
+      "duplicate_objects": 1,
+      "saved_bytes": 19,
+      "logical_bytes": 8234
+    },
+    "put_a": {
+      "ok": true,
+      "key": "fn_compress_dedup_a_1779883637760_177467",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 25161728,
+      "repl_ns": 34230,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 0,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.218",
+        "replica": "192.168.0.214",
+        "local_is_primary": true
+      }
+    },
+    "put_b": {
+      "ok": true,
+      "key": "fn_compress_dedup_b_1779883637760_177467",
+      "tenant_id": 0,
+      "size": 4096,
+      "offset": 26210304,
+      "repl_ns": 17917,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 1,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.218",
+        "replica": "",
+        "local_is_primary": true
+      }
+    },
+    "demote_a": {
+      "ok": true,
+      "key": "fn_compress_dedup_a_1779883637760_177467",
+      "to": "hdd"
+    },
+    "demote_b": {
+      "ok": true,
+      "key": "fn_compress_dedup_b_1779883637760_177467",
+      "to": "hdd"
+    },
+    "get_a": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "get_b": {
+      "ok": true,
+      "hit": "hdd_promote",
+      "size": 4096,
+      "val": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260527_200717_fn_storage_FN4_20260527_200717_e524c2eb/logs/run_20260527_200717.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260527_200717_fn_storage_FN4_20260527_200717_e524c2eb/logs/run_20260527_200717.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260527_200717_fn_storage_FN4_20260527_200717_e524c2eb/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 82,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":0,\"cmp_bytes\":0,\"objects\":0,\"ratio\":0.0000,\"saved_bytes\":0}"
+    },
+    {
+      "kind": "RPC_DEDUP_STATS",
+      "body_len": 0,
+      "response_len": 87,
+      "response_preview": "{\"ok\":true,\"unique_objects\":3,\"duplicate_objects\":0,\"saved_bytes\":0,\"logical_bytes\":42}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4137,
+      "response_len": 385,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_dedup_a_1779883637760_177467\",\"tenant_id\":0,\"size\":4096,\"offset\":25161728,\"repl_ns\":34230,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":0,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 4137,
+      "response_len": 372,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_dedup_b_1779883637760_177467\",\"tenant_id\":0,\"size\":4096,\"offset\":26210304,\"repl_ns\":17917,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":1,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 44,
+      "response_len": 71,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_dedup_a_1779883637760_177467\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 89,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":4096,\"cmp_bytes\":19,\"objects\":1,\"ratio\":0.0046,\"saved_bytes\":4077}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 44,
+      "response_len": 71,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_compress_dedup_b_1779883637760_177467\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_COMPRESS_STATS",
+      "body_len": 0,
+      "response_len": 89,
+      "response_preview": "{\"ok\":true,\"raw_bytes\":4096,\"cmp_bytes\":19,\"objects\":1,\"ratio\":0.0046,\"saved_bytes\":4077}"
+    },
+    {
+      "kind": "RPC_DEDUP_STATS",
+      "body_len": 0,
+      "response_len": 90,
+      "response_preview": "{\"ok\":true,\"unique_objects\":4,\"duplicate_objects\":1,\"saved_bytes\":19,\"logical_bytes\":8234}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 40,
+      "response_len": 116,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":4096,\"val\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\"}"
+    }
+  ]
+}

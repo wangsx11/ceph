@@ -3,7 +3,7 @@
 // 调用 Flask /api/iso/*
 // ============================================================
 
-const ISO_API = (window.API_BASE || 'http://localhost:5000') + '/api/iso';
+const ISO_API = (window.API_BASE || location.origin) + '/api/iso';
 
 let isoBusy       = false;
 let isoAllowList  = [];        // strings like "7|default/slab1k"

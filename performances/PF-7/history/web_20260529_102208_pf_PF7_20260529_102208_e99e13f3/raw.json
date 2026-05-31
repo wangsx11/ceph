@@ -1,0 +1,31 @@
+{
+  "metric": "perf_07_backup_latency",
+  "backend": "dataplane",
+  "raid5_confirmed": false,
+  "backup_test_path": "native_rdma_dp default backup path",
+  "rw": "sequential-ring-pwrite",
+  "direct": "data-plane-file-writer",
+  "fsync": false,
+  "queue_depth": 1,
+  "threads": 1,
+  "duration_s": 5,
+  "size": "4k",
+  "success_writes": 161954,
+  "failed_writes": 0,
+  "client_iops": 32389.54,
+  "lat_p50_us": 4.405,
+  "lat_p95_us": 8.63,
+  "lat_p99_us": 11.669,
+  "lat_p999_us": 19.722,
+  "lat_max_us": 309.629,
+  "thresholds": {
+    "lat_p999_us": 1000.0,
+    "failed_writes": 0
+  },
+  "passed_latency": true,
+  "passed": true,
+  "strict_acceptance_passed": false,
+  "note": "RAID5_CONFIRMED is not set to 1; latency was measured through the data-plane backup writer, but strict 3+1 RAID5 topology still needs ops confirmation.",
+  "full_validation_required": true,
+  "status": "FAIL"
+}

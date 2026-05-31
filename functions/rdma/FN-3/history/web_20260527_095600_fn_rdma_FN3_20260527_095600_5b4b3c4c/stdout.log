@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/run.sh
+
+rdma/FN-3 PASS - 流量优先级机制
+- QosSched 最近启动日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- 高优先级 PUT 走 RDMA QP 8，低优先级 PUT 走 RDMA QP 16
+- 高低优先级 RDMA PUT 均完成 peer 读回同值校验
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/history/web_20260527_095600_fn_rdma_FN3_20260527_095600_5b4b3c4c/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/history/web_20260527_095600_fn_rdma_FN3_20260527_095600_5b4b3c4c/logs/run_20260527_095600.log

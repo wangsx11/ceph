@@ -3,10 +3,10 @@
 - Module: 多级异构的高效能存储模块
 - Function: 仿真引擎异构存储统一访问接口
 - Source: docs/功能要求.md / 多级异构的高效能存储模块 / 第 1 条
-- Last Run: 2026-05-04T11:10:03+0800
+- Last Run: 2026-05-27T14:12:51+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260504_111003.log
+- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260527_141251.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/raw.json
 
 ## 关键证据

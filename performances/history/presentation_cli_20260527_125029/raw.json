@@ -1,0 +1,126 @@
+{
+  "generated_at": "2026-05-27T12:50:29+0800",
+  "profile": "presentation",
+  "presentation_live_pf": [],
+  "presentation_preserved_pf": [
+    "PF-1",
+    "PF-2",
+    "PF-3",
+    "PF-4",
+    "PF-5",
+    "PF-6",
+    "PF-7",
+    "PF-8",
+    "PF-9"
+  ],
+  "rows": [
+    {
+      "pf": "PF-1",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_01",
+      "key_result": "1685217 ops/s, util=57.73%",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-1/history/web_20260527_095822_pf_PF1_20260527_095822_c74fd391/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-1/history/web_20260527_095822_pf_PF1_20260527_095822_c74fd391/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-2",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_02_latency",
+      "key_result": "avg=40.16us, p99=66.64us",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-2/history/web_20260527_100207_pf_PF2_20260527_100207_c4409f54/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-2/history/web_20260527_100207_pf_PF2_20260527_100207_c4409f54/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-3",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_03_qos",
+      "key_result": "gain=37.36%",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-3/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-3/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-4",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_04_batch_latency",
+      "key_result": "A=152.3ms, B=94.02ms",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-4/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-4/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-5",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_05_batch_bw",
+      "key_result": "1388.54 MB/s",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-5/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-5/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-6",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_06_tier_bw",
+      "key_result": "write=10.826 GB/s, read=20.516 GB/s",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-6/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-6/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-7",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_07_backup_latency",
+      "key_result": "p999=739.499us, raid5=True",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-7/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-7/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-8",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_08_simulation",
+      "key_result": "speedup=1.332x",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-8/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-8/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    },
+    {
+      "pf": "PF-9",
+      "exit_code": 0,
+      "passed": true,
+      "display_passed": true,
+      "metric": "perf_09_mempool",
+      "key_result": "overhead=0%, savings=11.47%, scale=41.36%",
+      "summary": "/home/wangshouxin/native-rdma-web/performances/PF-9/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/summary.md",
+      "raw": "/home/wangshouxin/native-rdma-web/performances/PF-9/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84/raw.json",
+      "error": "",
+      "profile_source": "preserved_evidence"
+    }
+  ]
+}

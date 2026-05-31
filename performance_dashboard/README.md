@@ -56,3 +56,20 @@ performances/PF-N/history/web_all_<timestamp>_<job_id>/
 ```
 
 前端触发执行会保护原有 `summary.md` 和 `raw.json`，不会覆盖命令行基线结果。
+
+## 运行模式
+
+性能控制台默认使用演示安全模式。点击“运行演示性能流”时，后端会创建一次新的 web_all 历史目录，并把现有 PF 证据复制到该目录展示，不从浏览器按钮启动长时间高压性能套件。这样可以避免 PF-1、PF-6 等高负载项在现场造成长时间等待或网络风险。
+
+完整验收路径不变，仍然使用：
+
+```bash
+cd /home/wangshouxin/native-rdma-web
+bash performances/run_all.sh
+```
+
+演示安全模式生成的 `summary.md` / `raw.json` 会标记 profile 为 `presentation`，只能作为演示流证据索引，不能替代完整验收。
+
+PF-7 备份延迟项有两层状态：`passed=true` 表示自动化 4KB 写入 P999 延迟子项通过；
+严格 3+1 RAID5 验收还必须看到 `strict_acceptance_passed=true`。如果只看到
+`raid5_confirmed=false`，页面可以展示延迟证据，但最终验收仍需补充 RAID5 拓扑确认。

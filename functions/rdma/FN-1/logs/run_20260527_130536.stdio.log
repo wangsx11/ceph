@@ -1,0 +1,7 @@
+rdma/FN-1 PASS - RDMA 与 TCP/IP 统一通信层
+- 最近一次数据面启动日志包含 RDMA QP、TcpFallback 和 OOB exchange 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- peer_alive=True peer_num_qp=32 peer_slab_rkey=71936
+- TCP 协议切换闭环成功: RPC_KV_PUT transport=tcp -> RPC_TCP_GET_PEER size=19
+- RDMA/TCP 复制时延对比: RDMA avg=43.493us p95=53.996us; TCP avg=214.922us p95=260.15us; samples=8
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260527_130536.log

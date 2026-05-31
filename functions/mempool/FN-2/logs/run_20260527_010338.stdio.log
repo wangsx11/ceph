@@ -1,0 +1,4 @@
+mempool/FN-2 SKIP - 分布式内存池 API
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/logs/run_20260527_010338.log

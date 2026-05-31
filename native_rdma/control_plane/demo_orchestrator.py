@@ -208,10 +208,16 @@ class PerfRoundRunner:
     # 三轮使用同一个采样时长，前端才能用同一条时间轴直接比较。
     ROUND_DUR_S  = [int(os.environ.get("M5_DURATION_S", "12"))] * 3
     # 当前 M5 走同步 RPC/RDMA 完成路径：每个客户端线程同一时刻只有
-    # 1 个 outstanding 请求。盲目把线程数拉到 64 只会在 data-plane 前排队，
-    # 吞吐不涨且延迟/P99 明显恶化；默认保守使用 16，现场可用 M5_THREADS
-    # 覆盖做真实实验，不在前端编造或缩放数据。
-    THREADS      = int(os.environ.get("M5_THREADS", "16"))
+    # 1 个 outstanding 请求。默认与 PF-2 时延验收口径保持一致使用 8
+    # 线程，避免演示页因过高并发把 UDS / data-plane 队列尾延迟放大。
+    THREADS      = int(os.environ.get("M5_THREADS", "8"))
+    WARMUP_S     = int(os.environ.get("M5_WARMUP_S", "3"))
+    # Default to uncapped throughput so the curve reflects real data-plane
+    # variation. Set M5_MAX_IOPS=300000 for a deliberately steadier demo.
+    MAX_IOPS     = int(os.environ.get("M5_MAX_IOPS", "0"))
+    # 1 means raw adjacent-window IOPS. Raise this env var only when a smoother
+    # presentation is desired; all values still come from real ops_total deltas.
+    IOPS_SMOOTH_WINDOW = max(1, int(os.environ.get("M5_IOPS_SMOOTH_WINDOW", "1")))
     VAL_SIZE     = 1024
     REQUIRE_PEER = os.environ.get("M5_REQUIRE_PEER", "1").lower() not in ("0", "false", "no")
     PERF_DUR_S   = int(os.environ.get("M5_PERF_DURATION_S", "15"))
@@ -219,7 +225,6 @@ class PerfRoundRunner:
         int(x) for x in os.environ.get("M5_PERF_THREADS", "8,16,24,32").split(",")
         if x.strip()
     ]
-
     def __init__(self, root: str, role: str,
                  uds_call: Optional[Callable] = None):
         self.root     = root
@@ -507,19 +512,42 @@ class PerfRoundRunner:
             except Exception:
                 pass
 
+        warmup_raw = ""
+        if self.WARMUP_S > 0:
+            with self._mu:
+                self._rounds[round_id]["phase"] = "warmup"
+            warmup_cmd = [self.nr_bench,
+                          f"--uds={self.uds}",
+                          "--op=put",
+                          f"--threads={threads}",
+                          f"--duration={self.WARMUP_S}",
+                          f"--val-size={self.VAL_SIZE}",
+                          f"--keyspace={count}",
+                          "--shared-keyspace=1"]
+            if self.REQUIRE_PEER:
+                warmup_cmd.append("--require-peer=1")
+            if self.MAX_IOPS > 0:
+                warmup_cmd.append(f"--max-iops={self.MAX_IOPS}")
+            try:
+                proc = subprocess.run(warmup_cmd, capture_output=True,
+                                      text=True, timeout=self.WARMUP_S + 20)
+                warmup_raw = (proc.stdout or "") + (proc.stderr or "")
+            except Exception as e:
+                warmup_raw = f"[runner] warmup nr_bench failed: {e}"
+
         with self._mu:
             self._rounds[round_id]["phase"] = "running_nr_bench"
 
         stop = threading.Event()
         samples: List[Dict[str, Any]] = []
-        SAMPLE_DT = 0.25                       # 250ms 采样，让曲线更光滑
+        SAMPLE_DT = 0.20                       # align with data-plane metrics cadence
 
         def sampler():
             # 给 nr_bench 0.3s 初始化时间，避免第一个点采到"启动瞬时"
             time.sleep(0.3)
             prev_ops, prev_ts_ns = None, None
             t0 = time.time()
-            iops_window = []           # 最近 3 个瞬时 IOPS，做滑动平均平滑
+            iops_window = []
             while not stop.is_set():
                 m   = read_metrics_shm()
                 now = time.time()
@@ -540,29 +568,27 @@ class PerfRoundRunner:
                 # 轮询周期 250ms 与 DP 采样周期 200ms 错位导致的"锯齿/很低"
                 dt_ns = ts_ns - prev_ts_ns
                 if dt_ns <= 0:
-                    # DP 没推进；把本轮点按上一次 IOPS 投出去即可（保持曲线不跳变）
-                    iops = iops_window[-1] if iops_window else 0.0
-                else:
-                    iops = max(0.0, (ops_cum - prev_ops) / (dt_ns / 1e9))
-                    prev_ops, prev_ts_ns = ops_cum, ts_ns
+                    time.sleep(SAMPLE_DT); continue
+                iops = max(0.0, (ops_cum - prev_ops) / (dt_ns / 1e9))
+                prev_ops, prev_ts_ns = ops_cum, ts_ns
 
-                # 3 点滑动平均让曲线平滑、消除锯齿
                 iops_window.append(iops)
-                if len(iops_window) > 3: iops_window.pop(0)
-                iops_smooth = sum(iops_window) / len(iops_window)
+                if len(iops_window) > self.IOPS_SMOOTH_WINDOW:
+                    iops_window.pop(0)
+                iops_display = sum(iops_window) / len(iops_window)
 
                 # 吞吐量：优先 DP 端 shm 的 bw_tx（1s 窗口），若为 0 则从 iops 派生
                 tp_mbps = bw_tx * 1000.0 / 8.0
-                if tp_mbps <= 0 and iops_smooth > 0:
-                    tp_mbps = iops_smooth * self.VAL_SIZE / (1024.0 * 1024.0)
+                if tp_mbps <= 0 and iops_display > 0:
+                    tp_mbps = iops_display * self.VAL_SIZE / (1024.0 * 1024.0)
 
                 pt = {
                     "t":        round(now - t0, 2),
-                    "iops":     round(iops_smooth, 1),
+                    "iops":     round(iops_display, 1),
                     "tp":       round(tp_mbps, 2),
                     "lat":      round(lat_avg, 2),
                     "p99":      round(lat_p99, 2),
-                    "repl":     round(repl_lag, 2),   # 每次 replication 瞬时延迟（抖动源）
+                    "repl":     round(repl_lag, 2),   # 最近一次真实 RDMA 复制耗时
                     "util":     round(util, 2),
                     "ops_cum":  ops_cum,              # 前端可自行再差分
                 }
@@ -583,6 +609,8 @@ class PerfRoundRunner:
                "--shared-keyspace=1"]
         if self.REQUIRE_PEER:
             cmd.append("--require-peer=1")
+        if self.MAX_IOPS > 0:
+            cmd.append(f"--max-iops={self.MAX_IOPS}")
         raw = ""
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True,
@@ -595,6 +623,8 @@ class PerfRoundRunner:
 
         summary = _parse_nr_bench(raw, count, threads, self.VAL_SIZE, dur_s)
         summary.update({
+            "warmup_s": self.WARMUP_S,
+            "max_iops": self.MAX_IOPS,
             "require_peer": self.REQUIRE_PEER,
             "passed": bool(
                 summary.get("iops", 0) > 0
@@ -609,7 +639,8 @@ class PerfRoundRunner:
             r["phase"]   = "done"
             r["summary"] = summary
             r["error"]   = summary.get("error")
-            r["raw_tail"] = raw[-600:] if raw else ""
+            raw_all = (warmup_raw + "\n" + raw).strip()
+            r["raw_tail"] = raw_all[-600:] if raw_all else ""
 
 
 def _parse_nr_bench(raw: str, count: int, threads: int,

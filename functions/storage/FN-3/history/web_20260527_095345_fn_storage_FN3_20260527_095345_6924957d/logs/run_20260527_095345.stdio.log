@@ -1,0 +1,6 @@
+storage/FN-3 PASS - 多策略预取机制
+- stride 预取执行成功: predicted=fn_prefetch_stride__1779846825877_3426474_4, GET hit=local
+- Markov 预取执行成功: predicted=fn_prefetch_markov_1779846825888_3426474_Bkey, GET hit=local
+- 预取统计增加: loaded 0->2, hits 0->2
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260527_095345_fn_storage_FN3_20260527_095345_6924957d/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260527_095345_fn_storage_FN3_20260527_095345_6924957d/logs/run_20260527_095345.log

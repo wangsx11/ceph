@@ -53,6 +53,7 @@ struct Args {
     std::string peer_ip;
     std::string dev        = "mlx5_0";
     uint8_t     gid_idx    = 3;
+    uint8_t     rdma_traffic_class = 0;   // RoCEv2 traffic class/TOS
     uint16_t    data_port  = 18515;      // OOB TCP port
     uint16_t    tcp_data_port = 18516;   // TCP data-plane fallback port
     std::string transport  = "rdma";     // rdma | tcp | auto
@@ -93,6 +94,7 @@ static void parse_args(int argc, char** argv, Args& a) {
         else if (k == "--peer-ip")     a.peer_ip = v;
         else if (k == "--dev")         a.dev = v;
         else if (k == "--gid-idx")     a.gid_idx = (uint8_t)std::stoi(v);
+        else if (k == "--rdma-traffic-class") a.rdma_traffic_class = (uint8_t)std::stoi(v);
         else if (k == "--data-port")   a.data_port = (uint16_t)std::stoi(v);
         else if (k == "--tcp-data-port") a.tcp_data_port = (uint16_t)std::stoi(v);
         else if (k == "--transport")   a.transport = v;
@@ -126,6 +128,8 @@ static void parse_args(int argc, char** argv, Args& a) {
     if (tr_env && *tr_env) a.transport = tr_env;
     const char* tcp_port_env = std::getenv("NR_TCP_DATA_PORT");
     if (tcp_port_env && *tcp_port_env) a.tcp_data_port = (uint16_t)std::stoi(tcp_port_env);
+    const char* tc_env = std::getenv("NR_RDMA_TRAFFIC_CLASS");
+    if (tc_env && *tc_env) a.rdma_traffic_class = (uint8_t)std::stoi(tc_env);
     const char* gdr_env = std::getenv("NR_GDR_ENABLE");
     if (gdr_env && (std::string(gdr_env) == "1" || std::string(gdr_env) == "true"))
         a.gdr_enable = true;
@@ -221,8 +225,9 @@ int main(int argc, char** argv) {
     std::signal(SIGTERM, on_sig);
 
     Args args; parse_args(argc, argv, args);
-    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u self=%s peer=%s async_repl=%s transport=%s tcp_data_port=%u gdr_enable=%s cuda_device=%d gdr_bytes=%zu",
+    NR_INFO("native_rdma_dp starting role=%s dev=%s gid_idx=%u traffic_class=%u self=%s peer=%s async_repl=%s transport=%s tcp_data_port=%u gdr_enable=%s cuda_device=%d gdr_bytes=%zu",
             args.role.c_str(), args.dev.c_str(), args.gid_idx,
+            (unsigned)args.rdma_traffic_class,
             args.self_ip.c_str(), args.peer_ip.c_str(),
             args.async_repl ? "true" : "false",
             args.transport.c_str(), (unsigned)args.tcp_data_port,
@@ -234,6 +239,7 @@ int main(int argc, char** argv) {
     nr::RdmaConfig rcfg;
     rcfg.dev_name  = args.dev;
     rcfg.gid_index = args.gid_idx;
+    rcfg.traffic_class = args.rdma_traffic_class;
     rcfg.num_qp    = 32;
     if (!core.init(rcfg)) {
         NR_ERROR("RdmaCore init failed; exiting.");
@@ -464,10 +470,11 @@ int main(int argc, char** argv) {
     //   tag=0x01 : HEARTBEAT  - payload: u64 ts_ms
     //   tag=0x02 : KV_INDEX   - payload: u16 key_len, u64 offset, u32 size, key[..]
     // Max control message fits in a 1KB slab slot easily.
-    constexpr int    HB_RECV_CNT = 32;
+    constexpr int    HB_RECV_CNT = 256;
     constexpr size_t HB_MSG_CAP  = 1024;
     constexpr uint8_t TAG_HB  = 0x01;
     constexpr uint8_t TAG_IDX = 0x02;
+    constexpr uint8_t TAG_IDX_BATCH = 0x03;
     std::vector<void*> hb_rx_buf(HB_RECV_CNT, nullptr);
     for (int i = 0; i < HB_RECV_CNT; ++i) {
         hb_rx_buf[i] = slab.alloc();
@@ -475,41 +482,92 @@ int main(int argc, char** argv) {
         core.post_recv(QP_HB, hb_rx_buf[i], HB_MSG_CAP, slab.lkey(),
                        /*wr_id=*/0xAA000000ULL | (uint64_t)i);
     }
-    void* hb_tx_buf = slab.alloc();
-    if (!hb_tx_buf) { NR_ERROR("slab oom for hb send"); return 3; }
-    void* idx_tx_buf = slab.alloc();
-    if (!idx_tx_buf) { NR_ERROR("slab oom for idx send"); return 3; }
-
     nr::Heartbeat hb;
-    std::mutex hb_tx_mu, idx_tx_mu;
+    std::atomic<uint64_t> hb_send_seq{0};
+    std::atomic<uint64_t> idx_send_seq{0};
+    constexpr size_t HB_INLINE_CAP = 256;
+    struct PendingIndex {
+        std::string key;
+        uint64_t off = 0;
+        uint32_t sz = 0;
+    };
+    std::mutex idx_batch_mu;
+    std::vector<PendingIndex> idx_batch;
+    idx_batch.reserve(8);
+    auto flush_kv_index_batch_locked = [&]() {
+        if (idx_batch.empty()) return;
+        uint8_t buf[HB_INLINE_CAP] = {0};
+        buf[0] = TAG_IDX_BATCH;
+        uint16_t n = 0;
+        size_t pos = 4;
+        for (const auto& item : idx_batch) {
+            size_t rec = 2 + 8 + 4 + item.key.size();
+            if (item.key.size() > UINT16_MAX || pos + rec > HB_INLINE_CAP) break;
+            uint16_t kl = (uint16_t)item.key.size();
+            std::memcpy(buf + pos, &kl, 2); pos += 2;
+            std::memcpy(buf + pos, &item.off, 8); pos += 8;
+            std::memcpy(buf + pos, &item.sz, 4); pos += 4;
+            std::memcpy(buf + pos, item.key.data(), item.key.size());
+            pos += item.key.size();
+            ++n;
+        }
+        if (n == 0) {
+            idx_batch.clear();
+            return;
+        }
+        std::memcpy(buf + 2, &n, 2);
+        uint64_t seq = idx_send_seq.fetch_add(1, std::memory_order_relaxed);
+        bool signaled = ((seq & 0x0f) == 0);
+        uint64_t wr_id = 0xBB10000000000000ULL | (seq & 0x00FFFFFFFFFFFFFFULL);
+        int rc = 0;
+        for (int attempt = 0; attempt < 2000; ++attempt) {
+            rc = core.post_send_inline(QP_HB, buf, pos, wr_id, signaled);
+            if (rc == 0) break;
+            if (rc != 12) break; // ENOMEM/SQ full is retryable; others are not.
+            if ((attempt & 0x3f) == 0) {
+                std::this_thread::sleep_for(std::chrono::microseconds(2));
+            } else {
+                std::this_thread::yield();
+            }
+        }
+        if (rc == 0) {
+            idx_batch.erase(idx_batch.begin(), idx_batch.begin() + n);
+        } else if ((seq & 0xff) == 0) {
+            NR_WARN("KV index batch RDMA SEND post failed rc=%d", rc);
+        }
+    };
     hb.set_on_send([&]() {
+        {
+            std::lock_guard<std::mutex> lk(idx_batch_mu);
+            flush_kv_index_batch_locked();
+        }
         // [u8 tag][u8 pad=0][u16 pad=0][u64 ts_ms]
         uint8_t buf[16] = {0};
         buf[0] = TAG_HB;
         uint64_t ts = nr::now_ms();
         std::memcpy(buf + 8, &ts, 8);
-        std::lock_guard<std::mutex> lk(hb_tx_mu);
-        std::memcpy(hb_tx_buf, buf, sizeof(buf));
-        (void)core.post_send(QP_HB, hb_tx_buf, sizeof(buf),
-                             slab.lkey(), 0xBB00, /*signaled*/false);
+        uint64_t seq = hb_send_seq.fetch_add(1, std::memory_order_relaxed);
+        uint64_t wr_id = 0xBB00000000000000ULL | (seq & 0x00FFFFFFFFFFFFFFULL);
+        int rc = core.post_send_inline(QP_HB, buf, sizeof(buf),
+                                       wr_id, /*signaled*/true);
+        if (rc != 0 && (seq & 0x3f) == 0) {
+            NR_WARN("heartbeat RDMA SEND post failed rc=%d", rc);
+        }
     });
     hb.start(args.role == "A" ? "B" : "A", 1000, 3000);
 
     // Helper: send KV_INDEX update to peer (so backup can serve local GET).
-    auto send_kv_index = [&](const std::string& k, uint64_t off, uint32_t sz) {
-        // layout: [u8 tag][u8 pad][u16 klen][u64 off][u32 sz][key...]
-        if (k.size() > HB_MSG_CAP - 16) return;
-        std::lock_guard<std::mutex> lk(idx_tx_mu);
-        uint8_t* p = (uint8_t*)idx_tx_buf;
-        p[0] = TAG_IDX; p[1] = 0;
-        uint16_t kl = (uint16_t)k.size();
-        std::memcpy(p + 2, &kl, 2);
-        std::memcpy(p + 4, &off, 8);
-        std::memcpy(p + 12, &sz, 4);
-        std::memcpy(p + 16, k.data(), kl);
-        size_t total = 16 + kl;
-        (void)core.post_send(QP_HB, idx_tx_buf, total,
-                             slab.lkey(), 0xBB01, /*signaled*/false);
+    auto send_kv_index = [&](const std::string& k, uint64_t off, uint32_t sz,
+                             bool flush_now = false) {
+        // Metadata is batched on QP_HB. The object bytes themselves have
+        // already moved through RDMA WRITE; this only lets the peer resolve
+        // key -> offset for later readback.
+        if (k.size() > HB_INLINE_CAP - 18) return;
+        std::lock_guard<std::mutex> lk(idx_batch_mu);
+        idx_batch.push_back(PendingIndex{k, off, sz});
+        if (flush_now || idx_batch.size() >= 8) {
+            flush_kv_index_batch_locked();
+        }
     };
 
     // ---- metric counters (declared before hb_thr so lambda can capture) ----
@@ -541,6 +599,8 @@ int main(int argc, char** argv) {
     std::mutex adaptive_alloc_mu;
     std::unordered_map<std::string, AdaptiveObject> adaptive_index;
     uint64_t adaptive_next_remote_off = 0;
+    std::mutex route_remote_alloc_mu;
+    uint64_t route_next_remote_off = 0;
     std::atomic<uint64_t> adaptive_remote_puts{0};
     std::atomic<uint64_t> adaptive_remote_reads{0};
     std::atomic<uint64_t> adaptive_local_hits{0};
@@ -549,6 +609,13 @@ int main(int argc, char** argv) {
         uint64_t preferred = 64ULL * 1024 * 1024;
         if (peer.slab_len > preferred + slab.slot_size()) {
             adaptive_next_remote_off =
+                (preferred / slab.slot_size()) * slab.slot_size();
+        }
+    }
+    {
+        uint64_t preferred = 128ULL * 1024 * 1024;
+        if (peer.slab_len > preferred + slab.slot_size()) {
+            route_next_remote_off =
                 (preferred / slab.slot_size()) * slab.slot_size();
         }
     }
@@ -639,6 +706,22 @@ int main(int argc, char** argv) {
                         std::string k((char*)(p + 16), kl);
                         tier.put_meta(k, off, sz);
                         bytes_rx_1s.fetch_add(sz);
+                    } else if (tag == TAG_IDX_BATCH) {
+                        uint16_t nrec = 0;
+                        std::memcpy(&nrec, p + 2, 2);
+                        size_t pos = 4;
+                        for (uint16_t r = 0; r < nrec; ++r) {
+                            if (pos + 14 > HB_MSG_CAP) break;
+                            uint16_t kl = 0; uint64_t off = 0; uint32_t sz = 0;
+                            std::memcpy(&kl, p + pos, 2); pos += 2;
+                            std::memcpy(&off, p + pos, 8); pos += 8;
+                            std::memcpy(&sz, p + pos, 4); pos += 4;
+                            if (pos + kl > HB_MSG_CAP) break;
+                            std::string k((char*)(p + pos), kl);
+                            pos += kl;
+                            tier.put_meta(k, off, sz);
+                            bytes_rx_1s.fetch_add(sz);
+                        }
                     }
                     // Repost.
                     core.post_recv(QP_HB, hb_rx_buf[slot], HB_MSG_CAP,
@@ -788,7 +871,8 @@ int main(int argc, char** argv) {
     });
 
     auto apply_local_put = [&](const std::string& k, const std::string& v,
-                               uint64_t* off_out, std::string* err) -> bool {
+                               uint64_t* off_out, std::string* err,
+                               bool* index_changed = nullptr) -> bool {
         if (v.size() > slab.slot_size()) {
             if (err) *err = "value too large";
             return false;
@@ -802,6 +886,7 @@ int main(int argc, char** argv) {
         uint64_t spec_off = (uint64_t)((char*)spec_slot - (char*)slab.base_addr());
         bool is_new = tier.reserve_or_reuse_slot(
             k, &off, &old_sz, spec_off, (uint32_t)v.size());
+        bool changed = is_new || old_sz != (uint32_t)v.size();
         void* slot = nullptr;
         if (is_new) {
             slot = spec_slot;
@@ -812,6 +897,7 @@ int main(int argc, char** argv) {
         }
         std::memcpy(slot, v.data(), v.size());
         if (off_out) *off_out = off;
+        if (index_changed) *index_changed = changed;
         return true;
     };
 
@@ -898,7 +984,8 @@ int main(int argc, char** argv) {
         qos.on_submit(high_prio);
         uint64_t off = 0;
         std::string local_err;
-        if (!apply_local_put(storage_k, v, &off, &local_err)) {
+        bool index_changed = false;
+        if (!apply_local_put(storage_k, v, &off, &local_err, &index_changed)) {
             char buf[160];
             int n = std::snprintf(buf, sizeof(buf),
                 "{\"ok\":false,\"err\":\"%s\"}", local_err.c_str());
@@ -986,8 +1073,10 @@ int main(int argc, char** argv) {
             // when the peer is actually up; in degraded mode the SEND would
             // just fail and spam the log.
             if (!degraded && !used_tcp) {
-                send_kv_index(storage_k, off, (uint32_t)v.size());
                 bytes_tx_1s.fetch_add(v.size());
+            }
+            if (!degraded && !used_tcp && index_changed) {
+                send_kv_index(storage_k, off, (uint32_t)v.size(), !args.async_repl);
             } else if (used_tcp && repl_ok) {
                 bytes_tx_1s.fetch_add(v.size());
             }
@@ -1554,28 +1643,92 @@ int main(int argc, char** argv) {
             return;
         }
 
-        std::string err;
-        bool ok = tcp_data_ready && tcp_data.put_peer(k, v, &err);
+        if (!hb.peer_alive()) {
+            char buf[320];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"peer heartbeat is not alive\","
+                "\"route_forwarded\":true,\"forward_transport\":\"rdma\","
+                "\"primary\":\"%s\",\"degraded\":true}",
+                rd.primary.c_str());
+            resp->assign(buf, n);
+            return;
+        }
+        if (v.empty() || v.size() > slab.slot_size()) {
+            char buf[320];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"value size must be in 1..slab_slot_size\","
+                "\"route_forwarded\":true,\"forward_transport\":\"rdma\","
+                "\"primary\":\"%s\",\"size\":%zu,\"slab_slot_size\":%zu}",
+                rd.primary.c_str(), v.size(), slab.slot_size());
+            resp->assign(buf, n);
+            return;
+        }
+        uint64_t remote_off = 0;
+        {
+            std::lock_guard<std::mutex> lk(route_remote_alloc_mu);
+            uint64_t slot_sz = slab.slot_size();
+            uint64_t off = ((route_next_remote_off + slot_sz - 1) / slot_sz) * slot_sz;
+            if (peer.slab_len == 0 || off + slot_sz > peer.slab_len) {
+                char buf[320];
+                int n = std::snprintf(buf, sizeof(buf),
+                    "{\"ok\":false,\"err\":\"route remote slab allocation failed\","
+                    "\"route_forwarded\":true,\"forward_transport\":\"rdma\","
+                    "\"primary\":\"%s\",\"peer_slab_len\":%lu}",
+                    rd.primary.c_str(), (unsigned long)peer.slab_len);
+                resp->assign(buf, n);
+                return;
+            }
+            route_next_remote_off = off + slot_sz;
+            remote_off = off;
+        }
+
+        void* src = slab.alloc();
+        if (!src) {
+            char buf[256];
+            int n = std::snprintf(buf, sizeof(buf),
+                "{\"ok\":false,\"err\":\"slab oom for route rdma source\","
+                "\"route_forwarded\":true,\"forward_transport\":\"rdma\","
+                "\"primary\":\"%s\"}",
+                rd.primary.c_str());
+            resp->assign(buf, n);
+            return;
+        }
+        std::memcpy(src, v.data(), v.size());
+        auto [wr_id, fut] = repl_waiter.reserve_wr_id();
+        int qp_idx = QP_REPL;
+        int rc = core.post_write(qp_idx, src, v.size(), slab.lkey(),
+                                 peer.slab_base + remote_off, peer.slab_rkey,
+                                 /*imm*/0, wr_id, /*signaled*/true);
+        bool ok = false;
+        if (rc == 0) {
+            ok = fut.get();
+        } else {
+            repl_waiter.cancel_wr_id(wr_id);
+        }
+        slab.free(src);
         uint64_t dt = nr::now_ns() - t0;
         if (ok) {
+            send_kv_index(k, remote_off, (uint32_t)v.size(), true);
             bytes_tx_1s.fetch_add(v.size());
+            ops_put.fetch_add(1);
             char buf[512];
             int n = std::snprintf(buf, sizeof(buf),
                 "{\"ok\":true,\"key\":\"%s\",\"route_forwarded\":true,"
-                "\"forward_transport\":\"tcp_data_channel\",\"primary\":\"%s\","
+                "\"forward_transport\":\"rdma\",\"primary\":\"%s\","
                 "\"replica\":\"%s\",\"local_is_primary\":false,"
-                "\"size\":%zu,\"route_ns\":%lu}",
+                "\"size\":%zu,\"offset\":%lu,\"qp_idx\":%d,"
+                "\"degraded\":false,\"route_ns\":%lu}",
                 k.c_str(), rd.primary.c_str(), rd.replica.c_str(),
-                v.size(), (unsigned long)dt);
+                v.size(), (unsigned long)remote_off, qp_idx, (unsigned long)dt);
             resp->assign(buf, n);
         } else {
             char buf[320];
             int n = std::snprintf(buf, sizeof(buf),
-                "{\"ok\":false,\"err\":\"route forward failed: %s\","
-                "\"route_forwarded\":true,\"forward_transport\":\"tcp_data_channel\","
-                "\"primary\":\"%s\",\"tcp_data_ready\":%s}",
-                err.c_str(), rd.primary.c_str(),
-                tcp_data_ready ? "true" : "false");
+                "{\"ok\":false,\"err\":\"route RDMA WRITE failed\","
+                "\"route_forwarded\":true,\"forward_transport\":\"rdma\","
+                "\"primary\":\"%s\",\"post_rc\":%d,\"qp_idx\":%d,"
+                "\"degraded\":true}",
+                rd.primary.c_str(), rc, qp_idx);
             resp->assign(buf, n);
         }
     };
@@ -1705,7 +1858,7 @@ int main(int argc, char** argv) {
             resp->assign(buf, n);
             return;
         }
-        send_kv_index(k, remote_off, (uint32_t)v.size());
+        send_kv_index(k, remote_off, (uint32_t)v.size(), true);
         {
             std::lock_guard<std::mutex> lk(adaptive_mu);
             adaptive_index[k] = AdaptiveObject{
@@ -2462,6 +2615,7 @@ int main(int argc, char** argv) {
                     void* slot;
                     uint64_t slot_off;
                     uint32_t vlen;
+                    bool index_changed;
                 };
                 std::vector<RdmaItem> rdma_items;
                 if (peer_alive) rdma_items.reserve(n_alloc);
@@ -2485,7 +2639,8 @@ int main(int argc, char** argv) {
                         degraded_bytes.fetch_add(parsed[i].vlen, std::memory_order_relaxed);
                         ++degraded_n;
                     } else {
-                        rdma_items.push_back({std::string(parsed[i].key), slot, slot_off, parsed[i].vlen});
+                        bool index_changed = ti.is_new || ti.existing_size != parsed[i].vlen;
+                        rdma_items.push_back({std::string(parsed[i].key), slot, slot_off, parsed[i].vlen, index_changed});
                     }
                     ++ok_n;
                 }
@@ -2554,7 +2709,9 @@ int main(int argc, char** argv) {
                                 tail_futures.push_back(std::move(fut));
                             }
                             ++replicated_n;
-                            send_kv_index(ri.key, ri.slot_off, ri.vlen);
+                            if (ri.index_changed) {
+                                send_kv_index(ri.key, ri.slot_off, ri.vlen, false);
+                            }
                             bytes_tx_1s.fetch_add(ri.vlen);
                         }
                     }
@@ -2563,6 +2720,10 @@ int main(int argc, char** argv) {
                             if (!fut.get()) {
                                 ++repl_failed_n;
                             }
+                        }
+                        {
+                            std::lock_guard<std::mutex> lk(idx_batch_mu);
+                            flush_kv_index_batch_locked();
                         }
                     }
                     repl_total_ns = nr::now_ns() - t0;

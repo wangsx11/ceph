@@ -1,0 +1,21 @@
+Round 5 final acceptance passed at 2026-05-27 01:34:00 +0800.
+
+Validated host-side hardware flow through xfusion3/xfusion4:
+- startup succeeded;
+- function, performance, and demo dashboards were reachable;
+- function all-run passed with 16 PASS / 0 FAIL / 0 SKIP / 1 WAIVED;
+- performance presentation flow passed with 9 PASS / 0 FAIL;
+- Demo 3, Demo 5, and Demo 6 API flows passed;
+- SSH/network probes to xfusion4 remained stable;
+- final cluster health was RDMA-connected and peer_alive=true.
+
+Known strict-performance tradeoffs remain documented in state.md and related
+performance docs: PF-3, PF-4, PF-6, and PF-7 are not strict full-validation
+passes in the current raw baseline; PF-7 is not strict PASS without RAID5
+confirmation.
+
+
+codex resume
+请先读 docs/project-onboarding-skill/SKILL.md、
+  docs/AI自动多会话流水线执行说明.md、
+  .ai/pipeline/state.md，然后继续这个任务。

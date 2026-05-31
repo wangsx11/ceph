@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-3/run.sh
+
+storage/FN-3 PASS - 多策略预取机制
+- stride 预取执行成功: predicted=fn_prefetch_stride__1780020484968_3191092_4, GET hit=local
+- Markov 预取执行成功: predicted=fn_prefetch_markov_1780020484971_3191092_Bkey, GET hit=local
+- 预取统计增加: loaded 2->4, hits 2->4
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260529_100804_fn_storage_FN3_20260529_100804_45c83068/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260529_100804_fn_storage_FN3_20260529_100804_45c83068/logs/run_20260529_100804.log

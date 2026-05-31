@@ -14,6 +14,7 @@ struct Mr;
 struct RdmaConfig {
     std::string dev_name   = "mlx5_0";   // <RDMA_DEV>
     uint8_t     gid_index  = 3;          // <GID_IDX>
+    uint8_t     traffic_class = 0;        // RoCEv2 IPv4 TOS/DSCP byte
     int         num_qp     = 8;
     int         sq_depth   = 1024;
     int         rq_depth   = 1024;

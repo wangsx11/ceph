@@ -1,0 +1,4 @@
+mempool/FN-6 SKIP - 内存池高可靠机制
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260526_232443.log

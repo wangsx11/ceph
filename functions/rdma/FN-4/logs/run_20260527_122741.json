@@ -1,0 +1,186 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-4",
+  "function": "CPU 与 GPU 高速直通访问",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 4 条",
+  "started_at": "2026-05-27T12:27:41+0800",
+  "finished_at": "2026-05-27T12:27:42+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用",
+    "RPC_GDR_STATUS peer GPU MR 有效: base=140438082158592 len=67108864 rkey=87289",
+    "A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=89515，degraded=false",
+    "xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=248828",
+    "A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=23321 checksum=522240"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140116156010496,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140439296290816,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": true,
+      "peer_gpu_base": 140438082158592,
+      "peer_gpu_len": 67108864,
+      "peer_gpu_rkey": 87289,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "gdr_status_local": {
+      "ok": true,
+      "gdr_requested": true,
+      "gdr_compiled": false,
+      "peer_memory_loaded": false,
+      "local_gpu_enabled": false,
+      "local_gpu_device_id": -1,
+      "local_gpu_name": "",
+      "local_gpu_base": 0,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "cuda_driver_version": 0,
+      "cuda_runtime_version": 0,
+      "local_gpu_error": "",
+      "peer_gpu_enabled": true,
+      "peer_gpu_base": 140438082158592,
+      "peer_gpu_len": 67108864,
+      "peer_gpu_rkey": 87289
+    },
+    "peer_hardware_check": {
+      "host": "xfusion4",
+      "returncode": 0,
+      "stdout": "xfusion4\n0, NVIDIA A100 80GB PCIe, 00000000:AB:00.0, 81920 MiB\n1, NVIDIA A800 80GB PCIe, 00000000:E1:00.0, 81920 MiB\nnvidia_peermem         16384  1\nnvidia              54018048  53 nvidia_uvm,nvidia_peermem,gdrdrv,nvidia_modeset\nib_uverbs             163840  16 nvidia_peermem,rdma_ucm,mlx5_ib\nnvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2024 NVIDIA Corporation\nBuilt on Fri_Jun_14_16:34:21_PDT_2024\nCuda compilation tools, release 12.6, V12.6.20\nBuild cuda_12.6.r12.6/compiler.34431801_0\nhca_id:\tmlx5_0\n\ttransport:\t\t\tInfiniBand (0)\n\tfw_ver:\t\t\t\t16.35.4506\n\tnode_guid:\t\t\t506b:4b03:0028:4fb4\n\tsys_image_guid:\t\t\t506b:4b03:0028:4fb4\n\tvendor_id:\t\t\t0x02c9\n\tvendor_part_id:\t\t\t4119\n\thw_ver:\t\t\t\t0x0\n\tboard_id:\t\t\tMT_0000000011\n\tphys_port_cnt:\t\t\t1\n\t\tport:\t1\n\t\t\tstate:\t\t\tPORT_ACTIVE (4)\n\t\t\tmax_mtu:\t\t4096 (5)\n\t\t\tactive_mtu:\t\t1024 (3)\n\t\t\tsm_lid:\t\t\t0\n\t\t\tport_lid:\t\t0\n\t\t\tport_lmc:\t\t0x00\n\t\t\tlink_layer:\t\tEthernet\n\n",
+      "stderr": ""
+    },
+    "xfusion4:RPC_GDR_STATUS": {
+      "returncode": 0,
+      "stdout": "{\"ok\":true,\"gdr_requested\":true,\"gdr_compiled\":true,\"peer_memory_loaded\":true,\"local_gpu_enabled\":true,\"local_gpu_device_id\":0,\"local_gpu_name\":\"NVIDIA A100 80GB PCIe\",\"local_gpu_base\":140438082158592,\"local_gpu_len\":67108864,\"local_gpu_lkey\":87289,\"local_gpu_rkey\":87289,\"cuda_driver_version\":12040,\"cuda_runtime_version\":12060,\"local_gpu_error\":\"\",\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0}",
+      "stderr": ""
+    },
+    "gdr_status_peer": {
+      "ok": true,
+      "gdr_requested": true,
+      "gdr_compiled": true,
+      "peer_memory_loaded": true,
+      "local_gpu_enabled": true,
+      "local_gpu_device_id": 0,
+      "local_gpu_name": "NVIDIA A100 80GB PCIe",
+      "local_gpu_base": 140438082158592,
+      "local_gpu_len": 67108864,
+      "local_gpu_lkey": 87289,
+      "local_gpu_rkey": 87289,
+      "cuda_driver_version": 12040,
+      "cuda_runtime_version": 12060,
+      "local_gpu_error": "",
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0
+    },
+    "gdr_write": {
+      "ok": true,
+      "transport": "gpudirect_rdma",
+      "degraded": false,
+      "bytes": 4096,
+      "offset": 0,
+      "seed": 90,
+      "qp_idx": 1,
+      "write_ns": 89515,
+      "peer_gpu_base": 140438082158592,
+      "peer_gpu_rkey": 87289,
+      "peer_gpu_len": 67108864
+    },
+    "xfusion4:RPC_GDR_VALIDATE": {
+      "returncode": 0,
+      "stdout": "{\"ok\":true,\"gpu_side_validate\":true,\"bytes\":4096,\"offset\":0,\"seed\":90,\"checksum\":522240,\"mismatches\":0,\"first_bad\":18446744073709551615,\"expected_first\":0,\"actual_first\":0,\"validate_ns\":248828,\"local_gpu_enabled\":true,\"local_gpu_rkey\":87289,\"err\":\"\"}",
+      "stderr": ""
+    },
+    "gdr_validate": {
+      "ok": true,
+      "gpu_side_validate": true,
+      "bytes": 4096,
+      "offset": 0,
+      "seed": 90,
+      "checksum": 522240,
+      "mismatches": 0,
+      "first_bad": 18446744073709551615,
+      "expected_first": 0,
+      "actual_first": 0,
+      "validate_ns": 248828,
+      "local_gpu_enabled": true,
+      "local_gpu_rkey": 87289,
+      "err": ""
+    },
+    "gdr_readback": {
+      "ok": true,
+      "transport": "gpudirect_rdma",
+      "degraded": false,
+      "bytes": 4096,
+      "offset": 0,
+      "seed": 90,
+      "qp_idx": 1,
+      "read_ns": 23321,
+      "checksum": 522240,
+      "mismatches": 0,
+      "first_bad": 18446744073709551615,
+      "expected_first": 0,
+      "actual_first": 0
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_122741.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_122741.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-4/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 597,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140116156010496,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140439296290816,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":true,\"peer_gpu_base\":140438082158592,\"peer_gpu_len\":67108864,\"peer_gpu_rkey\":87289,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_rep"
+    },
+    {
+      "kind": "RPC_GDR_STATUS",
+      "body_len": 0,
+      "response_len": 398,
+      "response_preview": "{\"ok\":true,\"gdr_requested\":true,\"gdr_compiled\":false,\"peer_memory_loaded\":false,\"local_gpu_enabled\":false,\"local_gpu_device_id\":-1,\"local_gpu_name\":\"\",\"local_gpu_base\":0,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"cuda_driver_version\":0,\"cuda_runtime_version\":0,\"local_gpu_error\":\"\",\"peer_gpu_enabled\":true,\"peer_gpu_base\":140438082158592,\"peer_gpu_len\":67108864,\"peer_gpu_rkey\":87289}"
+    },
+    {
+      "kind": "RPC_GDR_WRITE",
+      "body_len": 27,
+      "response_len": 197,
+      "response_preview": "{\"ok\":true,\"transport\":\"gpudirect_rdma\",\"degraded\":false,\"bytes\":4096,\"offset\":0,\"seed\":90,\"qp_idx\":1,\"write_ns\":89515,\"peer_gpu_base\":140438082158592,\"peer_gpu_rkey\":87289,\"peer_gpu_len\":67108864}"
+    },
+    {
+      "kind": "RPC_GDR_READBACK",
+      "body_len": 27,
+      "response_len": 220,
+      "response_preview": "{\"ok\":true,\"transport\":\"gpudirect_rdma\",\"degraded\":false,\"bytes\":4096,\"offset\":0,\"seed\":90,\"qp_idx\":1,\"read_ns\":23321,\"checksum\":522240,\"mismatches\":0,\"first_bad\":18446744073709551615,\"expected_first\":0,\"actual_first\":0}"
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 
 - Metric: RDMA 网络环境下批处理能力
 - Source: `docs/性能要求.md` 第 5 条
-- Generated At: 2026-05-04T00:21:27+0800
-- Key Result: 1336.17 MB/s
+- Generated At: 2026-05-29T12:10:56+0800
+- Key Result: 1601.84 MB/s
 - Threshold: 批处理传输速度 >= 700MB/s
 - Result: PASS
 - Result Dir: /home/wangshouxin/native-rdma-web/performances/PF-5
@@ -14,8 +14,8 @@
 
 | Key | Value |
 |---|---:|
-| `mb_per_sec` | 1336.17 |
-| `ops_per_sec` | 1304853.0 |
+| `mb_per_sec` | 1601.84 |
+| `ops_per_sec` | 1564293.0 |
 | `val_size` | 1024 |
 | `threshold_mbs` | 700.0 |
 | `ops_fail` | 0 |

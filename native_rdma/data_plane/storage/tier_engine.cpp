@@ -129,6 +129,7 @@ void TierEngine::batch_reserve_or_reuse(BatchItem* items, size_t n) {
         auto it = index_.find(std::string(item.key));
         if (it != index_.end()) {
             item.existing_off = it->second.offset;
+            item.existing_size = it->second.size;
             item.is_new = false;
             ObjectMeta& m = it->second;
             m.size = item.new_size;
@@ -147,6 +148,7 @@ void TierEngine::batch_reserve_or_reuse(BatchItem* items, size_t n) {
             ndram_.fetch_add(1);
             item.is_new = true;
             item.existing_off = item.new_off;
+            item.existing_size = item.new_size;
         }
     }
 }

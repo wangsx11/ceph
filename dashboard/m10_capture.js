@@ -3,7 +3,7 @@
 // 调用 Flask /api/sim/*
 // ============================================================
 
-const SIM_API = (window.API_BASE || 'http://localhost:5000') + '/api/sim';
+const SIM_API = (window.API_BASE || location.origin) + '/api/sim';
 
 let simBusy     = false;
 let simLastRun  = null;    // last RPC_SIM_RUN response

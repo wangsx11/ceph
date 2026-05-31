@@ -1,0 +1,258 @@
+run_all start 2026-05-26T23:24:42+0800
+
+## storage/FN-1 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-1 SKIP - 仿真引擎异构存储统一访问接口
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## storage/FN-2 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-2/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-2 SKIP - 多层感知、冷热分离与调度
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## storage/FN-3 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-3/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-3 SKIP - 多策略预取机制
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## storage/FN-4 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-4/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-4 SKIP - 可配置压缩与去重
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## storage/FN-5 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-5/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-5 SKIP - IO 调度与优先级管理
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## storage/FN-6 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-6/run.sh
+Exit Code: 2
+
+## STDOUT
+storage/FN-6 SKIP - 仿真数据运行中采集
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260526_232442.log
+
+
+## STDERR
+
+
+
+## rdma/FN-1 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/run.sh
+Exit Code: 2
+
+## STDOUT
+rdma/FN-1 SKIP - RDMA 与 TCP/IP 统一通信层
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## rdma/FN-2 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/run.sh
+Exit Code: 2
+
+## STDOUT
+rdma/FN-2 SKIP - 聚合数据传输
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## rdma/FN-3 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/run.sh
+Exit Code: 2
+
+## STDOUT
+rdma/FN-3 SKIP - 流量优先级机制
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## rdma/FN-4 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+Exit Code: 2
+
+## STDOUT
+rdma/FN-4 SKIP - CPU 与 GPU 高速直通访问
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## rdma/FN-5 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/run.sh
+Exit Code: 2
+
+## STDOUT
+rdma/FN-5 SKIP - 分布式节点路由转发与负载均衡
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-1 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-1 SKIP - RDMA 语义远程内存访问与零拷贝
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-2 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-2 SKIP - 分布式内存池 API
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-3 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-3 SKIP - 内存池统一命名机制
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-4 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-4 SKIP - 跨节点内存自适应分配与热数据迁移
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-5 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-5 SKIP - 任务级与用户级内存隔离
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+## mempool/FN-6 rc=2
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/run.sh
+Exit Code: 2
+
+## STDOUT
+mempool/FN-6 SKIP - 内存池高可靠机制
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260526_232443.log
+
+
+## STDERR
+
+
+
+run_all finished 2026-05-26T23:24:43+0800

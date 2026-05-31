@@ -1,0 +1,4 @@
+mempool/FN-6 SKIP - 内存池高可靠机制
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260507_133823_fn_mempool_FN6_20260507_133823_db2e9ee2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260507_133823_fn_mempool_FN6_20260507_133823_db2e9ee2/logs/run_20260507_133823.log

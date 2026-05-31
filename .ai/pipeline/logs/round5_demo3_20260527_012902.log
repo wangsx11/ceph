@@ -1,0 +1,32 @@
+GET /api/demo3/cluster 200 {"degraded_bytes": 0, "degraded_puts": 0, "dp_online": true, "metrics": {"bw_rx_gbps": 0.0, "bw_tx_gbps": 0.0, "lat_avg_us": 86.636, "lat_p99_us": 0.0, "obj_dram": 0, "obj_hdd": 1, "obj_nvme": 0, "ops_hi": 1, "ops_lo": 0, "ops_per_sec": 0.0, "ops_total": 1, "rdma_util_pct": 0.0, "replica_lag_us": 86.636, "ts_ns": 9446596234607542}, "node_count": 2, "objects_here": 5, "ok": true, "peer_alive": true, "peer_num_qp": 32, "rdma_connected": true, "replica_lag_us": 86.636, "role": "A", "self_ip": "A"}
+GET /api/peer/demo3/cluster 200 {"degraded_bytes": 0, "degraded_puts": 0, "dp_online": true, "metrics": {"bw_rx_gbps": 0.0, "bw_tx_gbps": 0.0, "lat_avg_us": 0.0, "lat_p99_us": 0.0, "obj_dram": 0, "obj_hdd": 0, "obj_nvme": 1, "ops_hi": 0, "ops_lo": 1, "ops_per_sec": 0.0, "ops_total": 1, "rdma_util_pct": 0.0, "replica_lag_us": 0.0, "ts_ns": 7104275169263762}, "node_count": 2, "objects_here": 5, "ok": true, "peer_alive": true, "peer_num_qp": 32, "rdma_connected": true, "replica_lag_us": 0.0, "role": "B", "self_ip": "B"}
+A not RDMA connected {
+  "degraded_bytes": 0,
+  "degraded_puts": 0,
+  "dp_online": true,
+  "metrics": {
+    "bw_rx_gbps": 0.0,
+    "bw_tx_gbps": 0.0,
+    "lat_avg_us": 86.636,
+    "lat_p99_us": 0.0,
+    "obj_dram": 0,
+    "obj_hdd": 1,
+    "obj_nvme": 0,
+    "ops_hi": 1,
+    "ops_lo": 0,
+    "ops_per_sec": 0.0,
+    "ops_total": 1,
+    "rdma_util_pct": 0.0,
+    "replica_lag_us": 86.636,
+    "ts_ns": 9446596234607542
+  },
+  "node_count": 2,
+  "objects_here": 5,
+  "ok": true,
+  "peer_alive": true,
+  "peer_num_qp": 32,
+  "rdma_connected": true,
+  "replica_lag_us": 86.636,
+  "role": "A",
+  "self_ip": "A"
+}

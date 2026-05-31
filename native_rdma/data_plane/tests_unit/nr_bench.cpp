@@ -42,6 +42,7 @@ struct Opt {
     bool        shared_keyspace = false;
     int         batch      = 1;        // batch N PUTs per UDS call (1 = no batching)
     int         count      = 0;        // 0 = run for duration; >0 = run exactly N batch calls then stop
+    int         max_iops   = 0;        // 0 = unlimited; total object ops/s cap
 };
 
 static void parse(int argc, char** argv, Opt& o) {
@@ -63,6 +64,7 @@ static void parse(int argc, char** argv, Opt& o) {
             (v.empty() || v == "1" || v == "true");
         else if (k == "--batch") o.batch = std::stoi(v);
         else if (k == "--count") o.count = std::stoi(v);
+        else if (k == "--max-iops") o.max_iops = std::stoi(v);
     }
 }
 
@@ -137,13 +139,13 @@ static inline uint64_t now_ns() {
 int main(int argc, char** argv) {
     Opt o; parse(argc, argv, o);
     std::printf("[nr_bench] uds=%s op=%s threads=%d duration=%ds "
-                "val_size=%d keyspace=%d%s prio=%s require_peer=%s batch=%d\n",
+                "val_size=%d keyspace=%d%s prio=%s require_peer=%s batch=%d max_iops=%d\n",
                 o.uds.c_str(), o.op.c_str(), o.threads, o.duration,
                 o.val_size, o.keyspace,
                 o.shared_keyspace ? "(shared)" : "",
                 o.prio.empty() ? "default" : o.prio.c_str(),
                 o.require_peer ? "true" : "false",
-                o.batch);
+                o.batch, o.max_iops);
 
     std::atomic<bool> stop{false};
     std::atomic<uint64_t> ops_done{0};
@@ -152,9 +154,16 @@ int main(int argc, char** argv) {
     std::atomic<uint64_t> bytes_resp{0};   // sum of response payload bytes
     std::atomic<uint64_t> bytes_req{0};    // sum of request payload bytes
     std::vector<std::vector<uint32_t>> lats(o.threads); // per-thread ns samples
+    const bool count_mode = (o.count > 0);
 
     // Pre-generate a value buffer.
     std::string val(o.val_size, 'X');
+    // In --count mode, use 1 thread (serial batches per requirement).
+    int actual_threads = count_mode ? 1 : o.threads;
+    int per_thread_iops = 0;
+    if (o.max_iops > 0) {
+        per_thread_iops = std::max(1, o.max_iops / std::max(1, actual_threads));
+    }
 
     // Build suffix once; worker threads can just append it to the RPC kind.
     std::string prio_suffix;
@@ -164,17 +173,33 @@ int main(int argc, char** argv) {
     auto worker = [&](int tid) {
         int fd = uds_connect(o.uds);
         if (fd < 0) { std::printf("[t%d] uds connect failed\n", tid); return; }
-        lats[tid].reserve(2'000'000);
+        if (!count_mode) lats[tid].reserve(2'000'000);
         uint64_t local_cnt = 0;
+        uint64_t thread_start_ns = now_ns();
         char keybuf[64];
         std::vector<char> body;
         body.reserve(64 + o.val_size);
         const int batch_n = o.batch;
+        uint64_t local_ops = 0;
+        uint64_t local_fail = 0;
+        uint64_t local_degraded = 0;
+        uint64_t local_bytes_resp = 0;
+        uint64_t local_bytes_req = 0;
+        auto pace = [&](uint64_t submitted_ops) {
+            if (per_thread_iops <= 0 || submitted_ops == 0) return;
+            uint64_t target_ns = thread_start_ns +
+                (submitted_ops * 1000000000ULL) / (uint64_t)per_thread_iops;
+            uint64_t now = now_ns();
+            if (target_ns > now) {
+                std::this_thread::sleep_for(
+                    std::chrono::nanoseconds(target_ns - now));
+            }
+        };
 
         int batch_calls = 0;
         while (!stop.load(std::memory_order_relaxed)) {
             // --count mode: stop after N batch calls on thread 0
-            if (o.count > 0 && batch_calls >= o.count) break;
+            if (count_mode && batch_calls >= o.count) break;
 
             if (batch_n > 1 && o.op == "put") {
                 // Batch PUT: pack N operations into one RPC_KV_PUT_BATCH call.
@@ -211,22 +236,33 @@ int main(int argc, char** argv) {
                 int64_t recv = rpc_call(fd, kind.c_str(), batch_body.data(),
                                         batch_body.size(), &degraded);
                 uint64_t dt = now_ns() - t0;
-                if (degraded) ops_degraded.fetch_add(batch_n, std::memory_order_relaxed);
+                if (degraded) {
+                    if (count_mode) local_degraded += (uint64_t)batch_n;
+                    else ops_degraded.fetch_add(batch_n, std::memory_order_relaxed);
+                }
                 bool ok = (recv >= 0) && !(o.require_peer && degraded);
                 if (ok) {
-                    ops_done.fetch_add(batch_n, std::memory_order_relaxed);
-                    bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
-                    bytes_req.fetch_add(batch_body.size(), std::memory_order_relaxed);
-                    // Record per-op latency (amortized)
-                    uint32_t per_op = (uint32_t)(dt / batch_n);
-                    for (int b = 0; b < batch_n && per_op < 0xFFFFFFFFu; ++b)
-                        lats[tid].push_back(per_op);
+                    if (count_mode) {
+                        local_ops += (uint64_t)batch_n;
+                        local_bytes_resp += (uint64_t)recv;
+                        local_bytes_req += (uint64_t)batch_body.size();
+                    } else {
+                        ops_done.fetch_add(batch_n, std::memory_order_relaxed);
+                        bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
+                        bytes_req.fetch_add(batch_body.size(), std::memory_order_relaxed);
+                        // Record per-op latency (amortized)
+                        uint32_t per_op = (uint32_t)(dt / batch_n);
+                        for (int b = 0; b < batch_n && per_op < 0xFFFFFFFFu; ++b)
+                            lats[tid].push_back(per_op);
+                    }
                 } else {
-                    ops_fail.fetch_add(batch_n, std::memory_order_relaxed);
+                    if (count_mode) local_fail += (uint64_t)batch_n;
+                    else ops_fail.fetch_add(batch_n, std::memory_order_relaxed);
                     close(fd); fd = uds_connect(o.uds);
                     if (fd < 0) break;
                 }
                 ++batch_calls;
+                pace(local_cnt);
                 continue;
             }
 
@@ -272,27 +308,43 @@ int main(int argc, char** argv) {
             int64_t recv = rpc_call(fd, kind.c_str(), body.data(), body.size(),
                                     &degraded);
             uint64_t dt = now_ns() - t0;
-            if (degraded) ops_degraded.fetch_add(1, std::memory_order_relaxed);
+            if (degraded) {
+                if (count_mode) ++local_degraded;
+                else ops_degraded.fetch_add(1, std::memory_order_relaxed);
+            }
             bool ok = (recv >= 0) && !(o.require_peer && degraded);
             if (ok) {
-                ops_done.fetch_add(1, std::memory_order_relaxed);
-                bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
-                bytes_req.fetch_add(body.size(), std::memory_order_relaxed);
-                if (dt < 0xFFFFFFFFu) lats[tid].push_back((uint32_t)dt);
+                if (count_mode) {
+                    ++local_ops;
+                    local_bytes_resp += (uint64_t)recv;
+                    local_bytes_req += (uint64_t)body.size();
+                } else {
+                    ops_done.fetch_add(1, std::memory_order_relaxed);
+                    bytes_resp.fetch_add((uint64_t)recv, std::memory_order_relaxed);
+                    bytes_req.fetch_add((uint64_t)body.size(), std::memory_order_relaxed);
+                    if (dt < 0xFFFFFFFFu) lats[tid].push_back((uint32_t)dt);
+                }
             } else {
-                ops_fail.fetch_add(1, std::memory_order_relaxed);
+                if (count_mode) ++local_fail;
+                else ops_fail.fetch_add(1, std::memory_order_relaxed);
                 close(fd); fd = uds_connect(o.uds);
                 if (fd < 0) break;
             }
             ++local_cnt;
+            pace(local_cnt);
+        }
+        if (count_mode) {
+            if (local_ops) ops_done.fetch_add(local_ops, std::memory_order_relaxed);
+            if (local_fail) ops_fail.fetch_add(local_fail, std::memory_order_relaxed);
+            if (local_degraded) ops_degraded.fetch_add(local_degraded, std::memory_order_relaxed);
+            if (local_bytes_resp) bytes_resp.fetch_add(local_bytes_resp, std::memory_order_relaxed);
+            if (local_bytes_req) bytes_req.fetch_add(local_bytes_req, std::memory_order_relaxed);
         }
         close(fd);
     };
 
     uint64_t t_start = now_ns();
     std::vector<std::thread> ths;
-    // In --count mode, use 1 thread (serial batches per requirement).
-    int actual_threads = (o.count > 0) ? 1 : o.threads;
     for (int i = 0; i < actual_threads; ++i) ths.emplace_back(worker, i);
     if (o.count > 0) {
         // Count mode: worker stops itself after N batch calls.

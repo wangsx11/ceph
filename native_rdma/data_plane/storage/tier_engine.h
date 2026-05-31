@@ -119,6 +119,7 @@ public:
         uint64_t  new_off;
         uint32_t  new_size;
         uint64_t  existing_off;
+        uint32_t  existing_size;
         bool      is_new;
     };
     void batch_reserve_or_reuse(BatchItem* items, size_t n);

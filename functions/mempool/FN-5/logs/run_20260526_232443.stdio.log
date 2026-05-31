@@ -1,0 +1,4 @@
+mempool/FN-5 SKIP - 任务级与用户级内存隔离
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260526_232443.log

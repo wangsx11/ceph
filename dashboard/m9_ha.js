@@ -3,8 +3,8 @@
 // 调用 Flask /api/ha/* 和 /api/kv/*（打流观察 degraded 计数）
 // ============================================================
 
-const HA_API = (window.API_BASE || 'http://localhost:5000') + '/api/ha';
-const KV_API = (window.API_BASE || 'http://localhost:5000') + '/api/kv';
+const HA_API = (window.API_BASE || location.origin) + '/api/ha';
+const KV_API = (window.API_BASE || location.origin) + '/api/kv';
 
 let haStatus    = {};          // latest RPC_CLUSTER_STATUS result
 let haPollTimer = null;

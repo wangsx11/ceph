@@ -241,13 +241,13 @@ _SPECS = [
             "RPC_ROUTE_PUT",
             "RPC_TCP_GET_PEER",
         ],
-        "criterion": "批量 RPC_ROUTE_QUERY 均 ok，primary 非空，并观察到至少两个 primary 分布桶；REQUIRE_PEER=1 时 peer_alive=true；脚本同时找到本地/远端 primary key，本地 RPC_ROUTE_PUT 不转发且本地 GET 可读回，远端 primary RPC_ROUTE_PUT 发生 route_forwarded=true 并可通过 RPC_TCP_GET_PEER 从 peer 读回同值。",
+        "criterion": "批量 RPC_ROUTE_QUERY 均 ok，primary 非空，并观察到至少两个 primary 分布桶；REQUIRE_PEER=1 时 peer_alive=true；脚本同时找到本地/远端 primary key，本地 RPC_ROUTE_PUT 不转发且本地 GET 可读回，远端 primary RPC_ROUTE_PUT 发生 route_forwarded=true、forward_transport=rdma，并可通过 RPC_TCP_GET_PEER 从 peer 读回同值。",
         "scope": [
             "验证路由查询和分布计数；replica 为空时记录为当前路由策略细节。",
-            "验证 remote-primary key 的跨节点转发闭环，不只做路由表展示。",
-            "不验证跨交换机或多级转发性能；当前 remote-primary 转发通道为 TCP data channel。",
+            "验证 remote-primary key 的 RDMA 跨节点转发闭环，不只做路由表展示。",
+            "不验证跨交换机或多级转发性能；RPC_TCP_GET_PEER 仅作为 peer 内容读回校验通道。",
         ],
-        "prerequisites": ["数据面 UDS 在线。", "完整验收要求 xfusion4 peer 在线。", "TCP data channel 在线。"],
+        "prerequisites": ["数据面 UDS 在线。", "完整验收要求 xfusion4 peer 在线。", "RDMA transport 在线。", "TCP data channel 在线用于 peer 读回校验。"],
         "check": "rdma_fn5",
     },
     {

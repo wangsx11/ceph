@@ -1,0 +1,662 @@
+run_all start 2026-05-27T20:04:24+0800
+
+## storage/FN-1 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-1 PASS - 仿真引擎异构存储统一访问接口
+- RPC_TIER_STATS 暴露 dram/nvme/hdd 统一层级字段
+- NVMe 闭环成功: PUT -> RPC_TIER_DEMOTE(nvme) -> GET hit=nvme_promote
+- HDD 闭环成功: PUT -> RPC_TIER_DEMOTE(hdd) -> GET hit=hdd_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260527_200424.log
+
+
+## STDERR
+
+
+
+## storage/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-2 PASS - 多层感知、冷热分离与调度
+- 手动冷热迁移闭环成功: fn_storage_tier_manual_1779883464480_172218 demote->nvme, GET hit=nvme_promote
+- 自动冷热分离成功: 冷对象 fn_storage_tier_cold_1779883464481_172218 等待 16.0s 后 GET hit=nvme_promote
+- 热对象 fn_storage_tier_hot_1779883464481_172218 持续访问期间未发生下沉，最终 hit=local
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/logs/run_20260527_200424.log
+
+
+## STDERR
+
+
+
+## storage/FN-3 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-3/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-3 PASS - 多策略预取机制
+- stride 预取执行成功: predicted=fn_prefetch_stride__1779883468571_172367_4, GET hit=local
+- Markov 预取执行成功: predicted=fn_prefetch_markov_1779883468573_172367_Bkey, GET hit=local
+- 预取统计增加: loaded 0->2, hits 0->2
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260527_200428.log
+
+
+## STDERR
+
+
+
+## storage/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-4 PASS - 可配置压缩与去重
+- 压缩统计增加: objects 0->1, saved_bytes 0->4077
+- 去重统计增加: duplicate_objects 0->1, saved_bytes 0->19
+- HDD 读回闭环成功: A hit=hdd_promote, B hit=hdd_promote
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260527_200428.log
+
+
+## STDERR
+
+
+
+## storage/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-5 PASS - IO 调度与优先级管理
+- 数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- 前台 NVMe I/O 计数增加: fg_write_ops +1, fg_read_ops +1
+- 后台 HDD I/O 计数增加: bg_write_ops +1, bg_read_ops +1
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260527_200428.log
+
+
+## STDERR
+
+
+
+## storage/FN-6 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+storage/FN-6 PASS - 仿真数据运行中采集
+- 仿真采集成功: captured=200 pushed=200 flushed=200
+- 多类型采集成功: ObjectAttr=100, InteractionEvent=100
+- WAL 落盘成功: path=/tmp/nr_sim_capture/sim_A.log, events=200, bytes=11200
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260527_200428.log
+
+
+## STDERR
+
+
+
+## rdma/FN-1 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/run.sh
+Exit Code: 0
+
+[functions/run_all] restart stack before function
+Command: bash /home/wangshouxin/native-rdma-web/native_rdma/start.sh
+Exit Code: 0
+
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+functions/logs/
+functions/logs/run_all_20260527_200424.stdio.log
+functions/storage/FN-1/raw.json
+functions/storage/FN-1/run_all.last.log
+functions/storage/FN-1/summary.md
+functions/storage/FN-1/logs/
+functions/storage/FN-1/logs/run_20260527_200424.json
+functions/storage/FN-1/logs/run_20260527_200424.log
+functions/storage/FN-1/logs/run_20260527_200424.stdio.log
+functions/storage/FN-2/raw.json
+functions/storage/FN-2/run_all.last.log
+functions/storage/FN-2/summary.md
+functions/storage/FN-2/logs/
+functions/storage/FN-2/logs/run_20260527_200424.json
+functions/storage/FN-2/logs/run_20260527_200424.log
+functions/storage/FN-2/logs/run_20260527_200424.stdio.log
+functions/storage/FN-3/raw.json
+functions/storage/FN-3/run_all.last.log
+functions/storage/FN-3/summary.md
+functions/storage/FN-3/logs/
+functions/storage/FN-3/logs/run_20260527_200428.json
+functions/storage/FN-3/logs/run_20260527_200428.log
+functions/storage/FN-3/logs/run_20260527_200428.stdio.log
+functions/storage/FN-4/raw.json
+functions/storage/FN-4/run_all.last.log
+functions/storage/FN-4/summary.md
+functions/storage/FN-4/logs/
+functions/storage/FN-4/logs/run_20260527_200428.json
+functions/storage/FN-4/logs/run_20260527_200428.log
+functions/storage/FN-4/logs/run_20260527_200428.stdio.log
+functions/storage/FN-5/raw.json
+functions/storage/FN-5/run_all.last.log
+functions/storage/FN-5/summary.md
+functions/storage/FN-5/logs/
+functions/storage/FN-5/logs/run_20260527_200428.json
+functions/storage/FN-5/logs/run_20260527_200428.log
+functions/storage/FN-5/logs/run_20260527_200428.stdio.log
+functions/storage/FN-6/raw.json
+functions/storage/FN-6/run_all.last.log
+functions/storage/FN-6/summary.md
+functions/storage/FN-6/logs/
+functions/storage/FN-6/logs/run_20260527_200428.json
+functions/storage/FN-6/logs/run_20260527_200428.log
+functions/storage/FN-6/logs/run_20260527_200428.stdio.log
+performances/PF-7/pf7_backup.dat
+
+sent 255,431 bytes  received 82,943 bytes  135,349.60 bytes/sec
+total size is 171,309,874  speedup is 506.27
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2698562
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=172764
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+[functions/run_all] wait 5.0s for heartbeat stabilization
+## STDOUT
+rdma/FN-1 PASS - RDMA 与 TCP/IP 统一通信层
+- 最近一次数据面启动日志包含 RDMA QP、TcpFallback 和 OOB exchange 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- peer_alive=True peer_num_qp=32 peer_slab_rkey=71936
+- TCP 协议切换闭环成功: RPC_KV_PUT transport=tcp -> RPC_TCP_GET_PEER size=19
+- RDMA/TCP 复制时延对比: RDMA avg=35.205us p95=41.416us; TCP avg=227.585us p95=263.188us; samples=8
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-1/logs/run_20260527_200447.log
+
+
+## STDERR
+
+
+[functions/run_all] restore stack after function
+Command: bash /home/wangshouxin/native-rdma-web/native_rdma/start.sh
+Exit Code: 0
+
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+functions/rdma/FN-1/raw.json
+functions/rdma/FN-1/summary.md
+functions/rdma/FN-1/logs/
+functions/rdma/FN-1/logs/run_20260527_200447.json
+functions/rdma/FN-1/logs/run_20260527_200447.log
+functions/rdma/FN-1/logs/run_20260527_200447.stdio.log
+
+sent 230,097 bytes  received 771 bytes  461,736.00 bytes/sec
+total size is 171,345,708  speedup is 742.18
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2699034
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=173337
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[functions/run_all] wait for restored peer readiness
+peer_ready=true transport=rdma peer_num_qp=32 tcp_data_ready=True
+
+
+## rdma/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-2 PASS - 聚合数据传输
+- RPC_KV_PUT_BATCH 成功: ok_n=8/8 replicated_n=8/8
+- 批量 RDMA peer 读回成功: RPC_TCP_GET_PEER 8/8 同值
+- 最近一次启动日志包含 BatchAggregator/RDMA QP/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260527_200501.log
+
+
+## STDERR
+
+
+
+## rdma/FN-3 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-3 PASS - 流量优先级机制
+- QosSched 最近启动日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log
+- 高优先级 PUT 走 RDMA QP 8，低优先级 PUT 走 RDMA QP 16
+- 高低优先级 RDMA PUT 均完成 peer 读回同值校验
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260527_200501.log
+
+
+## STDERR
+
+
+
+## rdma/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/run.sh
+Exit Code: 0
+
+[functions/run_all] restart stack before function
+Command: bash /home/wangshouxin/native-rdma-web/native_rdma/start.sh
+Exit Code: 0
+
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+functions/logs/run_all_20260527_200424.stdio.log
+functions/rdma/FN-1/run_all.last.log
+functions/rdma/FN-2/raw.json
+functions/rdma/FN-2/run_all.last.log
+functions/rdma/FN-2/summary.md
+functions/rdma/FN-2/logs/
+functions/rdma/FN-2/logs/run_20260527_200501.json
+functions/rdma/FN-2/logs/run_20260527_200501.log
+functions/rdma/FN-2/logs/run_20260527_200501.stdio.log
+functions/rdma/FN-3/raw.json
+functions/rdma/FN-3/run_all.last.log
+functions/rdma/FN-3/summary.md
+functions/rdma/FN-3/logs/
+functions/rdma/FN-3/logs/run_20260527_200501.json
+functions/rdma/FN-3/logs/run_20260527_200501.log
+functions/rdma/FN-3/logs/run_20260527_200501.stdio.log
+
+sent 234,313 bytes  received 999 bytes  470,624.00 bytes/sec
+total size is 171,364,396  speedup is 728.24
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : ON
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+[1/3] Linking CXX static library data_plane/libnr_gpu.a
+[2/3] Building CXX object data_plane/CMakeFiles/native_rdma_dp.dir/main.cpp.o
+[3/3] Linking CXX executable bin/native_rdma_dp
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=1  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2699486
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=1  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=173979
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+[functions/run_all] wait 5.0s for heartbeat stabilization
+## STDOUT
+rdma/FN-4 PASS - CPU 与 GPU 高速直通访问
+- xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用
+- RPC_GDR_STATUS peer GPU MR 有效: base=139706729758720 len=67108864 rkey=87040
+- A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=92099，degraded=false
+- xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=256963
+- A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=20356 checksum=522240
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_200526.log
+
+
+## STDERR
+
+
+[functions/run_all] restore stack after function
+Command: bash /home/wangshouxin/native-rdma-web/native_rdma/start.sh
+Exit Code: 0
+
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+functions/rdma/FN-4/raw.json
+functions/rdma/FN-4/summary.md
+functions/rdma/FN-4/logs/
+functions/rdma/FN-4/logs/run_20260527_200526.json
+functions/rdma/FN-4/logs/run_20260527_200526.log
+functions/rdma/FN-4/logs/run_20260527_200526.stdio.log
+
+sent 229,264 bytes  received 621 bytes  459,770.00 bytes/sec
+total size is 171,377,936  speedup is 745.49
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+[1/3] Linking CXX static library data_plane/libnr_gpu.a
+[2/3] Building CXX object data_plane/CMakeFiles/native_rdma_dp.dir/main.cpp.o
+[3/3] Linking CXX executable bin/native_rdma_dp
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2700208
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=174557
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[functions/run_all] wait for restored peer readiness
+peer_ready=true transport=rdma peer_num_qp=32 tcp_data_ready=True
+
+
+## rdma/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+rdma/FN-5 PASS - 分布式节点路由转发与负载均衡
+- 64 个 key 路由查询成功，primary 分布: {'192.168.0.218': 25, '192.168.0.214': 39}
+- 本地 primary 写入未转发: key=fn_route_1779883544840_174708_0 primary=192.168.0.218
+- 远端 primary 写入已通过 RDMA 转发到 peer: key=fn_route_1779883544841_174708_1 primary=192.168.0.214 offset=134217728 qp_idx=0
+- 本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=49
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260527_200544.log
+
+
+## STDERR
+
+
+
+## mempool/FN-1 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-1 PASS - RDMA 语义远程内存访问与零拷贝
+- RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=1339115
+- 远端 slab 元数据有效: base=140455945740288 len=4294967296 rkey=71936 qps=32
+- offset/size 在 peer slab 范围内: offset=4190208 size=20
+- RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1779883544934_174788
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-1/logs/run_20260527_200544.log
+
+
+## STDERR
+
+
+
+## mempool/FN-2 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-2 PASS - 分布式内存池 API
+- UDS 封装 API 闭环成功: RPC_KV_PUT -> RPC_KV_GET key=fn_pool_api_1779883545017_174802 hit=local size=26
+- RPC_KV_PUT 屏蔽底层 RDMA 细节但返回 transport=rdma degraded=False offset=5238784
+- 本地与 peer slab/MR 元数据有效，offset/size 同时落在两端 slab 范围内
+- RPC_TCP_GET_PEER 从 peer 读回同一 value，证明分布式内存池 API 的远端副本可见
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-2/logs/run_20260527_200544.log
+
+
+## STDERR
+
+
+
+## mempool/FN-3 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-3 PASS - 内存池统一命名机制
+- 统一 pool 名称有效: local=default/slab1k remote=default/slab1k peer_id=192.168.0.214
+- 本地 registry 与 cluster slab 元数据一致: base=140154813296640 len=4294967296 lkey=96256 rkey=96256
+- 远端 registry 与 OOB peer slab 元数据一致: base=140455945740288 len=4294967296 rkey=71936 qps=32
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/logs/run_20260527_200545.log
+
+
+## STDERR
+
+
+
+## mempool/FN-4 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-4 PASS - 跨节点内存自适应分配与热数据迁移
+- 冷对象自适应放置到远端 RDMA slab: remote_offset=67108864 size=32
+- 首次访问保持远端放置并通过 RDMA READ 读取: hit=remote_rdma_read access_count=1
+- 热点阈值 3 次访问后迁回本地 slab: local_offset=9433088 rdma_read_ns=17163
+- 迁移后普通 RPC_KV_GET 本地命中: hit=local
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260527_200545.log
+
+
+## STDERR
+
+
+
+## mempool/FN-5 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-5 PASS - 任务级与用户级内存隔离
+- tenant=84545 完成拒绝->允许->读取->撤销->拒绝闭环
+- tenant=84545 与 tenant=184545 使用同一逻辑 key 时读回各自 value，证明命名空间隔离
+- RPC_ISO_LIST 证明 ACL 授权/撤销状态生效: 84545|default/slab1k allow 后存在，最终撤销后不存在
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/logs/run_20260527_200545.log
+
+
+## STDERR
+
+
+
+## mempool/FN-6 rc=0
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/run.sh
+Exit Code: 0
+
+## STDOUT
+mempool/FN-6 PASS - 内存池高可靠机制
+- 主动故障演练成功: peer_alive true->false, degraded_puts 0->1
+- 故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1779883549086_174890
+- 恢复命令执行后 peer_alive=true，后续 PUT 重新走 RDMA 非降级复制并可从 peer 读回
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/logs/run_20260527_200545.log
+
+
+## STDERR
+
+
+
+run_all finished 2026-05-27T20:06:02+0800

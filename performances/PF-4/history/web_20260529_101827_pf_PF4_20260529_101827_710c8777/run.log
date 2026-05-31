@@ -1,0 +1,162 @@
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0', 'NR_TRANSPORT': 'rdma', 'NR_GDR_ENABLE': '0', 'NR_SKIP_FLASK': '1'}
+[restart] exit=0
+已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=3020962
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3213612
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[cluster-ready] {"ok": true, "self": "A", "peer_alive": true, "local_slab_base": 139685256146944, "local_slab_len": 4294967296, "local_slab_lkey": 96256, "local_slab_rkey": 96256, "peer_slab_base": 139713340891136, "peer_slab_len": 4294967296, "peer_slab_rkey": 71936, "peer_num_qp": 32, "local_gpu_enabled": false, "local_gpu_len": 0, "local_gpu_lkey": 0, "local_gpu_rkey": 0, "peer_gpu_enabled": false, "peer_gpu_base": 0, "peer_gpu_len": 0, "peer_gpu_rkey": 0, "degraded_puts": 0, "degraded_bytes": 0, "transport": "rdma", "async_repl": false, "tcp_data_ready": true, "tcp_data_port": 18516, "tcp_puts_received": 0, "tcp_gets_received": 0}
+
+[warmup-A] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=50 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=100 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.01 s
+  elapsed_ms    : 9.83
+  threads       : 8
+  op            : put
+  ops ok/fail   : 5000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 508470
+  req_bytes     : 5189650 (527.76 MB/s)
+  resp_bytes    : 9859 (1.00 MB/s)
+  latency us    : avg=1.70  p50=1.66  p90=2.38  p99=3.45  p99.9=3.45  max=3.45
+
+
+[warmup-B] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=30 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=1000 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.04 s
+  elapsed_ms    : 36.62
+  threads       : 8
+  op            : put
+  ops ok/fail   : 30000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 819217
+  req_bytes     : 31136820 (850.26 MB/s)
+  resp_bytes    : 6030 (0.16 MB/s)
+  latency us    : avg=1.01  p50=0.96  p90=1.47  p99=1.69  p99.9=1.69  max=1.69
+
+
+[scenario-A-1] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=1000 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=100 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.14 s
+  elapsed_ms    : 137.65
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 726470
+  req_bytes     : 103793000 (754.02 MB/s)
+  resp_bytes    : 197000 (1.43 MB/s)
+  latency us    : avg=1.18  p50=1.16  p90=1.33  p99=1.64  p99.9=2.08  max=2.08
+
+
+[scenario-A-2] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=1000 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=100 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.17 s
+  elapsed_ms    : 171.57
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 582838
+  req_bytes     : 103793000 (604.94 MB/s)
+  resp_bytes    : 197008 (1.15 MB/s)
+  latency us    : avg=1.53  p50=1.62  p90=1.84  p99=2.60  p99.9=6.42  max=6.42
+
+
+[scenario-B-1] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=100 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=1000 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.10 s
+  elapsed_ms    : 97.96
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 1020866
+  req_bytes     : 103789400 (1059.55 MB/s)
+  resp_bytes    : 20100 (0.21 MB/s)
+  latency us    : avg=0.78  p50=0.75  p90=0.98  p99=1.25  p99.9=1.25  max=1.25
+
+
+[scenario-B-2] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=100 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=1000 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.12 s
+  elapsed_ms    : 120.11
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 832556
+  req_bytes     : 103789400 (864.11 MB/s)
+  resp_bytes    : 20100 (0.17 MB/s)
+  latency us    : avg=1.00  p50=0.99  p90=1.12  p99=1.65  p99.9=1.65  max=1.65
+
+
+
+[restore functional data-plane defaults]
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0', 'NR_TRANSPORT': 'rdma', 'NR_GDR_ENABLE': '0', 'NR_SKIP_FLASK': '1'}
+[restart] exit=0
+已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=3021464
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3213964
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+

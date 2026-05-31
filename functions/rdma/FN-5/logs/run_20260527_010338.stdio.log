@@ -1,0 +1,4 @@
+rdma/FN-5 SKIP - 分布式节点路由转发与负载均衡
+- REQUIRE_PEER=1 且 peer_alive=false，不能证明跨节点路由转发闭环
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260527_010338.log

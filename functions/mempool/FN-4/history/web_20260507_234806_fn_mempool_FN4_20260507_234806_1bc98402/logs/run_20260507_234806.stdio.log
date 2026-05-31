@@ -1,0 +1,4 @@
+mempool/FN-4 SKIP - 跨节点内存自适应分配与热数据迁移
+- REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260507_234806_fn_mempool_FN4_20260507_234806_1bc98402/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260507_234806_fn_mempool_FN4_20260507_234806_1bc98402/logs/run_20260507_234806.log

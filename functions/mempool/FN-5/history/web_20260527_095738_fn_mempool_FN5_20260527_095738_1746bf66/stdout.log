@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/run.sh
+
+mempool/FN-5 PASS - 任务级与用户级内存隔离
+- tenant=48058 完成拒绝->允许->读取->撤销->拒绝闭环
+- tenant=48058 与 tenant=148058 使用同一逻辑 key 时读回各自 value，证明命名空间隔离
+- RPC_ISO_LIST 证明 ACL 授权/撤销状态生效: 48058|default/slab1k allow 后存在，最终撤销后不存在
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/history/web_20260527_095738_fn_mempool_FN5_20260527_095738_1746bf66/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-5/history/web_20260527_095738_fn_mempool_FN5_20260527_095738_1746bf66/logs/run_20260527_095738.log

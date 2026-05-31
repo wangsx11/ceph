@@ -1,0 +1,17 @@
+cluster_before {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+reset {"node": "A", "ok": true}
+start {"mode": "one_shot", "ok": true, "total_steps": 8}
+poll {"running": true, "busy": true, "done": false, "step": 1, "tiers": {"dram": 0, "hdd": 0, "nvme": 0}, "events": 1, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 4, "tiers": {"dram": 60, "hdd": 0, "nvme": 40}, "events": 28, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 4, "tiers": {"dram": 60, "hdd": 0, "nvme": 40}, "events": 30, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 4, "tiers": {"dram": 60, "hdd": 0, "nvme": 40}, "events": 32, "snapshots": 0}
+poll {"running": true, "busy": false, "done": false, "step": 4, "tiers": {"dram": 30, "hdd": 0, "nvme": 70}, "events": 35, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 5, "tiers": {"dram": 30, "hdd": 0, "nvme": 70}, "events": 39, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 5, "tiers": {"dram": 30, "hdd": 40, "nvme": 30}, "events": 43, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 5, "tiers": {"dram": 30, "hdd": 40, "nvme": 30}, "events": 45, "snapshots": 0}
+poll {"running": true, "busy": true, "done": false, "step": 7, "tiers": {"dram": 30, "hdd": 40, "nvme": 30}, "events": 55, "snapshots": 0}
+poll {"running": false, "busy": false, "done": true, "step": 8, "tiers": {"dram": 35, "hdd": 35, "nvme": 30}, "events": 59, "snapshots": 0}
+snapshot_names ['cold_snap_013131']
+snapshot_detail {"ok": true, "name": "cold_snap_013131", "count": 40, "dur_ms": 1.13, "objects": 40}
+cluster_after {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32}
+PASS demo6 {"step": 8, "tiers": {"dram": 35, "hdd": 35, "nvme": 30}, "events": 59, "snapshots": ["cold_snap_013131"]}

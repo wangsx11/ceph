@@ -1,0 +1,17 @@
+Presentation profile: preserve PF evidence, rerun no heavy PFs live.
+Preserved PFs: PF-1, PF-2, PF-3, PF-4, PF-5, PF-6, PF-7, PF-8, PF-9
+Evidence directory: performances/history/web_all_20260527_002857_pf_all_20260527_002857_8d7a1e94/preserved
+
+PF-1: preserved PASS 吞吐 1178586 ops/s，带宽利用率 59.06%
+PF-2: preserved PASS avg 34.68us，P99 47.35us
+PF-3: preserved PASS 提升 37.36%
+PF-4: preserved PASS A 152.3ms，B 94.02ms
+PF-5: preserved PASS 1388.54 MB/s
+PF-6: preserved PASS 写 10.826 GB/s，读 20.516 GB/s
+PF-7: preserved PASS P999 739.499us，RAID5 True
+PF-8: preserved PASS speedup 1.332x，events/s 133183
+PF-9: preserved PASS 损失 0%，节省 11.47%，提升 41.36%
+
+All PFs are left to existing evidence in this bounded presentation path.
+
+[performance-dashboard] presentation job failed: 'str' object has no attribute 'removeprefix'

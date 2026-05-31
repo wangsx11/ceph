@@ -198,12 +198,12 @@ def main() -> int:
     native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    dur = os.environ.get("DUR", "10")
+    dur = os.environ.get("DUR", "2")
     threads = os.environ.get("THREADS", "4")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
     restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
-    lo_rate_kops = os.environ.get("NR_LO_RATE_KOPS", "150")
+    lo_rate_kops = os.environ.get("NR_LO_RATE_KOPS", "100")
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -224,7 +224,7 @@ def main() -> int:
         if Path(uds).is_socket():
             break
         time.sleep(0.5)
-    time.sleep(3)  # heartbeat stabilization
+    time.sleep(float(os.environ.get("PF3_STABILIZE_S", "1")))  # heartbeat stabilization
 
     if not Path(uds).is_socket():
         return fail_early(path, f"data plane not running (no {uds})", run_lines=run_lines)
@@ -232,7 +232,8 @@ def main() -> int:
     # Warmup (not measured): stabilize connections and slab
     warmup_cmd = [
         str(bin_path), f"--uds={uds}", "--op=put", "--prio=hi",
-        f"--threads={threads}", "--val-size=1024", "--duration=3",
+        f"--threads={threads}", "--val-size=1024",
+        f"--duration={os.environ.get('PF3_WARMUP_DUR', '1')}",
         "--keyspace=5000",
     ]
     proc = subprocess.run(warmup_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

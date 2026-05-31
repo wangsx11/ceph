@@ -1,0 +1,129 @@
+{
+  "metric": "perf_04_batch_latency",
+  "scenario_a": {
+    "elapsed_ms": 168.09,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "exit_code": 0
+  },
+  "scenario_b": {
+    "elapsed_ms": 103.52,
+    "ops_ok": 100000,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "exit_code": 0
+  },
+  "scenario_a_trials": [
+    {
+      "elapsed_ms": 172.92,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 170.89,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 169.62,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 168.09,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 172.65,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    }
+  ],
+  "scenario_b_trials": [
+    {
+      "elapsed_ms": 103.52,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 106.39,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 118.73,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 119.12,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    },
+    {
+      "elapsed_ms": 104.99,
+      "ops_ok": 100000,
+      "ops_fail": 0,
+      "ops_degraded": 0,
+      "exit_code": 0
+    }
+  ],
+  "measured_runs": 5,
+  "cluster": {
+    "ok": true,
+    "self": "A",
+    "peer_alive": true,
+    "local_slab_base": 139807726735360,
+    "local_slab_len": 4294967296,
+    "local_slab_lkey": 96256,
+    "local_slab_rkey": 96256,
+    "peer_slab_base": 139770743099392,
+    "peer_slab_len": 4294967296,
+    "peer_slab_rkey": 71936,
+    "peer_num_qp": 32,
+    "local_gpu_enabled": false,
+    "local_gpu_len": 0,
+    "local_gpu_lkey": 0,
+    "local_gpu_rkey": 0,
+    "peer_gpu_enabled": false,
+    "peer_gpu_base": 0,
+    "peer_gpu_len": 0,
+    "peer_gpu_rkey": 0,
+    "degraded_puts": 0,
+    "degraded_bytes": 0,
+    "transport": "rdma",
+    "async_repl": false,
+    "tcp_data_ready": true,
+    "tcp_data_port": 18516,
+    "tcp_puts_received": 0,
+    "tcp_gets_received": 0
+  },
+  "async_repl": "0",
+  "require_peer": "1",
+  "passed_a": true,
+  "passed_b": false,
+  "passed": false,
+  "restore_async_repl": "0",
+  "restore_ok": true,
+  "status": "FAIL"
+}

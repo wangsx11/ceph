@@ -8,12 +8,27 @@
     return data;
   }
 
-  function fetchSummary() {
+  function activeProfile() {
+    return (window.FDState && window.FDState.state && window.FDState.state.profile) || "presentation";
+  }
+
+  function fetchSummary(profile) {
+    const selected = profile || activeProfile();
+    if (selected === "presentation") {
+      return requestJson("/api/performance/presentation_summary");
+    }
     return requestJson("/api/performance/summary");
   }
 
-  function fetchFunction(moduleName, fnId) {
-    return requestJson(`/api/performance/fn/${encodeURIComponent(moduleName)}/${encodeURIComponent(fnId)}`);
+  function fetchFunction(moduleName, fnId, profile, options) {
+    const selected = profile || activeProfile();
+    const base = `/api/performance/fn/${encodeURIComponent(moduleName)}/${encodeURIComponent(fnId)}`;
+    const q = new URLSearchParams();
+    if (selected === "presentation") q.set("profile", "presentation");
+    const historyDir = options && options.history_dir ? String(options.history_dir) : "";
+    if (historyDir) q.set("history_dir", historyDir);
+    const suffix = q.toString() ? `?${q}` : "";
+    return requestJson(`${base}${suffix}`);
   }
 
   function fetchFile(moduleName, fnId, name) {
@@ -34,11 +49,11 @@
     });
   }
 
-  function runAll(env) {
+  function runAll(env, profile) {
     return requestJson("/api/performance/run_all", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ env: env || {} })
+      body: JSON.stringify({ env: env || {}, profile: profile || activeProfile() })
     });
   }
 

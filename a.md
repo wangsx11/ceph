@@ -1,0 +1,1 @@
+tmux new -s nr-perf-fast-ui 'bash .ai/function_perf_pipeline/run_perf_all_pf_fast_ui_fix.sh; exec bash'

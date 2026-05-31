@@ -1,0 +1,53 @@
+[12:37:53] start mempool/FN-6 内存池高可靠机制
+[12:37:53] repo_root=/home/wangshouxin/native-rdma-web
+[12:37:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:37:53] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:53] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:53] cmd ssh -o BatchMode=yes -o ConnectTimeout=3 -o StrictHostKeyChecking=no xfusion4 pkill -9 -f /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/native_rdma_dp
+[12:37:53] cmd rc=0 stdout= stderr=
+[12:37:53] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:53] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:54] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:54] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:54] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:54] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:55] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:55] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:55] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:55] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:56] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:56] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:56] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:56] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:37:57] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:57] rpc RPC_CLUSTER_STATUS resp_len=574 resp={"ok":true,"self":"A","peer_alive":false,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_read
+[12:37:57] rpc RPC_KV_PUT body_len=66
+[12:37:57] rpc RPC_KV_PUT resp_len=365 resp={"ok":true,"key":"fn_ha_degraded_1779856677290_3689827","tenant_id":0,"size":29,"offset":12578816,"repl_ns":1181,"degraded":true,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":4,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:37:57] rpc RPC_KV_GET body_len=36
+[12:37:57] rpc RPC_KV_GET resp_len=73 resp={"ok":true,"hit":"local","size":29,"val":"during-outage-local-available"}
+[12:37:57] rpc RPC_CLUSTER_STATUS body_len=0
+[12:37:57] rpc RPC_CLUSTER_STATUS resp_len=575 resp={"ok":true,"self":"A","peer_alive":false,"local_slab_base":140683642150912,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140592452509696,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":1,"degraded_bytes":29,"transport":"rdma","async_repl":false,"tcp_data_rea
+[12:37:57] rpc RPC_TCP_GET_PEER body_len=36
+[12:37:57] rpc RPC_TCP_GET_PEER resp_len=79 resp={"ok":false,"transport":"tcp","err":"connect failed errno=111","tcp_ns":108652}
+[12:37:57] cmd bash -lc cd native_rdma && LOCAL_HOST=xfusion3 NR_TRANSPORT=rdma NR_ASYNC_REPL=0 NR_SKIP_FLASK=1 bash start.sh
+[12:38:10] cmd rc=0 stdout= SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3690335
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+ stderr=
+[12:38:10] rpc RPC_CLUSTER_STATUS body_len=0
+[12:38:10] rpc RPC_CLUSTER_STATUS resp_len=574 resp={"ok":true,"self":"A","peer_alive":false,"local_slab_base":140443750871040,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140256302919680,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_read
+[12:38:10] rpc RPC_CLUSTER_STATUS body_len=0
+[12:38:10] rpc RPC_CLUSTER_STATUS resp_len=574 resp={"ok":true,"self":"A","peer_alive":false,"local_slab_base":140443750871040,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140256302919680,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_read
+[12:38:11] rpc RPC_CLUSTER_STATUS body_len=0
+[12:38:11] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140443750871040,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140256302919680,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:38:11] rpc RPC_KV_PUT body_len=68
+[12:38:11] rpc RPC_KV_PUT resp_len=380 resp={"ok":true,"key":"fn_ha_recovered_1779856691167_3689827","tenant_id":0,"size":30,"offset":2093056,"repl_ns":60865,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":0,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[12:38:11] rpc RPC_TCP_GET_PEER body_len=37
+[12:38:11] rpc RPC_TCP_GET_PEER resp_len=140 resp={"ok":true,"transport":"tcp","key":"fn_ha_recovered_1779856691167_3689827","size":30,"tcp_ns":433777,"val":"after-recovery-rdma-replicated"}
+[12:38:11] result=PASS completion=完成

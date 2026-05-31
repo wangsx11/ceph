@@ -1,0 +1,4 @@
+mempool/FN-4 FAIL - 跨节点内存自适应分配与热数据迁移
+- 远端 slab 放置后 peer 端无法读回同一对象
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260526_233057.log

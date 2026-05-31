@@ -1,0 +1,360 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-3",
+  "function": "多策略预取机制",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 3 条",
+  "started_at": "2026-05-29T10:08:04+0800",
+  "finished_at": "2026-05-29T10:08:04+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "stride 预取执行成功: predicted=fn_prefetch_stride__1780020484968_3191092_4, GET hit=local",
+    "Markov 预取执行成功: predicted=fn_prefetch_markov_1780020484971_3191092_Bkey, GET hit=local",
+    "预取统计增加: loaded 2->4, hits 2->4"
+  ],
+  "details": {
+    "before": {
+      "ok": true,
+      "total": 31,
+      "hits_stride": 2,
+      "hits_markov": 11,
+      "prefetch_issued": 23,
+      "prefetch_loaded": 2,
+      "prefetch_hits": 2,
+      "prefetch_already_hot": 12,
+      "prefetch_skipped": 14,
+      "query": "fn_prefetch_baseline_key_1780020484968_3191092",
+      "predicted": []
+    },
+    "stride": {
+      "items": [
+        [
+          "fn_prefetch_stride__1780020484968_3191092_0",
+          "stride-value-0"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_1",
+          "stride-value-1"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_2",
+          "stride-value-2"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_3",
+          "stride-value-3"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_4",
+          "stride-value-4"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_5",
+          "stride-value-5"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_6",
+          "stride-value-6"
+        ],
+        [
+          "fn_prefetch_stride__1780020484968_3191092_7",
+          "stride-value-7"
+        ]
+      ],
+      "demote": {
+        "ok": true,
+        "key": "fn_prefetch_stride__1780020484968_3191092_4",
+        "to": "nvme"
+      },
+      "stats": {
+        "ok": true,
+        "total": 35,
+        "hits_stride": 3,
+        "hits_markov": 11,
+        "prefetch_issued": 31,
+        "prefetch_loaded": 3,
+        "prefetch_hits": 2,
+        "prefetch_already_hot": 15,
+        "prefetch_skipped": 18,
+        "query": "fn_prefetch_stride__1780020484968_3191092_3",
+        "predicted": [
+          "fn_prefetch_stride__1780020484968_3191092_4",
+          "fn_prefetch_stride__1780020484968_3191092_5",
+          "fn_prefetch_stride__1780020484968_3191092_6",
+          "fn_prefetch_stride__1780020484968_3191092_7",
+          "fn_prefetch_stride__1780020484968_3191092_8",
+          "fn_prefetch_stride__1780020484968_3191092_9",
+          "fn_prefetch_stride__1780020484968_3191092_10",
+          "fn_prefetch_stride__1780020484968_3191092_11"
+        ]
+      },
+      "get": {
+        "ok": true,
+        "hit": "local",
+        "size": 14,
+        "val": "stride-value-4"
+      },
+      "after": {
+        "ok": true,
+        "total": 36,
+        "hits_stride": 4,
+        "hits_markov": 11,
+        "prefetch_issued": 39,
+        "prefetch_loaded": 3,
+        "prefetch_hits": 3,
+        "prefetch_already_hot": 18,
+        "prefetch_skipped": 23,
+        "query": "fn_prefetch_stride__1780020484968_3191092_4",
+        "predicted": [
+          "fn_prefetch_stride__1780020484968_3191092_5",
+          "fn_prefetch_stride__1780020484968_3191092_6",
+          "fn_prefetch_stride__1780020484968_3191092_7",
+          "fn_prefetch_stride__1780020484968_3191092_8",
+          "fn_prefetch_stride__1780020484968_3191092_9",
+          "fn_prefetch_stride__1780020484968_3191092_10",
+          "fn_prefetch_stride__1780020484968_3191092_11",
+          "fn_prefetch_stride__1780020484968_3191092_12"
+        ]
+      }
+    },
+    "markov": {
+      "a": "fn_prefetch_markov_1780020484971_3191092_Akey",
+      "b": "fn_prefetch_markov_1780020484971_3191092_Bkey",
+      "demote": {
+        "ok": true,
+        "key": "fn_prefetch_markov_1780020484971_3191092_Bkey",
+        "to": "nvme"
+      },
+      "stats": {
+        "ok": true,
+        "total": 42,
+        "hits_stride": 4,
+        "hits_markov": 15,
+        "prefetch_issued": 43,
+        "prefetch_loaded": 3,
+        "prefetch_hits": 3,
+        "prefetch_already_hot": 22,
+        "prefetch_skipped": 23,
+        "query": "fn_prefetch_markov_1780020484971_3191092_Akey",
+        "predicted": [
+          "fn_prefetch_markov_1780020484971_3191092_Bkey"
+        ]
+      },
+      "get_b": {
+        "ok": true,
+        "hit": "local",
+        "size": 14,
+        "val": "markov-b-value"
+      },
+      "after": {
+        "ok": true,
+        "total": 44,
+        "hits_stride": 4,
+        "hits_markov": 17,
+        "prefetch_issued": 45,
+        "prefetch_loaded": 4,
+        "prefetch_hits": 4,
+        "prefetch_already_hot": 23,
+        "prefetch_skipped": 23,
+        "query": "fn_prefetch_markov_1780020484971_3191092_Akey",
+        "predicted": [
+          "fn_prefetch_markov_1780020484971_3191092_Bkey"
+        ]
+      }
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260529_100804_fn_storage_FN3_20260529_100804_45c83068/logs/run_20260529_100804.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260529_100804_fn_storage_FN3_20260529_100804_45c83068/logs/run_20260529_100804.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-3/history/web_20260529_100804_fn_storage_FN3_20260529_100804_45c83068/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_PREFETCH_STATS",
+      "body_len": 46,
+      "response_len": 234,
+      "response_preview": "{\"ok\":true,\"total\":31,\"hits_stride\":2,\"hits_markov\":11,\"prefetch_issued\":23,\"prefetch_loaded\":2,\"prefetch_hits\":2,\"prefetch_already_hot\":12,\"prefetch_skipped\":14,\"query\":\"fn_prefetch_baseline_key_1780020484968_3191092\",\"predicted\":[]}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 374,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_0\",\"tenant_id\":0,\"size\":14,\"offset\":66957312,\"repl_ns\":35276,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":9,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_1\",\"tenant_id\":0,\"size\":14,\"offset\":68005888,\"repl_ns\":25273,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":10,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_2\",\"tenant_id\":0,\"size\":14,\"offset\":69054464,\"repl_ns\":18141,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":11,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_3\",\"tenant_id\":0,\"size\":14,\"offset\":70103040,\"repl_ns\":21084,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":12,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_4\",\"tenant_id\":0,\"size\":14,\"offset\":71151616,\"repl_ns\":22858,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":13,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_5\",\"tenant_id\":0,\"size\":14,\"offset\":72200192,\"repl_ns\":17975,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":14,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_6\",\"tenant_id\":0,\"size\":14,\"offset\":73248768,\"repl_ns\":21456,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":15,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 374,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_7\",\"tenant_id\":0,\"size\":14,\"offset\":74297344,\"repl_ns\":17444,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":0,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 48,
+      "response_len": 75,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_stride__1780020484968_3191092_4\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"stride-value-0\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"stride-value-1\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"stride-value-2\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"stride-value-3\"}"
+    },
+    {
+      "kind": "RPC_PREFETCH_STATS",
+      "body_len": 43,
+      "response_len": 600,
+      "response_preview": "{\"ok\":true,\"total\":35,\"hits_stride\":3,\"hits_markov\":11,\"prefetch_issued\":31,\"prefetch_loaded\":3,\"prefetch_hits\":2,\"prefetch_already_hot\":15,\"prefetch_skipped\":18,\"query\":\"fn_prefetch_stride__1780020484968_3191092_3\",\"predicted\":[\"fn_prefetch_stride__1780020484968_3191092_4\",\"fn_prefetch_stride__1780020484968_3191092_5\",\"fn_prefetch_stride__1780020484968_3191092_6\",\"fn_prefetch_stride__1780020484968_3191092_7\",\"fn_prefetch_stride__1780020484968_3191092_8\",\"fn_prefetch_stride__1780020484968_319109"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 43,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"stride-value-4\"}"
+    },
+    {
+      "kind": "RPC_PREFETCH_STATS",
+      "body_len": 43,
+      "response_len": 601,
+      "response_preview": "{\"ok\":true,\"total\":36,\"hits_stride\":4,\"hits_markov\":11,\"prefetch_issued\":39,\"prefetch_loaded\":3,\"prefetch_hits\":3,\"prefetch_already_hot\":18,\"prefetch_skipped\":23,\"query\":\"fn_prefetch_stride__1780020484968_3191092_4\",\"predicted\":[\"fn_prefetch_stride__1780020484968_3191092_5\",\"fn_prefetch_stride__1780020484968_3191092_6\",\"fn_prefetch_stride__1780020484968_3191092_7\",\"fn_prefetch_stride__1780020484968_3191092_8\",\"fn_prefetch_stride__1780020484968_3191092_9\",\"fn_prefetch_stride__1780020484968_319109"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 60,
+      "response_len": 375,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_markov_1780020484971_3191092_Akey\",\"tenant_id\":0,\"size\":14,\"offset\":76394496,\"repl_ns\":15642,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":1,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 60,
+      "response_len": 388,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_markov_1780020484971_3191092_Bkey\",\"tenant_id\":0,\"size\":14,\"offset\":77443072,\"repl_ns\":19376,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-a-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-b-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-a-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-b-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-a-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-b-value\"}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 50,
+      "response_len": 77,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_prefetch_markov_1780020484971_3191092_Bkey\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_PREFETCH_STATS",
+      "body_len": 45,
+      "response_len": 280,
+      "response_preview": "{\"ok\":true,\"total\":42,\"hits_stride\":4,\"hits_markov\":15,\"prefetch_issued\":43,\"prefetch_loaded\":3,\"prefetch_hits\":3,\"prefetch_already_hot\":22,\"prefetch_skipped\":23,\"query\":\"fn_prefetch_markov_1780020484971_3191092_Akey\",\"predicted\":[\"fn_prefetch_markov_1780020484971_3191092_Bkey\"]}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-a-value\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 45,
+      "response_len": 58,
+      "response_preview": "{\"ok\":true,\"hit\":\"local\",\"size\":14,\"val\":\"markov-b-value\"}"
+    },
+    {
+      "kind": "RPC_PREFETCH_STATS",
+      "body_len": 45,
+      "response_len": 280,
+      "response_preview": "{\"ok\":true,\"total\":44,\"hits_stride\":4,\"hits_markov\":17,\"prefetch_issued\":45,\"prefetch_loaded\":4,\"prefetch_hits\":4,\"prefetch_already_hot\":23,\"prefetch_skipped\":23,\"query\":\"fn_prefetch_markov_1780020484971_3191092_Akey\",\"predicted\":[\"fn_prefetch_markov_1780020484971_3191092_Bkey\"]}"
+    }
+  ]
+}

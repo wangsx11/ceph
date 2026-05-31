@@ -1,0 +1,205 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-2",
+  "function": "聚合数据传输",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 2 条",
+  "started_at": "2026-05-07T21:57:20+0800",
+  "finished_at": "2026-05-07T21:57:20+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_KV_PUT_BATCH 成功: ok_n=8/8 replicated_n=8/8",
+    "批量 RDMA peer 读回成功: RPC_TCP_GET_PEER 8/8 同值",
+    "最近一次启动日志包含 BatchAggregator/RDMA QP/OOB 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140276060487680,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140139540467712,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "checked_recent_log_from_last_start": true,
+    "has_batch_aggregator_started": true,
+    "has_qp": true,
+    "has_oob": true,
+    "batch": {
+      "ok": true,
+      "n": 8,
+      "ok_n": 8,
+      "peer_alive": true,
+      "replicated_n": 8,
+      "degraded_n": 0,
+      "repl_failed_n": 0,
+      "degraded": false,
+      "transport": "rdma",
+      "async_repl": false,
+      "aggregation": "batch_rpc",
+      "repl_ns": 84680
+    },
+    "peer_gets": [
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_0",
+        "size": 13,
+        "tcp_ns": 463127,
+        "val": "batch-value-0"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_1",
+        "size": 13,
+        "tcp_ns": 351331,
+        "val": "batch-value-1"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_2",
+        "size": 13,
+        "tcp_ns": 178273,
+        "val": "batch-value-2"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_3",
+        "size": 13,
+        "tcp_ns": 236761,
+        "val": "batch-value-3"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_4",
+        "size": 13,
+        "tcp_ns": 203342,
+        "val": "batch-value-4"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_5",
+        "size": 13,
+        "tcp_ns": 224675,
+        "val": "batch-value-5"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_6",
+        "size": 13,
+        "tcp_ns": 137007,
+        "val": "batch-value-6"
+      },
+      {
+        "ok": true,
+        "transport": "tcp",
+        "key": "fn_batch_1778162240716_1941857_7",
+        "size": 13,
+        "tcp_ns": 169920,
+        "val": "batch-value-7"
+      }
+    ]
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215720_fn_rdma_FN2_20260507_215720_14abde19/logs/run_20260507_215720.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215720_fn_rdma_FN2_20260507_215720_14abde19/logs/run_20260507_215720.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215720_fn_rdma_FN2_20260507_215720_14abde19/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140276060487680,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140139540467712,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_KV_PUT_BATCH",
+      "body_len": 412,
+      "response_len": 191,
+      "response_preview": "{\"ok\":true,\"n\":8,\"ok_n\":8,\"peer_alive\":true,\"replicated_n\":8,\"degraded_n\":0,\"repl_failed_n\":0,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"aggregation\":\"batch_rpc\",\"repl_ns\":84680}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_0\",\"size\":13,\"tcp_ns\":463127,\"val\":\"batch-value-0\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_1\",\"size\":13,\"tcp_ns\":351331,\"val\":\"batch-value-1\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_2\",\"size\":13,\"tcp_ns\":178273,\"val\":\"batch-value-2\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_3\",\"size\":13,\"tcp_ns\":236761,\"val\":\"batch-value-3\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_4\",\"size\":13,\"tcp_ns\":203342,\"val\":\"batch-value-4\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_5\",\"size\":13,\"tcp_ns\":224675,\"val\":\"batch-value-5\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_6\",\"size\":13,\"tcp_ns\":137007,\"val\":\"batch-value-6\"}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 32,
+      "response_len": 118,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_batch_1778162240716_1941857_7\",\"size\":13,\"tcp_ns\":169920,\"val\":\"batch-value-7\"}"
+    }
+  ]
+}

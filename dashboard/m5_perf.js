@@ -32,8 +32,12 @@ function renderM5() {
   if (!el) return;
 
   const running = Object.values(D5.rounds).some(r => r.running);
+  const active = Object.values(D5.rounds).find(r => r.running);
   const doneCnt = Object.values(D5.rounds).filter(r => r.summary).length;
   const errors = d5Errors();
+  const statusText = running
+    ? (active && active.phase === 'warmup' ? '预热中...' : '压测进行中...')
+    : doneCnt>0 ? `已完成 ${doneCnt}/3 轮` : '就绪';
 
   el.innerHTML = `
     <div class="ctrl-panel">
@@ -41,11 +45,11 @@ function renderM5() {
         <div style="font-size:1.4rem;font-weight:700;color:#c0d8f0">⑤ 系统吞吐量 & 扩展性测试（RDMA）</div>
         <div class="ctrl-status ${running?'running':doneCnt>0?'done':'idle'}">
           <div class="dot ${running?'dot-pulse':''}" style="background:${running?'#00e888':'#5a7a96'};width:6px;height:6px"></div>
-          ${running ? '压测进行中...' : doneCnt>0 ? `已完成 ${doneCnt}/3 轮` : '就绪'}
+          ${statusText}
         </div>
       </div>
       <div style="font-size:1rem;color:#5a7a96;margin-bottom:6px">
-        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 按共享 keyspace 逐轮递增 (1万/5万/10万 1KB 对象) 并发 PUT；每轮 12 秒<br>
+        · 本端 <span class="mono" style="color:#c0d8f0">nr_bench</span> 按共享 keyspace 逐轮递增 (1万/5万/10万 1KB 对象) 并发 PUT；先 warmup，正式采样每轮 12 秒<br>
         · 所有 PUT 要求 peer 在线并完成真实跨节点复制，降级本地写不计入通过<br>
         · 横坐标统一为 0~12s，便于直接比较对象规模变化下的 IOPS、吞吐量和 RDMA 复制延迟
       </div>
@@ -164,7 +168,7 @@ function d5Summary() {
   const rows = [1,2,3].filter(r => D5.rounds[r].summary);
   if (!rows.length) return `<div style="color:#5a7a96;padding:16px;text-align:center">尚未有完成的轮次</div>`;
   let body = '<table class="dtable"><thead><tr>' +
-    ['轮次','对象数','覆盖 MB','时长','线程','ops/s','吞吐 MB/s','bw Gbps','延迟 avg(μs)','p50(μs)','p90(μs)','p99(μs)']
+    ['轮次','对象数','覆盖 MB','时长','线程','限速','ops/s','吞吐 MB/s','bw Gbps','延迟 avg(μs)','p50(μs)','p90(μs)','p99(μs)']
       .map(h => `<th style="text-align:right">${h}</th>`).join('') +
     '</tr></thead><tbody>';
   rows.forEach(r => {
@@ -176,6 +180,7 @@ function d5Summary() {
       <td style="text-align:right;color:#ffb020">${F(s.footprint_mb||0, 1)}</td>
       <td style="text-align:right;color:#5a7a96">${s.duration_s||'-'}s</td>
       <td style="text-align:right">${s.threads}</td>
+      <td style="text-align:right;color:#5a7a96">${s.max_iops ? s.max_iops.toLocaleString() : 'off'}</td>
       <td style="text-align:right;color:#ff6090;font-weight:700">${(s.iops||0).toLocaleString()}</td>
       <td style="text-align:right">${F(s.tp_mbps, 2)}</td>
       <td style="text-align:right;color:#00d0f0">${F(s.gbps, 3)}</td>

@@ -268,7 +268,9 @@ def main() -> int:
     run_log = logs / "run.log"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    dur = os.environ.get("DUR", "15")
+    dur = os.environ.get("DUR", "4")
+    bw_dur = os.environ.get("BW_DUR", dur)
+    ops_dur = os.environ.get("OPS_DUR", dur)
     link_gbps = float(os.environ.get("LINK_GBPS", "100"))
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
@@ -292,7 +294,7 @@ def main() -> int:
     bw_slab_total = os.environ.get("BW_SLAB_TOTAL", "4294967296")  # 4GB
     bw_threads_list = [
         int(x.strip())
-        for x in os.environ.get("BW_THREADS_LIST", os.environ.get("BW_THREADS", "2,3,4")).split(",")
+        for x in os.environ.get("BW_THREADS_LIST", os.environ.get("BW_THREADS", "4")).split(",")
         if x.strip()
     ]
     if not bw_threads_list:
@@ -332,7 +334,8 @@ def main() -> int:
             warmup_cmd = [
                 str(bin_path), f"--uds={uds}", "--op=put",
                 f"--threads={max(bw_threads_list)}", f"--val-size={bw_val_size}",
-                "--duration=5", f"--keyspace={bw_keyspace}", "--shared-keyspace=1",
+                f"--duration={os.environ.get('PF1_BW_WARMUP_DUR', '1')}",
+                f"--keyspace={bw_keyspace}", "--shared-keyspace=1",
                 f"--batch={bw_batch}",
             ]
             proc = subprocess.run(warmup_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -347,7 +350,7 @@ def main() -> int:
                 cmd = [
                     str(bin_path), f"--uds={uds}", "--op=put",
                     f"--threads={trial_threads}", f"--val-size={bw_val_size}",
-                    f"--duration={dur}", f"--keyspace={bw_keyspace}",
+                    f"--duration={bw_dur}", f"--keyspace={bw_keyspace}",
                     "--shared-keyspace=1", f"--require-peer={require_peer}",
                     f"--batch={bw_batch}",
                 ]
@@ -414,7 +417,7 @@ def main() -> int:
         if Path(uds).is_socket():
             break
         time.sleep(0.5)
-    time.sleep(5)
+    time.sleep(float(os.environ.get("PF1_READY_WAIT_S", "1")))
 
     ops_per_sec = 0.0
     ops_fail = 0
@@ -425,13 +428,13 @@ def main() -> int:
     batch = os.environ.get("BATCH", "64")
 
     if Path(uds).is_socket():
-        # Wait for heartbeat + RDMA poller to stabilize after fresh restart.
-        time.sleep(8)
+        # Wait briefly for heartbeat + RDMA poller to stabilize after restart.
+        time.sleep(float(os.environ.get("PF1_OPS_STABILIZE_S", "1")))
 
         # Measured run (directly on fresh data plane, no probe/warmup overhead)
         cmd = [
             str(bin_path), f"--uds={uds}", "--op=put", f"--threads={best_threads_ops}",
-            "--val-size=1024", f"--duration={dur}", f"--require-peer={require_peer}",
+            "--val-size=1024", f"--duration={ops_dur}", f"--require-peer={require_peer}",
             f"--batch={batch}",
         ]
         proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)

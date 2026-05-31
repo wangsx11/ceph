@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "job_id": "fn_mempool_FN4_20260507_234906_e1eab6e7",
+  "kind": "run_one",
+  "module": "mempool",
+  "fn_id": "FN-4",
+  "state": "finished",
+  "exit_code": 0,
+  "started_at": "2026-05-07T23:49:06+0800",
+  "finished_at": "2026-05-07T23:49:06+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/history/web_20260507_234906_fn_mempool_FN4_20260507_234906_e1eab6e7",
+  "history_dir": "functions/mempool/FN-4/history/web_20260507_234906_fn_mempool_FN4_20260507_234906_e1eab6e7",
+  "job_log": "functions/mempool/FN-4/history/web_20260507_234906_fn_mempool_FN4_20260507_234906_e1eab6e7/stdout.log",
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "CURRENT_NODE": "A",
+    "ALLOW_DESTRUCTIVE": "0",
+    "REQUIRE_PEER": "1"
+  }
+}

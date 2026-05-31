@@ -3,10 +3,10 @@
 - Module: 多级异构的高效能存储模块
 - Function: IO 调度与优先级管理
 - Source: docs/功能要求.md / 多级异构的高效能存储模块 / 第 5 条
-- Last Run: 2026-05-04T12:05:43+0800
+- Last Run: 2026-05-27T14:12:56+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260504_120543.log
+- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/logs/run_20260527_141256.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/storage/FN-5/raw.json
 
 ## 关键证据

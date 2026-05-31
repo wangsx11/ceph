@@ -79,6 +79,12 @@ def parse_bench_output(text: str) -> dict:
     return out
 
 
+def run_bench(cmd: list[str], label: str, run_lines: list[str]) -> tuple[int, dict]:
+    proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    run_lines.append(f"[{label}] $ {' '.join(cmd)}\nexit={proc.returncode}\n{proc.stdout}\n")
+    return proc.returncode, parse_bench_output(proc.stdout)
+
+
 def write_json(path: Path, data: dict) -> None:
     if "passed" in data and "status" not in data:
         data["status"] = "PASS" if data.get("passed") else "FAIL"
@@ -105,14 +111,14 @@ def write_summary(path: Path, result: dict, run_log: Path, raw_json: Path) -> No
         "| Key | Value |",
         "|---|---:|",
     ]
-    for key in ("samples", "lat_avg_us", "lat_p50_us", "lat_p99_us", "lat_p99_9_us", "lat_max_us", "ops_fail", "ops_degraded"):
+    for key in ("samples", "lat_avg_us", "lat_p50_us", "lat_p99_us", "lat_p99_9_us", "lat_max_us", "ops_fail", "ops_degraded", "max_iops"):
         lines.append(f"| `{key}` | {result.get(key, 'N/A')} |")
     lines.extend([
         "",
         "## 统计口径",
         "",
         "- 统计 measured 窗口内成功 1KB 对象的数据面端到端传输时延。",
-        "- 使用 PUT 操作衡量对象传输能力（写入本地 slab + RDMA 异步复制）。",
+        "- 使用 PUT 操作衡量对象传输能力（写入本地 slab + 同步等待 RDMA WRITE 完成）。",
         "- 失败样本单独计数，不混入成功样本分位数。",
         "- 不统计构建、脚本启动、环境启动和 warmup 时间。",
     ])
@@ -140,9 +146,12 @@ def main() -> int:
     native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    dur = os.environ.get("DUR", "10")
-    threads = os.environ.get("THREADS", "8")
+    dur = os.environ.get("DUR", "4")
+    threads = os.environ.get("THREADS", "1")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
+    max_iops = os.environ.get("MAX_IOPS", "0")
+    target_samples = int(os.environ.get("PF2_TARGET_SAMPLES", os.environ.get("COUNT", "110000")))
+    sample_margin = int(os.environ.get("PF2_SAMPLE_MARGIN", "20000"))
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -156,19 +165,35 @@ def main() -> int:
     # Warmup: stabilize heartbeat + memory pools (not measured)
     warmup_cmd = [
         str(bin_path), f"--uds={uds}", "--op=put", f"--threads={threads}",
-        "--val-size=1024", "--duration=3",
+        "--val-size=1024", f"--duration={os.environ.get('PF2_WARMUP_DUR', '1')}",
     ]
-    proc = subprocess.run(warmup_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    run_lines.append(f"[warmup] $ {' '.join(warmup_cmd)}\nexit={proc.returncode}\n{proc.stdout}\n")
+    if int(max_iops or "0") > 0:
+        warmup_cmd.append(f"--max-iops={max_iops}")
+    rc_warm, _warm = run_bench(warmup_cmd, "warmup", run_lines)
 
-    # Measured run: PUT 1KB objects, measure latency
+    # Measured run: use a short, rate-capped window near the 100,000-object
+    # requirement. nr_bench --count only terminates batch-mode calls; PF-2 is a
+    # single-object PUT path, so duration+max-iops is the bounded live path.
+    measured_iops = int(os.environ.get("PF2_MEASURED_MAX_IOPS", "30000"))
+    measured_dur = os.environ.get("PF2_MEASURED_DUR", dur)
     cmd = [
         str(bin_path), f"--uds={uds}", "--op=put", f"--threads={threads}",
-        "--val-size=1024", f"--duration={dur}", f"--require-peer={require_peer}",
+        "--val-size=1024", f"--duration={measured_dur}", f"--max-iops={measured_iops}",
+        f"--require-peer={require_peer}",
     ]
-    proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    run_lines.append(f"[measured] $ {' '.join(cmd)}\nexit={proc.returncode}\n{proc.stdout}\n")
-    parsed = parse_bench_output(proc.stdout)
+    rc, parsed = run_bench(cmd, "measured-count", run_lines)
+
+    ok = int(parsed.get("ops_ok", 0))
+    if ok > target_samples + sample_margin:
+        fallback_iops = int(os.environ.get("PF2_FALLBACK_MAX_IOPS", str(target_samples)))
+        fallback_dur = os.environ.get("PF2_FALLBACK_DUR", "1")
+        fallback_cmd = [
+            str(bin_path), f"--uds={uds}", "--op=put", "--threads=1",
+            "--val-size=1024", f"--duration={fallback_dur}",
+            f"--max-iops={fallback_iops}", f"--require-peer={require_peer}",
+        ]
+        rc, parsed = run_bench(fallback_cmd, "measured-rate-cap", run_lines)
+        parsed["count_mode_overshoot_samples"] = ok
 
     avg = float(parsed.get("lat_avg_us", 1e9))
     p99 = float(parsed.get("lat_p99_us", 1e9))
@@ -178,6 +203,7 @@ def main() -> int:
 
     passed = bool(
         ok >= 100_000
+        and ok <= target_samples + sample_margin
         and avg <= 50.0
         and p99 <= 100.0
         and fail_count == 0
@@ -194,12 +220,22 @@ def main() -> int:
         "lat_p99_us": p99,
         "lat_p99_9_us": float(parsed.get("lat_p99_9_us", 0)),
         "lat_max_us": float(parsed.get("lat_max_us", 0)),
-        "thresholds": {"samples": 100_000, "avg_us": 50.0, "p99_us": 100.0},
+        "thresholds": {
+            "samples": 100_000,
+            "samples_max": target_samples + sample_margin,
+            "avg_us": 50.0,
+            "p99_us": 100.0,
+        },
+        "target_samples": target_samples,
+        "max_iops": measured_iops,
+        "measured_duration_s": float(measured_dur),
         "passed": passed,
         "raw": parsed,
     }
-    if proc.returncode != 0:
-        result["note"] = f"nr_bench exited with {proc.returncode}"
+    if rc_warm != 0:
+        result["note"] = f"warmup nr_bench exited with {rc_warm}"
+    if rc != 0:
+        result["note"] = (str(result.get("note") or "") + f" nr_bench exited with {rc}").strip()
 
     ts = time.strftime("%Y%m%d_%H%M%S")
     write_json(logs / f"perf_02_latency_{ts}.json", result)

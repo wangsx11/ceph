@@ -3,10 +3,10 @@
 - Module: RDMA 分布式仿真计算模块
 - Function: 聚合数据传输
 - Source: docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 2 条
-- Last Run: 2026-05-04T13:48:05+0800
+- Last Run: 2026-05-27T14:13:27+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260504_134805.log
+- Log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/logs/run_20260527_141327.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/raw.json
 
 ## 关键证据

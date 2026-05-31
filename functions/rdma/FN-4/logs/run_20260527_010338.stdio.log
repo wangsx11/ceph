@@ -1,0 +1,4 @@
+rdma/FN-4 SKIP - CPU 与 GPU 高速直通访问
+- REQUIRE_PEER=1 且 peer_alive=false，不能证明跨节点 GPU Direct RDMA
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/logs/run_20260527_010338.log

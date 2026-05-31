@@ -1,0 +1,25 @@
+start {"history_dir": "performances/history/web_all_20260527_012749_pf_all_20260527_012749_a6888e84", "job_id": "pf_all_20260527_012749_a6888e84", "ok": true}
+poll 0 {"state": "queued", "exit_code": null, "profile": "presentation", "error": ""}
+poll 1 {"state": "finished", "exit_code": 0, "profile": "presentation", "error": ""}
+presentation_summary {
+  "profile": "presentation",
+  "totals": {
+    "FAIL": 0,
+    "PASS": 9,
+    "SKIP": 0,
+    "WAIVED": 0,
+    "total": 9
+  },
+  "execution_totals": {
+    "FAIL": 0,
+    "PASS": 9,
+    "SKIP": 0,
+    "WAIVED": 0,
+    "executed": 9,
+    "pending": 0,
+    "total": 9
+  },
+  "history_dir": "",
+  "result_source": "前端执行历史"
+}
+PASS performance presentation flow

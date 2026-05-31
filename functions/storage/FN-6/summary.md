@@ -3,10 +3,10 @@
 - Module: 多级异构的高效能存储模块
 - Function: 仿真数据运行中采集
 - Source: docs/功能要求.md / 多级异构的高效能存储模块 / 第 6 条
-- Last Run: 2026-05-04T12:16:58+0800
+- Last Run: 2026-05-27T14:12:56+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260504_121658.log
+- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260527_141256.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/storage/FN-6/raw.json
 
 ## 关键证据

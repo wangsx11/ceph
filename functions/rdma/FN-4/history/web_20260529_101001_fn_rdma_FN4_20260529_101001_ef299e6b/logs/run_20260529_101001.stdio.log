@@ -1,0 +1,8 @@
+rdma/FN-4 PASS - CPU 与 GPU 高速直通访问
+- xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用
+- RPC_GDR_STATUS peer GPU MR 有效: base=139934765678592 len=67108864 rkey=87042
+- A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=72688，degraded=false
+- xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=263699
+- A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=26952 checksum=522240
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260529_101001_fn_rdma_FN4_20260529_101001_ef299e6b/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-4/history/web_20260529_101001_fn_rdma_FN4_20260529_101001_ef299e6b/logs/run_20260529_101001.log

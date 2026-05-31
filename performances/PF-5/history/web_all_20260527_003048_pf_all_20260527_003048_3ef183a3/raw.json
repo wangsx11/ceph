@@ -1,0 +1,23 @@
+{
+  "metric": "perf_05_batch_bw",
+  "ops_per_sec": 1355996.0,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "val_size": 1024,
+  "mb_per_sec": 1388.54,
+  "threshold_mbs": 700.0,
+  "passed": true,
+  "raw": {
+    "ops_per_sec": 1355996.0,
+    "ops_ok": 20340480,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "val_size": 1024
+  },
+  "restore_async_repl": "0",
+  "restore_ok": true,
+  "status": "PASS",
+  "profile_source": "preserved_evidence",
+  "full_validation_required": true,
+  "preserved_source_dir": "performances/PF-5/history/web_20260505_070239_pf_PF5_20260505_070239_05ca76a5"
+}

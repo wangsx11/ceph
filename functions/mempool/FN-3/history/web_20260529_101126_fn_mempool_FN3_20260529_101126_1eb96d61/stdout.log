@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/run.sh
+
+mempool/FN-3 PASS - 内存池统一命名机制
+- 统一 pool 名称有效: local=default/slab1k remote=default/slab1k peer_id=192.168.0.214
+- 本地 registry 与 cluster slab 元数据一致: base=140703209275392 len=4294967296 lkey=96256 rkey=96256
+- 远端 registry 与 OOB peer slab 元数据一致: base=139677611638784 len=4294967296 rkey=71936 qps=32
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/history/web_20260529_101126_fn_mempool_FN3_20260529_101126_1eb96d61/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-3/history/web_20260529_101126_fn_mempool_FN3_20260529_101126_1eb96d61/logs/run_20260529_101126.log

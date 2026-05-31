@@ -1,0 +1,6 @@
+storage/FN-2 PASS - 多层感知、冷热分离与调度
+- 手动冷热迁移闭环成功: fn_storage_tier_manual_1779883601537_176485 demote->nvme, GET hit=nvme_promote
+- 自动冷热分离成功: 冷对象 fn_storage_tier_cold_1779883601537_176485 等待 16.0s 后 GET hit=nvme_promote
+- 热对象 fn_storage_tier_hot_1779883601537_176485 持续访问期间未发生下沉，最终 hit=local
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260527_200641_fn_storage_FN2_20260527_200641_e4597445/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-2/history/web_20260527_200641_fn_storage_FN2_20260527_200641_e4597445/logs/run_20260527_200641.log

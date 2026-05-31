@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/storage/FN-4/run.sh
+
+storage/FN-4 FAIL - 可配置压缩与去重
+- demote 到 HDD 后压缩统计未增加
+summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260529_100725_fn_storage_FN4_20260529_100725_cd2580a8/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/history/web_20260529_100725_fn_storage_FN4_20260529_100725_cd2580a8/logs/run_20260529_100725.log

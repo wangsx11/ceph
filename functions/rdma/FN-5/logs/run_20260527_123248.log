@@ -1,0 +1,142 @@
+[12:32:48] start rdma/FN-5 分布式节点路由转发与负载均衡
+[12:32:48] repo_root=/home/wangshouxin/native-rdma-web
+[12:32:48] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:32:48] rpc RPC_CLUSTER_STATUS body_len=0
+[12:32:48] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140471935643648,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140185499746304,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368858_3679886_0","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368859_3679886_1","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368859_3679886_2","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368859_3679886_3","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368859_3679886_4","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368859_3679886_5","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368859_3679886_6","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=151 resp={"ok":true,"key":"fn_route_1779856368860_3679886_7","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=151 resp={"ok":true,"key":"fn_route_1779856368860_3679886_8","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=32
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=151 resp={"ok":true,"key":"fn_route_1779856368860_3679886_9","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368860_3679886_10","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368860_3679886_11","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368860_3679886_12","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368860_3679886_13","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368860_3679886_14","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_15","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_16","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_17","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_18","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_19","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_20","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_21","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_22","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_23","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368861_3679886_24","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_25","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_26","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_27","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_28","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_29","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_30","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368862_3679886_31","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=153 resp={"ok":true,"key":"fn_route_1779856368862_3679886_32","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=153 resp={"ok":true,"key":"fn_route_1779856368862_3679886_33","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=153 resp={"ok":true,"key":"fn_route_1779856368862_3679886_34","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_35","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_36","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_37","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_38","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=153 resp={"ok":true,"key":"fn_route_1779856368863_3679886_39","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_40","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_41","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=140 resp={"ok":true,"key":"fn_route_1779856368863_3679886_42","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_43","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_44","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_45","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_46","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_47","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_48","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368864_3679886_49","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_50","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_51","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_52","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_53","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_54","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368865_3679886_55","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368866_3679886_56","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=152 resp={"ok":true,"key":"fn_route_1779856368866_3679886_57","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_58","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_59","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_60","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_61","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_62","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_QUERY body_len=33
+[12:32:48] rpc RPC_ROUTE_QUERY resp_len=139 resp={"ok":true,"key":"fn_route_1779856368866_3679886_63","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:48] rpc RPC_ROUTE_PUT body_len=52
+[12:32:48] rpc RPC_ROUTE_PUT resp_len=224 resp={"ok":true,"key":"fn_route_1779856368860_3679886_7","route_forwarded":false,"forward_transport":"local","primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true,"size":19,"offset":2093056,"route_ns":16456}
+[12:32:48] rpc RPC_ROUTE_PUT body_len=53
+[12:32:48] rpc RPC_ROUTE_PUT resp_len=240 resp={"ok":true,"key":"fn_route_1779856368858_3679886_0","route_forwarded":true,"forward_transport":"rdma","primary":"192.168.0.214","replica":"","local_is_primary":false,"size":20,"offset":134217728,"qp_idx":0,"degraded":false,"route_ns":69495}
+[12:32:48] rpc RPC_KV_GET body_len=32
+[12:32:48] rpc RPC_KV_GET resp_len=63 resp={"ok":true,"hit":"local","size":19,"val":"route-local-primary"}
+[12:32:48] rpc RPC_TCP_GET_PEER body_len=32
+[12:32:48] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":250719}
+[12:32:48] result=FAIL completion=未完成

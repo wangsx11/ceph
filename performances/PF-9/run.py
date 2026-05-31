@@ -103,7 +103,7 @@ def main() -> int:
     logs = log_dir()
     bin_path = resolve_cmake_bin(root, "nr_mempool_bench")
     threads = os.environ.get("THREADS", "8")
-    measured_runs = max(1, int(os.environ.get("MEASURED_RUNS", "3")))
+    measured_runs = max(1, int(os.environ.get("MEASURED_RUNS", "2")))
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 

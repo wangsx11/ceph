@@ -1,0 +1,190 @@
+{
+  "metric": "perf_01",
+  "ops_threads": 4,
+  "ops_val_size": 1024,
+  "ops_per_sec": 1720395.0,
+  "ops_ok": 6882176,
+  "ops_fail": 0,
+  "ops_fail_pct": 0.0,
+  "ops_success_rate_pct": 100.0,
+  "ops_degraded": 0,
+  "passed_ops": true,
+  "bw_threads": 4,
+  "bw_val_size": 1048576,
+  "bw_write_gbps": 57.385,
+  "bw_network_tx_gbps_avg": 57.309,
+  "bw_network_tx_gbps_peak": 60.859,
+  "bw_link_gbps": 100.0,
+  "bw_util_pct": 57.31,
+  "bw_ok": 27363,
+  "bw_fail": 0,
+  "bw_fail_pct": 0.0,
+  "bw_success_rate_pct": 100.0,
+  "bw_degraded": 0,
+  "passed_util": true,
+  "bw_trials": [
+    {
+      "threads": 4,
+      "network_tx_gbps_avg": 57.309,
+      "network_tx_gbps_peak": 60.859,
+      "client_req_gbps": 57.385,
+      "util_pct": 57.31,
+      "ops_ok": 27363,
+      "ops_fail": 0,
+      "fail_pct": 0.0,
+      "ops_degraded": 0,
+      "passed": true,
+      "network_samples": [
+        {
+          "ts_ns": 9659329591114438,
+          "bw_tx_gbps": 57.7186311641791
+        },
+        {
+          "ts_ns": 9659329791290385,
+          "bw_tx_gbps": 58.59442687999999
+        },
+        {
+          "ts_ns": 9659329991435587,
+          "bw_tx_gbps": 57.4619648
+        },
+        {
+          "ts_ns": 9659330191526168,
+          "bw_tx_gbps": 55.91007232
+        },
+        {
+          "ts_ns": 9659330391620688,
+          "bw_tx_gbps": 56.45533183999999
+        },
+        {
+          "ts_ns": 9659330591782002,
+          "bw_tx_gbps": 57.08447743999999
+        },
+        {
+          "ts_ns": 9659330792040999,
+          "bw_tx_gbps": 54.90343936
+        },
+        {
+          "ts_ns": 9659330992189210,
+          "bw_tx_gbps": 58.17770921393034
+        },
+        {
+          "ts_ns": 9659331192355445,
+          "bw_tx_gbps": 60.69157888
+        },
+        {
+          "ts_ns": 9659331392500973,
+          "bw_tx_gbps": 56.32950272
+        },
+        {
+          "ts_ns": 9659331592756760,
+          "bw_tx_gbps": 55.574528
+        },
+        {
+          "ts_ns": 9659331792875570,
+          "bw_tx_gbps": 58.67831296
+        },
+        {
+          "ts_ns": 9659331993045487,
+          "bw_tx_gbps": 56.79087616
+        },
+        {
+          "ts_ns": 9659332193211784,
+          "bw_tx_gbps": 57.7186311641791
+        },
+        {
+          "ts_ns": 9659332393375738,
+          "bw_tx_gbps": 54.77761024
+        },
+        {
+          "ts_ns": 9659332593549671,
+          "bw_tx_gbps": 56.874762239999995
+        },
+        {
+          "ts_ns": 9659332793697672,
+          "bw_tx_gbps": 57.33613568
+        },
+        {
+          "ts_ns": 9659332993824938,
+          "bw_tx_gbps": 56.245616639999994
+        },
+        {
+          "ts_ns": 9659333193952378,
+          "bw_tx_gbps": 57.4619648
+        },
+        {
+          "ts_ns": 9659333394080995,
+          "bw_tx_gbps": 57.843834268656714
+        },
+        {
+          "ts_ns": 9659333594203503,
+          "bw_tx_gbps": 60.85935103999999
+        }
+      ],
+      "raw": {
+        "elapsed_s": 4.0,
+        "ops_per_sec": 6839.0,
+        "val_size": 1048576,
+        "threads": 4,
+        "ops_ok": 27363,
+        "ops_fail": 0,
+        "ops_degraded": 0,
+        "lat_avg_us": 526.36,
+        "lat_p50_us": 486.28,
+        "lat_p99_us": 917.18,
+        "lat_p99_9_us": 2097.36,
+        "lat_max_us": 9339.66,
+        "req_bytes": 28692370716,
+        "req_mbps": 7171.42,
+        "resp_bytes": 9476833,
+        "resp_mbps": 2.37
+      }
+    }
+  ],
+  "restore_async_repl": "0",
+  "restore_ok": true,
+  "thresholds": {
+    "ops_per_sec": 1000000,
+    "util_pct": 50.0,
+    "fail": 0,
+    "degraded": 0,
+    "criterion": "ops AND util (分项验收)"
+  },
+  "passed": true,
+  "raw_ops": {
+    "elapsed_s": 4.0,
+    "ops_per_sec": 1720395.0,
+    "val_size": 1024,
+    "threads": 4,
+    "ops_ok": 6882176,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "lat_avg_us": 2.11,
+    "lat_p50_us": 1.81,
+    "lat_p99_us": 4.01,
+    "lat_p99_9_us": 53.0,
+    "lat_max_us": 376.76,
+    "req_bytes": 7150245154,
+    "req_mbps": 1787.41,
+    "resp_bytes": 20756256,
+    "resp_mbps": 5.19
+  },
+  "raw_bw": {
+    "elapsed_s": 4.0,
+    "ops_per_sec": 6839.0,
+    "val_size": 1048576,
+    "threads": 4,
+    "ops_ok": 27363,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "lat_avg_us": 526.36,
+    "lat_p50_us": 486.28,
+    "lat_p99_us": 917.18,
+    "lat_p99_9_us": 2097.36,
+    "lat_max_us": 9339.66,
+    "req_bytes": 28692370716,
+    "req_mbps": 7171.42,
+    "resp_bytes": 9476833,
+    "resp_mbps": 2.37
+  },
+  "status": "PASS"
+}

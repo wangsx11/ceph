@@ -10,14 +10,15 @@
       const pass = counts["通过"] || 0;
       const fail = counts["失败"] || 0;
       const skip = counts["跳过"] || 0;
+      const waived = counts["豁免"] || 0;
       return `
         <button class="module-card${active}" type="button" data-module="${moduleName}">
           <div class="module-row-main">
             <div class="module-title">${window.FDUtils.escapeHtml(info.display_name)}</div>
-            <span class="mini-pill ${fail ? "fail" : (skip ? "skip" : "pass")}">${pass}/${info.total || 0}</span>
+            <span class="mini-pill ${fail ? "fail" : (skip ? "skip" : (waived ? "waived" : "pass"))}">${pass}/${info.total || 0}</span>
           </div>
           <div class="module-meta">
-            失败 ${fail} · 跳过 ${skip}
+            失败 ${fail} · 跳过 ${skip} · 豁免 ${waived}
           </div>
         </button>
       `;

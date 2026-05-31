@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/performances/PF-2/run.sh
+
+[ssh-probe] pre: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[PF-2] output directory: /home/wangshouxin/native-rdma-web/performances/PF-2/history/web_20260529_123239_pf_PF2_20260529_123239_4009ff37
+[PF-2] running performance test and updating summary.md
+[ssh-probe] during-1: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] post: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[performance-dashboard] ssh_probe_summary total=1 failures=0 post_ok=True

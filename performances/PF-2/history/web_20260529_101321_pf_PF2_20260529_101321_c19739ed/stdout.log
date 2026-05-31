@@ -1,0 +1,28 @@
+Command: bash /home/wangshouxin/native-rdma-web/performances/PF-2/run.sh
+
+[ssh-probe] pre: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[PF-2] output directory: /home/wangshouxin/native-rdma-web/performances/PF-2/history/web_20260529_101321_pf_PF2_20260529_101321_c19739ed
+[PF-2] running performance test and updating summary.md
+[ssh-probe] during-1: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-2: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-3: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-4: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-5: PASS host=xfusion4 rc=0 elapsed=0.5s output=xfusion4
+[ssh-probe] during-6: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-7: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-8: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-9: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-10: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-11: PASS host=xfusion4 rc=0 elapsed=0.5s output=xfusion4
+[ssh-probe] during-12: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-13: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-14: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-15: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-16: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-17: PASS host=xfusion4 rc=0 elapsed=0.5s output=xfusion4
+[ssh-probe] during-18: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-19: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-20: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-21: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-22: PASS host=xfusion4 rc=0 elapsed=0.2s output=xfusion4
+[ssh-probe] during-23: PASS host=xfusion4 rc=0 elapsed=0.5s output=xfusion4

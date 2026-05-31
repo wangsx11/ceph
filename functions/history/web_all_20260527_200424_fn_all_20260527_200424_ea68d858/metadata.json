@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "job_id": "fn_all_20260527_200424_ea68d858",
+  "kind": "run_all",
+  "module": "",
+  "fn_id": "",
+  "state": "finished",
+  "exit_code": 0,
+  "started_at": "2026-05-27T20:04:24+0800",
+  "finished_at": "2026-05-27T20:06:02+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/functions/history/web_all_20260527_200424_fn_all_20260527_200424_ea68d858",
+  "history_dir": "functions/history/web_all_20260527_200424_fn_all_20260527_200424_ea68d858",
+  "job_log": "functions/history/web_all_20260527_200424_fn_all_20260527_200424_ea68d858/stdout.log",
+  "env": {
+    "REQUIRE_PEER": "1",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "CURRENT_NODE": "A",
+    "ALLOW_DESTRUCTIVE": "0"
+  }
+}

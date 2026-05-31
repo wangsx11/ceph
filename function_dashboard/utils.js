@@ -3,13 +3,13 @@
     PASS: "pass",
     FAIL: "fail",
     SKIP: "skip",
-    WAIVED: "skip"
+    WAIVED: "waived"
   };
   const statusText = {
     PASS: "通过",
     FAIL: "失败",
     SKIP: "跳过",
-    WAIVED: "跳过"
+    WAIVED: "豁免"
   };
 
   function escapeHtml(value) {
@@ -40,9 +40,7 @@
   }
 
   function sanitizeInternal(value) {
-    return String(value ?? "")
-      .replace(/\b(storage|rdma|mempool)\b/g, "模块")
-      .replace(/FN-\d+/g, "功能点");
+    return String(value ?? "");
   }
 
   function renderList(items, limit) {

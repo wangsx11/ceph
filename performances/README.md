@@ -132,6 +132,12 @@ performances/summary.md
 
 注意：PF-6 对数据面 slab 参数有特殊要求。如果直接批量执行且数据面按默认参数启动，PF-6 可能失败。严格验收时建议先按普通参数跑 PF-1 到 PF-5、PF-8，再按 PF-6 参数重启数据面单独跑 PF-6。
 
+## 演示安全汇总方式
+
+现场演示不建议从浏览器触发完整 `run_all.sh`。性能控制台的“运行演示性能流”会使用 presentation profile，仅复制既有 PF 证据到新的 web_all 历史目录并生成汇总，不启动长时间或高网络压力压测。该模式用于稳定展示结果材料和证据路径。
+
+完整验收仍以 `bash performances/run_all.sh` 为准；presentation profile 不替代完整验收，不应作为新的性能达标结论。
+
 ## 每个性能点怎么测
 
 | 性能点 | 是否需要数据面 | 主要依赖 | 执行命令 | 说明 |
@@ -142,7 +148,7 @@ performances/summary.md
 | PF-4 对象聚合传输 | 是 | `native_rdma/build/bin/nr_bench` | `cd performances/PF-4 && bash run.sh` | 通过 measured ops/s 折算两个批处理场景总耗时。 |
 | PF-5 批处理吞吐 | 是 | `native_rdma/build/bin/nr_bench` | `cd performances/PF-5 && bash run.sh` | 1KB PUT，计算 `MB/s = ops/s * val_size / 1e6`。 |
 | PF-6 多级存储读写 | 是，且需要 1MB slab | `native_rdma/build/bin/nr_bench` | `cd performances/PF-6 && bash run.sh` | 使用真实请求/响应字节计数计算写入和读取 GB/s。 |
-| PF-7 定期备份存储 | 否 | `fio` | `cd performances/PF-7 && bash run.sh` | 4KB 随机写 P999；严格验收需设置 `RAID5_CONFIRMED=1`。 |
+| PF-7 定期备份存储 | dataplane 后端需要数据面，fio 后端不需要 | 数据面 `RPC_BACKUP_WRITE` 或 `fio` | `cd performances/PF-7 && bash run.sh` | 4KB 写 P999；`passed=true` 只代表自动化延迟子项通过，严格 3+1 RAID5 验收需 `RAID5_CONFIRMED=1` 且 `strict_acceptance_passed=true`。 |
 | PF-8 仿真引擎运行 | 是 | 数据面 UDS `RPC_SIM_RUN` | `cd performances/PF-8 && bash run.sh` | 通过 UDS 调用仿真 RPC，统计 speedup 和 events/s。 |
 | PF-9 内存池化能力 | 否 | `native_rdma/build/bin/nr_mempool_bench` | `cd performances/PF-9 && bash run.sh` | 执行独立 C++ bench，输出 overhead/savings/scale。 |
 
@@ -179,6 +185,10 @@ export DUR=60
 export QUEUE_DEPTH=1
 export THREADS=1
 ```
+
+PF-7 结果字段中，`passed` 表示延迟测试本身通过；`strict_acceptance_passed`
+同时要求延迟通过且 `RAID5_CONFIRMED=1`。Round 5 最终验收应检查后者，
+避免把未确认 RAID5 拓扑的低延迟数据面路径误记为严格通过。
 
 PF-8 额外支持：
 

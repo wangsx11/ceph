@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "job_id": "fn_rdma_FN2_20260507_215131_0aeffa9a",
+  "kind": "run_one",
+  "module": "rdma",
+  "fn_id": "FN-2",
+  "state": "finished",
+  "exit_code": 2,
+  "started_at": "2026-05-07T21:51:31+0800",
+  "finished_at": "2026-05-07T21:51:31+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215131_fn_rdma_FN2_20260507_215131_0aeffa9a",
+  "history_dir": "functions/rdma/FN-2/history/web_20260507_215131_fn_rdma_FN2_20260507_215131_0aeffa9a",
+  "job_log": "functions/rdma/FN-2/history/web_20260507_215131_fn_rdma_FN2_20260507_215131_0aeffa9a/stdout.log",
+  "env": {
+    "CURRENT_NODE": "A",
+    "ALLOW_DESTRUCTIVE": "0",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": "1"
+  }
+}

@@ -1,0 +1,25 @@
+[01:08:56] start rdma/FN-2 聚合数据传输
+[01:08:56] repo_root=/home/wangshouxin/native-rdma-web
+[01:08:56] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[01:08:56] rpc RPC_CLUSTER_STATUS body_len=0
+[01:08:56] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140526502072320,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140324846014464,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[01:08:56] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=4956107
+[01:08:56] rpc RPC_KV_PUT_BATCH body_len=412
+[01:08:56] rpc RPC_KV_PUT_BATCH resp_len=192 resp={"ok":true,"n":8,"ok_n":8,"peer_alive":true,"replicated_n":8,"degraded_n":0,"repl_failed_n":0,"degraded":false,"transport":"rdma","async_repl":false,"aggregation":"batch_rpc","repl_ns":103955}
+[01:08:56] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:56] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_0","size":13,"tcp_ns":372986,"val":"batch-value-0"}
+[01:08:56] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:56] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_1","size":13,"tcp_ns":296935,"val":"batch-value-1"}
+[01:08:56] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:56] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_2","size":13,"tcp_ns":247889,"val":"batch-value-2"}
+[01:08:56] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:56] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_3","size":13,"tcp_ns":324945,"val":"batch-value-3"}
+[01:08:57] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:57] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_4","size":13,"tcp_ns":230107,"val":"batch-value-4"}
+[01:08:57] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:57] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_5","size":13,"tcp_ns":222937,"val":"batch-value-5"}
+[01:08:57] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:57] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_6","size":13,"tcp_ns":175755,"val":"batch-value-6"}
+[01:08:57] rpc RPC_TCP_GET_PEER body_len=32
+[01:08:57] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779815336999_2666972_7","size":13,"tcp_ns":215000,"val":"batch-value-7"}
+[01:08:57] result=PASS completion=完成

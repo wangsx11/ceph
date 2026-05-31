@@ -1,0 +1,64 @@
+[12:42:12] start storage/FN-3 多策略预取机制
+[12:42:12] repo_root=/home/wangshouxin/native-rdma-web
+[12:42:12] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:42:12] rpc RPC_PREFETCH_STATS body_len=46
+[12:42:12] rpc RPC_PREFETCH_STATS resp_len=229 resp={"ok":true,"total":8,"hits_stride":0,"hits_markov":5,"prefetch_issued":1,"prefetch_loaded":0,"prefetch_hits":0,"prefetch_already_hot":1,"prefetch_skipped":5,"query":"fn_prefetch_baseline_key_1780029732082_3716182","predicted":[]}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=374 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_0","tenant_id":0,"size":14,"offset":27471872,"repl_ns":38116,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":15,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_1","tenant_id":0,"size":14,"offset":30363648,"repl_ns":16691,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":0,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_2","tenant_id":0,"size":14,"offset":19623936,"repl_ns":18653,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":1,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_3","tenant_id":0,"size":14,"offset":13242368,"repl_ns":19591,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":2,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=386 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_4","tenant_id":0,"size":14,"offset":11792384,"repl_ns":15873,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":3,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=386 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_5","tenant_id":0,"size":14,"offset":12980224,"repl_ns":17445,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":4,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_6","tenant_id":0,"size":14,"offset":11161600,"repl_ns":19531,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":5,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=58
+[12:42:12] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_7","tenant_id":0,"size":14,"offset":21303296,"repl_ns":21062,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":6,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_TIER_DEMOTE body_len=48
+[12:42:12] rpc RPC_TIER_DEMOTE resp_len=75 resp={"ok":true,"key":"fn_prefetch_stride__1780029732082_3716182_4","to":"nvme"}
+[12:42:12] rpc RPC_KV_GET body_len=43
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"stride-value-0"}
+[12:42:12] rpc RPC_KV_GET body_len=43
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"stride-value-1"}
+[12:42:12] rpc RPC_KV_GET body_len=43
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"stride-value-2"}
+[12:42:12] rpc RPC_KV_GET body_len=43
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"stride-value-3"}
+[12:42:12] rpc RPC_PREFETCH_STATS body_len=43
+[12:42:12] rpc RPC_PREFETCH_STATS resp_len=596 resp={"ok":true,"total":12,"hits_stride":1,"hits_markov":5,"prefetch_issued":9,"prefetch_loaded":1,"prefetch_hits":0,"prefetch_already_hot":4,"prefetch_skipped":9,"query":"fn_prefetch_stride__1780029732082_3716182_3","predicted":["fn_prefetch_stride__1780029732082_3716182_4","fn_prefetch_stride__1780029732082_3716182_5","fn_prefetch_stride__1780029732082_3716182_6","fn_prefetch_stride__1780029732082_3716182_7","fn_prefetch_stride__1780029732082_3716182_8","fn_prefetch_stride__1780029732082_3716182_9"
+[12:42:12] rpc RPC_KV_GET body_len=43
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"stride-value-4"}
+[12:42:12] rpc RPC_PREFETCH_STATS body_len=43
+[12:42:12] rpc RPC_PREFETCH_STATS resp_len=599 resp={"ok":true,"total":13,"hits_stride":2,"hits_markov":5,"prefetch_issued":17,"prefetch_loaded":1,"prefetch_hits":1,"prefetch_already_hot":7,"prefetch_skipped":14,"query":"fn_prefetch_stride__1780029732082_3716182_4","predicted":["fn_prefetch_stride__1780029732082_3716182_5","fn_prefetch_stride__1780029732082_3716182_6","fn_prefetch_stride__1780029732082_3716182_7","fn_prefetch_stride__1780029732082_3716182_8","fn_prefetch_stride__1780029732082_3716182_9","fn_prefetch_stride__1780029732082_3716182_
+[12:42:12] rpc RPC_KV_PUT body_len=60
+[12:42:12] rpc RPC_KV_PUT resp_len=374 resp={"ok":true,"key":"fn_prefetch_markov_1780029732085_3716182_Akey","tenant_id":0,"size":14,"offset":2367488,"repl_ns":26171,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":7,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_PUT body_len=60
+[12:42:12] rpc RPC_KV_PUT resp_len=388 resp={"ok":true,"key":"fn_prefetch_markov_1780029732085_3716182_Bkey","tenant_id":0,"size":14,"offset":16244736,"repl_ns":17202,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":8,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"192.168.0.214","local_is_primary":true}}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-a-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-b-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-a-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-b-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-a-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-b-value"}
+[12:42:12] rpc RPC_TIER_DEMOTE body_len=50
+[12:42:12] rpc RPC_TIER_DEMOTE resp_len=77 resp={"ok":true,"key":"fn_prefetch_markov_1780029732085_3716182_Bkey","to":"nvme"}
+[12:42:12] rpc RPC_PREFETCH_STATS body_len=45
+[12:42:12] rpc RPC_PREFETCH_STATS resp_len=279 resp={"ok":true,"total":19,"hits_stride":2,"hits_markov":9,"prefetch_issued":21,"prefetch_loaded":1,"prefetch_hits":1,"prefetch_already_hot":11,"prefetch_skipped":14,"query":"fn_prefetch_markov_1780029732085_3716182_Akey","predicted":["fn_prefetch_markov_1780029732085_3716182_Bkey"]}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-a-value"}
+[12:42:12] rpc RPC_KV_GET body_len=45
+[12:42:12] rpc RPC_KV_GET resp_len=58 resp={"ok":true,"hit":"local","size":14,"val":"markov-b-value"}
+[12:42:12] rpc RPC_PREFETCH_STATS body_len=45
+[12:42:12] rpc RPC_PREFETCH_STATS resp_len=280 resp={"ok":true,"total":21,"hits_stride":2,"hits_markov":11,"prefetch_issued":23,"prefetch_loaded":2,"prefetch_hits":2,"prefetch_already_hot":12,"prefetch_skipped":14,"query":"fn_prefetch_markov_1780029732085_3716182_Akey","predicted":["fn_prefetch_markov_1780029732085_3716182_Bkey"]}
+[12:42:12] result=PASS completion=完成

@@ -1,0 +1,23 @@
+[reuse] existing data plane UDS is connectable; restart skipped
+
+[warmup] skipped
+
+[measured] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=1 --require-peer=1 --batch=64
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.47
+  threads       : 4
+  op            : put
+  ops ok/fail   : 1494016 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 1493314
+  req_bytes     : 1552208444 (1551.48 MB/s)
+  resp_bytes    : 4531206 (4.53 MB/s)
+  latency us    : avg=2.46  p50=2.09  p90=3.24  p99=5.12  p99.9=42.69  max=199.00
+
+
+
+[restore] skipped (no PF-5 restart)

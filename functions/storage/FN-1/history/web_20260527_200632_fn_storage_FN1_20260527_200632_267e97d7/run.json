@@ -1,0 +1,261 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-1",
+  "function": "仿真引擎异构存储统一访问接口",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 1 条",
+  "started_at": "2026-05-27T20:06:32+0800",
+  "finished_at": "2026-05-27T20:06:32+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "RPC_TIER_STATS 暴露 dram/nvme/hdd 统一层级字段",
+    "NVMe 闭环成功: PUT -> RPC_TIER_DEMOTE(nvme) -> GET hit=nvme_promote",
+    "HDD 闭环成功: PUT -> RPC_TIER_DEMOTE(hdd) -> GET hit=hdd_promote"
+  ],
+  "details": {
+    "before": {
+      "ok": true,
+      "dram": 0,
+      "nvme": 0,
+      "hdd": 1,
+      "demoted_d_n": 1,
+      "demoted_n_h": 1,
+      "events": [
+        {
+          "ts_ns": 9513627426218627,
+          "key": "fn_ha_recovered_1779883562960_174890",
+          "from": "nvme",
+          "to": "hdd",
+          "bytes": 30
+        },
+        {
+          "ts_ns": 9513620224707681,
+          "key": "fn_ha_recovered_1779883562960_174890",
+          "from": "dram",
+          "to": "nvme",
+          "bytes": 30
+        }
+      ]
+    },
+    "nvme": {
+      "put": {
+        "ok": true,
+        "key": "fn_storage_iface_nvme_1779883592442_176220",
+        "tenant_id": 0,
+        "size": 20,
+        "offset": 3141632,
+        "repl_ns": 29345,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 1,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.214",
+          "replica": "",
+          "local_is_primary": false
+        }
+      },
+      "demote": {
+        "ok": true,
+        "key": "fn_storage_iface_nvme_1779883592442_176220",
+        "to": "nvme"
+      },
+      "stats_after_demote": {
+        "ok": true,
+        "dram": 0,
+        "nvme": 1,
+        "hdd": 1,
+        "demoted_d_n": 2,
+        "demoted_n_h": 1,
+        "events": [
+          {
+            "ts_ns": 9513646631861978,
+            "key": "fn_storage_iface_nvme_1779883592442_176220",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 20
+          },
+          {
+            "ts_ns": 9513627426218627,
+            "key": "fn_ha_recovered_1779883562960_174890",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 30
+          },
+          {
+            "ts_ns": 9513620224707681,
+            "key": "fn_ha_recovered_1779883562960_174890",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 30
+          }
+        ]
+      },
+      "get": {
+        "ok": true,
+        "hit": "nvme_promote",
+        "size": 20,
+        "val": "nvme-interface-probe"
+      }
+    },
+    "hdd": {
+      "put": {
+        "ok": true,
+        "key": "fn_storage_iface_hdd_1779883592443_176220",
+        "tenant_id": 0,
+        "size": 19,
+        "offset": 5238784,
+        "repl_ns": 36864,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 2,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.214",
+          "replica": "192.168.0.218",
+          "local_is_primary": false
+        }
+      },
+      "demote": {
+        "ok": true,
+        "key": "fn_storage_iface_hdd_1779883592443_176220",
+        "to": "hdd"
+      },
+      "stats_after_demote": {
+        "ok": true,
+        "dram": 1,
+        "nvme": 0,
+        "hdd": 2,
+        "demoted_d_n": 3,
+        "demoted_n_h": 1,
+        "events": [
+          {
+            "ts_ns": 9513646632872755,
+            "key": "fn_storage_iface_hdd_1779883592443_176220",
+            "from": "dram",
+            "to": "hdd",
+            "bytes": 19
+          },
+          {
+            "ts_ns": 9513646632501223,
+            "key": "fn_storage_iface_nvme_1779883592442_176220",
+            "from": "nvme",
+            "to": "dram",
+            "bytes": 20
+          },
+          {
+            "ts_ns": 9513646631861978,
+            "key": "fn_storage_iface_nvme_1779883592442_176220",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 20
+          },
+          {
+            "ts_ns": 9513627426218627,
+            "key": "fn_ha_recovered_1779883562960_174890",
+            "from": "nvme",
+            "to": "hdd",
+            "bytes": 30
+          },
+          {
+            "ts_ns": 9513620224707681,
+            "key": "fn_ha_recovered_1779883562960_174890",
+            "from": "dram",
+            "to": "nvme",
+            "bytes": 30
+          }
+        ]
+      },
+      "get": {
+        "ok": true,
+        "hit": "hdd_promote",
+        "size": 19,
+        "val": "hdd-interface-probe"
+      }
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260527_200632_fn_storage_FN1_20260527_200632_267e97d7/logs/run_20260527_200632.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260527_200632_fn_storage_FN1_20260527_200632_267e97d7/logs/run_20260527_200632.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/history/web_20260527_200632_fn_storage_FN1_20260527_200632_267e97d7/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 297,
+      "response_preview": "{\"ok\":true,\"dram\":0,\"nvme\":0,\"hdd\":1,\"demoted_d_n\":1,\"demoted_n_h\":1,\"events\":[{\"ts_ns\":9513627426218627,\"key\":\"fn_ha_recovered_1779883562960_174890\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":30},{\"ts_ns\":9513620224707681,\"key\":\"fn_ha_recovered_1779883562960_174890\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":30}]}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 63,
+      "response_len": 372,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_iface_nvme_1779883592442_176220\",\"tenant_id\":0,\"size\":20,\"offset\":3141632,\"repl_ns\":29345,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":1,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 47,
+      "response_len": 74,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_iface_nvme_1779883592442_176220\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 412,
+      "response_preview": "{\"ok\":true,\"dram\":0,\"nvme\":1,\"hdd\":1,\"demoted_d_n\":2,\"demoted_n_h\":1,\"events\":[{\"ts_ns\":9513646631861978,\"key\":\"fn_storage_iface_nvme_1779883592442_176220\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":20},{\"ts_ns\":9513627426218627,\"key\":\"fn_ha_recovered_1779883562960_174890\",\"from\":\"nvme\",\"to\":\"hdd\",\"bytes\":30},{\"ts_ns\":9513620224707681,\"key\":\"fn_ha_recovered_1779883562960_174890\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":30}]}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 42,
+      "response_len": 71,
+      "response_preview": "{\"ok\":true,\"hit\":\"nvme_promote\",\"size\":20,\"val\":\"nvme-interface-probe\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 61,
+      "response_len": 384,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_iface_hdd_1779883592443_176220\",\"tenant_id\":0,\"size\":19,\"offset\":5238784,\"repl_ns\":36864,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 45,
+      "response_len": 72,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_storage_iface_hdd_1779883592443_176220\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_TIER_STATS",
+      "body_len": 0,
+      "response_len": 640,
+      "response_preview": "{\"ok\":true,\"dram\":1,\"nvme\":0,\"hdd\":2,\"demoted_d_n\":3,\"demoted_n_h\":1,\"events\":[{\"ts_ns\":9513646632872755,\"key\":\"fn_storage_iface_hdd_1779883592443_176220\",\"from\":\"dram\",\"to\":\"hdd\",\"bytes\":19},{\"ts_ns\":9513646632501223,\"key\":\"fn_storage_iface_nvme_1779883592442_176220\",\"from\":\"nvme\",\"to\":\"dram\",\"bytes\":20},{\"ts_ns\":9513646631861978,\"key\":\"fn_storage_iface_nvme_1779883592442_176220\",\"from\":\"dram\",\"to\":\"nvme\",\"bytes\":20},{\"ts_ns\":9513627426218627,\"key\":\"fn_ha_recovered_1779883562960_174890\",\"from\":"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 41,
+      "response_len": 69,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":19,\"val\":\"hdd-interface-probe\"}"
+    }
+  ]
+}

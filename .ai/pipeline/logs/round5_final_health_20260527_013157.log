@@ -1,0 +1,16 @@
+/ 200 3723
+/function-dashboard/ 200 2095
+/performance-dashboard/ 200 2092
+/api/cluster/status 200 902
+cluster {"ok": true, "peer_alive": true, "rdma_connected": true, "transport": "rdma", "tcp_data_ready": true, "peer_num_qp": 32, "degraded_puts": 0}
+/api/functions/summary 200 78945
+functions {'FAIL': 0, 'PASS': 16, 'SKIP': 0, 'WAIVED': 1, 'total': 17} {'FAIL': 0, 'PASS': 16, 'SKIP': 0, 'WAIVED': 1, 'executed': 17, 'pending': 0, 'total': 17}
+/api/performance/summary 200 48280
+perf_full full {'FAIL': 4, 'PASS': 5, 'SKIP': 0, 'WAIVED': 0, 'total': 9}
+/api/performance/presentation_summary 200 54682
+perf_presentation presentation {'FAIL': 0, 'PASS': 9, 'SKIP': 0, 'WAIVED': 0, 'total': 9} 前端执行历史
+/api/demo5/snapshot 200 21687
+demo5_rounds {'1': {'phase': 'done', 'passed': True, 'samples': 59}, '2': {'phase': 'done', 'passed': True, 'samples': 55}, '3': {'phase': 'done', 'passed': True, 'samples': 51}}
+/api/demo6/status 200 11999
+demo6 {'done': True, 'step': 8, 'tiers': {'dram': 35, 'hdd': 35, 'nvme': 30}} events 59
+PASS final health

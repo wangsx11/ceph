@@ -1,0 +1,63 @@
+[23:30:54] start rdma/FN-2 聚合数据传输
+[23:30:54] repo_root=/home/wangshouxin/native-rdma-web
+[23:30:54] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[23:30:54] rpc RPC_CLUSTER_STATUS body_len=0
+[23:30:54] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140331363024896,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140252278923264,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[23:30:54] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=4748607
+[23:30:54] rpc RPC_KV_PUT_BATCH body_len=412
+[23:30:54] rpc RPC_KV_PUT_BATCH resp_len=191 resp={"ok":true,"n":8,"ok_n":8,"peer_alive":true,"replicated_n":8,"degraded_n":0,"repl_failed_n":0,"degraded":false,"transport":"rdma","async_repl":false,"aggregation":"batch_rpc","repl_ns":44892}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_0","size":13,"tcp_ns":334975,"val":"batch-value-0"}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_1","size":13,"tcp_ns":245532,"val":"batch-value-1"}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_2","size":13,"tcp_ns":212741,"val":"batch-value-2"}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":217888}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":241237}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":276297}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":264322}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":296312}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":249820}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":220678}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":290813}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":374840}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":301264}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":296334}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":442344}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":261544}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":329721}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":305370}
+[23:30:54] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:54] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":363127}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":275401}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":294327}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=64 resp={"ok":false,"transport":"tcp","err":"not found","tcp_ns":276999}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_3","size":13,"tcp_ns":256781,"val":"batch-value-3"}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_4","size":13,"tcp_ns":257086,"val":"batch-value-4"}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_5","size":13,"tcp_ns":186912,"val":"batch-value-5"}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_6","size":13,"tcp_ns":203309,"val":"batch-value-6"}
+[23:30:55] rpc RPC_TCP_GET_PEER body_len=32
+[23:30:55] rpc RPC_TCP_GET_PEER resp_len=118 resp={"ok":true,"transport":"tcp","key":"fn_batch_1779809454229_2502218_7","size":13,"tcp_ns":174818,"val":"batch-value-7"}
+[23:30:55] result=PASS completion=完成

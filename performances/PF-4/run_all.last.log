@@ -1,2 +1,18 @@
+[guard] label=PF-4
+[guard] timeout_s=180
+[guard] ssh_probe_host=xfusion4
+[guard] command=bash -c cd '/home/wangshouxin/native-rdma-web/performances/PF-4' && bash run.sh
+[ssh-probe] 2026-05-27T12:53:59+0800 PF-4-pre: PASS host=xfusion4 elapsed=1s output=xfusion4
 [PF-4] output directory: /home/wangshouxin/native-rdma-web/performances/PF-4
 [PF-4] running performance test and updating summary.md
+[ssh-probe] 2026-05-27T12:54:00+0800 PF-4-during-1: PASS host=xfusion4 elapsed=0s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:05+0800 PF-4-during-2: PASS host=xfusion4 elapsed=0s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:10+0800 PF-4-during-3: PASS host=xfusion4 elapsed=0s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:15+0800 PF-4-during-4: PASS host=xfusion4 elapsed=1s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:21+0800 PF-4-during-5: PASS host=xfusion4 elapsed=0s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:26+0800 PF-4-during-6: PASS host=xfusion4 elapsed=0s output=xfusion4
+[ssh-probe] 2026-05-27T12:54:26+0800 PF-4-post: PASS host=xfusion4 elapsed=0s output=xfusion4
+[guard] elapsed_s=26
+[guard] command_rc=0
+[guard] ssh_probe_during=6 failures=0
+[guard] ssh_probe_post_rc=0

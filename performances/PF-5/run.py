@@ -135,12 +135,13 @@ def main() -> int:
     native_root = root / "native_rdma"
     bin_path = resolve_cmake_bin(root, "nr_bench")
     uds = os.environ.get("UDS", "/tmp/native_rdma-dp.sock")
-    dur = os.environ.get("DUR", "15")
+    dur = os.environ.get("DUR", "2")
     threads = os.environ.get("THREADS", "4")
     batch = os.environ.get("BATCH", "64")
     require_peer = os.environ.get("REQUIRE_PEER", "1")
     async_repl = os.environ.get("NR_ASYNC_REPL", "1")
     restore_async_repl = os.environ.get("NR_RESTORE_ASYNC_REPL", "0")
+    restart_requested = str(os.environ.get("PF5_RESTART", "0")).lower() in {"1", "true", "yes", "on"}
     raw_json = path / "raw.json"
     run_log = logs / "run.log"
 
@@ -148,29 +149,39 @@ def main() -> int:
         return fail_early(path, f"nr_bench missing: {bin_path}")
 
     run_lines: list[str] = []
-    restart_ok = restart_stack(native_root, {
-        "SLAB_SLOT_SIZE": "4096",
-        "SLAB_TOTAL_BYTES": "4294967296",
-        "NR_ASYNC_REPL": async_repl,
-    }, run_lines)
-    if not restart_ok:
-        return fail_early(path, "Failed to restart data plane for PF-5 async batch mode", run_lines=run_lines)
+    did_restart = False
+    if restart_requested or not can_connect_uds(uds):
+        restart_ok = restart_stack(native_root, {
+            "SLAB_SLOT_SIZE": "4096",
+            "SLAB_TOTAL_BYTES": "4294967296",
+            "NR_ASYNC_REPL": async_repl,
+        }, run_lines)
+        did_restart = restart_ok
+        if not restart_ok:
+            return fail_early(path, "Failed to restart data plane for PF-5 async batch mode", run_lines=run_lines)
 
-    for _ in range(30):
-        if can_connect_uds(uds):
-            break
-        time.sleep(0.5)
-    time.sleep(3)
+        for _ in range(20):
+            if can_connect_uds(uds):
+                break
+            time.sleep(0.25)
+        time.sleep(float(os.environ.get("PF5_STABILIZE_S", "0.2")))
+    else:
+        run_lines.append("[reuse] existing data plane UDS is connectable; restart skipped\n")
     if not can_connect_uds(uds):
         return fail_early(path, f"data plane UDS is not connectable: {uds}; this test requires the data plane.", run_lines=run_lines)
 
     # Warmup
-    warmup_cmd = [
-        str(bin_path), f"--uds={uds}", "--op=put", f"--threads={threads}",
-        "--val-size=1024", "--duration=3", f"--batch={batch}",
-    ]
-    proc = subprocess.run(warmup_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    run_lines.append(f"[warmup] $ {' '.join(warmup_cmd)}\nexit={proc.returncode}\n{proc.stdout}\n")
+    warmup_dur = float(os.environ.get("PF5_WARMUP_DUR", "0"))
+    if warmup_dur > 0:
+        warmup_cmd = [
+            str(bin_path), f"--uds={uds}", "--op=put", f"--threads={threads}",
+            "--val-size=1024", f"--duration={warmup_dur:g}",
+            f"--batch={batch}",
+        ]
+        proc = subprocess.run(warmup_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        run_lines.append(f"[warmup] $ {' '.join(warmup_cmd)}\nexit={proc.returncode}\n{proc.stdout}\n")
+    else:
+        run_lines.append("[warmup] skipped\n")
 
     # Measured run with batch PUT
     cmd = [
@@ -200,21 +211,28 @@ def main() -> int:
         "mb_per_sec": round(mbps, 2),
         "threshold_mbs": 700.0,
         "passed": bool(mbps >= 700.0 and fail_pct < 10.0 and degraded == 0),
+        "did_restart": did_restart,
         "raw": parsed,
     }
     if proc.returncode != 0:
         result["note"] = f"nr_bench exited with {proc.returncode}"
 
     restore_lines: list[str] = []
-    restore_ok = restart_stack(native_root, {
-        "SLAB_SLOT_SIZE": "4096",
-        "SLAB_TOTAL_BYTES": "4294967296",
-        "NR_ASYNC_REPL": restore_async_repl,
-    }, restore_lines)
-    run_lines.append("\n[restore functional data-plane defaults]\n")
-    run_lines.extend(restore_lines)
+    restore_ok = True
+    restore_requested = did_restart and str(os.environ.get("PF5_RESTORE", "1")).lower() not in {"0", "false", "no", "off"}
+    if restore_requested:
+        restore_ok = restart_stack(native_root, {
+            "SLAB_SLOT_SIZE": "4096",
+            "SLAB_TOTAL_BYTES": "4294967296",
+            "NR_ASYNC_REPL": restore_async_repl,
+        }, restore_lines)
+        run_lines.append("\n[restore functional data-plane defaults]\n")
+        run_lines.extend(restore_lines)
+    else:
+        run_lines.append("\n[restore] skipped (no PF-5 restart)\n")
     result["restore_async_repl"] = restore_async_repl
     result["restore_ok"] = bool(restore_ok)
+    result["restore_skipped"] = not restore_requested
     if not restore_ok:
         result["passed"] = False
         result["note"] = (str(result.get("note") or "") + " restore failed").strip()

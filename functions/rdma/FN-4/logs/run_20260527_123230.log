@@ -1,0 +1,40 @@
+[12:32:30] start rdma/FN-4 CPU 与 GPU 高速直通访问
+[12:32:30] repo_root=/home/wangshouxin/native-rdma-web
+[12:32:30] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:32:30] rpc RPC_CLUSTER_STATUS body_len=0
+[12:32:30] rpc RPC_CLUSTER_STATUS resp_len=597 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140207723728896,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":139880847273984,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":true,"peer_gpu_base":139879602192384,"peer_gpu_len":67108864,"peer_gpu_rkey":87290,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_rep
+[12:32:30] rpc RPC_GDR_STATUS body_len=0
+[12:32:30] rpc RPC_GDR_STATUS resp_len=398 resp={"ok":true,"gdr_requested":true,"gdr_compiled":false,"peer_memory_loaded":false,"local_gpu_enabled":false,"local_gpu_device_id":-1,"local_gpu_name":"","local_gpu_base":0,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"cuda_driver_version":0,"cuda_runtime_version":0,"local_gpu_error":"","peer_gpu_enabled":true,"peer_gpu_base":139879602192384,"peer_gpu_len":67108864,"peer_gpu_rkey":87290}
+[12:32:30] cmd ssh -o BatchMode=yes -o ConnectTimeout=5 xfusion4 bash -lc hostname; nvidia-smi --query-gpu=index,name,pci.bus_id,memory.total --format=csv,noheader; lsmod | egrep 'nvidia_peermem|nv_peer_mem'; /usr/local/cuda/bin/nvcc --version || nvcc --version || true; ibv_devinfo | head -80
+[12:32:30] cmd rc=0 stdout=4
+Cuda compilation tools, release 12.6, V12.6.20
+Build cuda_12.6.r12.6/compiler.34431801_0
+hca_id:	mlx5_0
+	transport:			InfiniBand (0)
+	fw_ver:				16.35.4506
+	node_guid:			506b:4b03:0028:4fb4
+	sys_image_guid:			506b:4b03:0028:4fb4
+	vendor_id:			0x02c9
+	vendor_part_id:			4119
+	hw_ver:				0x0
+	board_id:			MT_0000000011
+	phys_port_cnt:			1
+		port:	1
+			state:			PORT_ACTIVE (4)
+			max_mtu:		4096 (5)
+			active_mtu:		1024 (3)
+			sm_lid:			0
+			port_lid:		0
+			port_lmc:		0x00
+			link_layer:		Ethernet
+
+ stderr=
+[12:32:30] cmd ssh -o BatchMode=yes -o ConnectTimeout=5 xfusion4 python3 -c 'import socket,struct,sys;uds='"'"'/tmp/native_rdma-dp.sock'"'"';kind=b'"'"'RPC_GDR_STATUS'"'"';body=b'"'"''"'"';s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(10);s.connect(uds);s.sendall(struct.pack('"'"'<I'"'"',len(kind))+kind+struct.pack('"'"'<I'"'"',len(body))+body);f=s.makefile('"'"'rb'"'"');h=f.read(4);n=struct.unpack('"'"'<I'"'"',h)[0];d=f.read(n);sys.stdout.buffer.write(d)'
+[12:32:31] cmd rc=0 stdout={"ok":true,"gdr_requested":true,"gdr_compiled":true,"peer_memory_loaded":true,"local_gpu_enabled":true,"local_gpu_device_id":0,"local_gpu_name":"NVIDIA A100 80GB PCIe","local_gpu_base":139879602192384,"local_gpu_len":67108864,"local_gpu_lkey":87290,"local_gpu_rkey":87290,"cuda_driver_version":12040,"cuda_runtime_version":12060,"local_gpu_error":"","peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0} stderr=
+[12:32:31] rpc RPC_GDR_WRITE body_len=27
+[12:32:31] rpc RPC_GDR_WRITE resp_len=198 resp={"ok":true,"transport":"gpudirect_rdma","degraded":false,"bytes":4096,"offset":0,"seed":90,"qp_idx":1,"write_ns":115164,"peer_gpu_base":139879602192384,"peer_gpu_rkey":87290,"peer_gpu_len":67108864}
+[12:32:31] cmd ssh -o BatchMode=yes -o ConnectTimeout=5 xfusion4 python3 -c 'import socket,struct,sys;uds='"'"'/tmp/native_rdma-dp.sock'"'"';kind=b'"'"'RPC_GDR_VALIDATE'"'"';body=b'"'"'offset=0&bytes=4096&seed=90'"'"';s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);s.settimeout(10);s.connect(uds);s.sendall(struct.pack('"'"'<I'"'"',len(kind))+kind+struct.pack('"'"'<I'"'"',len(body))+body);f=s.makefile('"'"'rb'"'"');h=f.read(4);n=struct.unpack('"'"'<I'"'"',h)[0];d=f.read(n);sys.stdout.buffer.write(d)'
+[12:32:31] cmd rc=0 stdout={"ok":true,"gpu_side_validate":true,"bytes":4096,"offset":0,"seed":90,"checksum":522240,"mismatches":0,"first_bad":18446744073709551615,"expected_first":0,"actual_first":0,"validate_ns":259411,"local_gpu_enabled":true,"local_gpu_rkey":87290,"err":""} stderr=
+[12:32:31] rpc RPC_GDR_READBACK body_len=27
+[12:32:31] rpc RPC_GDR_READBACK resp_len=220 resp={"ok":true,"transport":"gpudirect_rdma","degraded":false,"bytes":4096,"offset":0,"seed":90,"qp_idx":1,"read_ns":51737,"checksum":522240,"mismatches":0,"first_bad":18446744073709551615,"expected_first":0,"actual_first":0}
+[12:32:31] result=PASS completion=完成

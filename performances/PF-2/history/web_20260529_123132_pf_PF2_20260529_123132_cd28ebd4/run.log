@@ -1,0 +1,33 @@
+[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=1 --val-size=1024 --duration=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=1 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=false batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.18
+  threads       : 1
+  op            : put
+  ops ok/fail   : 31943 / 0
+  ops degraded  : 0
+  ops/s         : 31937
+  req_bytes     : 33024622 (33.02 MB/s)
+  resp_bytes    : 11091482 (11.09 MB/s)
+  latency us    : avg=30.92  p50=28.21  p90=37.61  p99=54.67  p99.9=109.85  max=1767.08
+
+
+[measured-count] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=1 --val-size=1024 --duration=1 --max-iops=105000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=1 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=true batch=1 max_iops=105000
+
+==== nr_bench result ====
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.14
+  threads       : 1
+  op            : put
+  ops ok/fail   : 31266 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 31262
+  req_bytes     : 32324604 (32.32 MB/s)
+  resp_bytes    : 10856495 (10.85 MB/s)
+  latency us    : avg=31.53  p50=28.25  p90=39.77  p99=54.74  p99.9=141.28  max=3916.31
+

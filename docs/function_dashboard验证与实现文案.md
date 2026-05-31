@@ -302,14 +302,15 @@
 ### 实现方案
 - C++ 数据面 `ObjectRouter` 使用一致性哈希计算对象 primary 节点。
 - `RPC_ROUTE_QUERY` 返回路由决策，`RPC_ROUTE_PUT` 按 primary 执行本地写入或远端转发。
-- 远端 primary 当前通过 TCP data channel 完成转发写入，随后通过 peer 读取接口校验内容。
+- 远端 primary 的 routed PUT 使用 RDMA WRITE 写入 peer slab，并通过 RDMA control message 同步 key、offset 和 size；结果字段为 `forward_transport=rdma`。
+- `RPC_TCP_GET_PEER` 只作为 peer 内容读回校验通道，用来确认远端 primary 节点已经能本地读到该对象。
 - functions 入口通过 UDS 调用路由查询、路由写入和 peer 读取 RPC。
 
 ### 测试方案
 
 前置条件：
 - 双节点数据面在线，UDS 可访问。
-- peer 在线，路由表和 TCP data channel 状态有效。
+- peer 在线，路由表和 RDMA transport 状态有效；TCP data channel 仅用于 peer 读回校验。
 - 本地与远端节点地址在 cluster 状态中可识别。
 
 测试方案：

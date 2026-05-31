@@ -1,0 +1,4 @@
+rdma/FN-3 SKIP - 流量优先级机制
+- REQUIRE_PEER=1 且 peer_alive=false，不能证明高低优先级 RDMA 数据面在线
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-3/logs/run_20260527_010338.log

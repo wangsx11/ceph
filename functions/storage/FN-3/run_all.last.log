@@ -3,9 +3,11 @@ Exit Code: 0
 
 ## STDOUT
 storage/FN-3 PASS - 多策略预取机制
-- 顺序访问触发 stride 预测: expected=fn_prefetch__1777822912792_29822894 predicted_count=8
+- stride 预取执行成功: predicted=fn_prefetch_stride__1779883468571_172367_4, GET hit=local
+- Markov 预取执行成功: predicted=fn_prefetch_markov_1779883468573_172367_Bkey, GET hit=local
+- 预取统计增加: loaded 0->2, hits 0->2
 summary: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/summary.md
-log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260503_234152.log
+log: /home/wangshouxin/native-rdma-web/functions/storage/FN-3/logs/run_20260527_200428.log
 
 
 ## STDERR

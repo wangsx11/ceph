@@ -1,0 +1,27 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-1",
+  "function": "仿真引擎异构存储统一访问接口",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 1 条",
+  "started_at": "2026-05-26T23:24:42+0800",
+  "finished_at": "2026-05-26T23:24:42+0800",
+  "status": "SKIP",
+  "passed": false,
+  "completion": "未完成",
+  "evidence": [
+    "UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock"
+  ],
+  "details": {},
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": ""
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260526_232442.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/logs/run_20260526_232442.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-1/raw.json",
+  "rpc_calls": []
+}

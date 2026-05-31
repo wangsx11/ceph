@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "job_id": "pf_all_20260527_142006_7b842c15",
+  "kind": "run_all",
+  "module": "",
+  "fn_id": "",
+  "state": "finished",
+  "exit_code": 0,
+  "started_at": "2026-05-27T14:20:06+0800",
+  "finished_at": "2026-05-27T14:20:06+0800",
+  "error": "",
+  "history_abs": "/home/wangshouxin/native-rdma-web/performances/history/web_all_20260527_142006_pf_all_20260527_142006_7b842c15",
+  "history_dir": "performances/history/web_all_20260527_142006_pf_all_20260527_142006_7b842c15",
+  "job_log": "performances/history/web_all_20260527_142006_pf_all_20260527_142006_7b842c15/stdout.log",
+  "env": {
+    "PERF_SSH_PROBE_HOST": "xfusion4",
+    "NR_GDR_ENABLE": "0",
+    "PERFORMANCE_TIMEOUT_S": "180",
+    "PERF_SSH_PROBE_INTERVAL_S": "10",
+    "PERFORMANCE_PROFILE": "presentation",
+    "CURRENT_NODE": "A",
+    "PERF_SSH_PROBE_FAIL_LIMIT": "2",
+    "PERF_SSH_PROBE_TIMEOUT_S": "5",
+    "REQUIRE_PEER": "1",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "NR_TRANSPORT": "rdma"
+  },
+  "profile": "presentation",
+  "profile_text": "演示安全"
+}

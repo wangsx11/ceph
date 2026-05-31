@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-04T14:53:58+0800",
-  "run_log": "/home/wangshouxin/native-rdma-web/functions/logs/summary_refresh_20260504_145358.log",
+  "generated_at": "2026-05-27T14:14:30+0800",
+  "run_log": "/home/wangshouxin/native-rdma-web/functions/logs/run_all_20260527_141251.log",
   "rows": [
     {
       "module": "storage",
@@ -27,9 +27,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-2/raw.json",
       "exit_code": 0,
       "evidence": [
-        "手动冷热迁移闭环成功: fn_storage_tier_manual_1777864902811_60186 demote->nvme, GET hit=nvme_promote",
-        "自动冷热分离成功: 冷对象 fn_storage_tier_cold_1777864902812_60186 等待 16.0s 后 GET hit=nvme_promote",
-        "热对象 fn_storage_tier_hot_1777864902812_60186 持续访问期间未发生下沉，最终 hit=local"
+        "手动冷热迁移闭环成功: fn_storage_tier_manual_1779862371924_3849124 demote->nvme, GET hit=nvme_promote",
+        "自动冷热分离成功: 冷对象 fn_storage_tier_cold_1779862371925_3849124 等待 16.0s 后 GET hit=nvme_promote",
+        "热对象 fn_storage_tier_hot_1779862371925_3849124 持续访问期间未发生下沉，最终 hit=local"
       ]
     },
     {
@@ -42,8 +42,8 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/storage/FN-3/raw.json",
       "exit_code": 0,
       "evidence": [
-        "stride 预取执行成功: predicted=fn_prefetch_stride__1777866006296_95000_4, GET hit=local",
-        "Markov 预取执行成功: predicted=fn_prefetch_markov_1777866006297_95000_Bkey, GET hit=local",
+        "stride 预取执行成功: predicted=fn_prefetch_stride__1779862376030_3849178_4, GET hit=local",
+        "Markov 预取执行成功: predicted=fn_prefetch_markov_1779862376032_3849178_Bkey, GET hit=local",
         "预取统计增加: loaded 0->2, hits 0->2"
       ]
     },
@@ -103,9 +103,9 @@
       "exit_code": 0,
       "evidence": [
         "最近一次数据面启动日志包含 RDMA QP、TcpFallback 和 OOB exchange 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
-        "peer_alive=True peer_num_qp=32 peer_slab_rkey=87040",
+        "peer_alive=True peer_num_qp=32 peer_slab_rkey=71936",
         "TCP 协议切换闭环成功: RPC_KV_PUT transport=tcp -> RPC_TCP_GET_PEER size=19",
-        "RDMA/TCP 复制时延对比: RDMA avg=23005ns p95=21657ns; TCP avg=199431ns p95=215146ns; samples=8"
+        "RDMA/TCP 复制时延对比: RDMA avg=39.036us p95=46.712us; TCP avg=239.814us p95=245.561us; samples=8"
       ]
     },
     {
@@ -134,7 +134,7 @@
       "exit_code": 0,
       "evidence": [
         "QosSched 最近启动日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
-        "高优先级 PUT 走 RDMA QP 0，低优先级 PUT 走 RDMA QP 16",
+        "高优先级 PUT 走 RDMA QP 8，低优先级 PUT 走 RDMA QP 16",
         "高低优先级 RDMA PUT 均完成 peer 读回同值校验"
       ]
     },
@@ -149,10 +149,10 @@
       "exit_code": 0,
       "evidence": [
         "xfusion4 证明 NVIDIA GPU、CUDA、nvidia_peermem/nv_peer_mem 与 mlx5_0 RDMA 设备可用",
-        "RPC_GDR_STATUS peer GPU MR 有效: base=139952750854144 len=67108864 rkey=87283",
-        "A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=34026，degraded=false",
-        "xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=84564",
-        "A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=13841 checksum=522240"
+        "RPC_GDR_STATUS peer GPU MR 有效: base=140525189464064 len=67108864 rkey=87295",
+        "A->B RPC_GDR_WRITE 写入 GPU MR 4096B，write_ns=78192，degraded=false",
+        "xfusion4 CUDA kernel 校验 GPU buffer 通过，checksum=522240 validate_ns=265997",
+        "A 侧 RPC_GDR_READBACK 读回校验通过，read_ns=23461 checksum=522240"
       ]
     },
     {
@@ -165,23 +165,26 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-5/raw.json",
       "exit_code": 0,
       "evidence": [
-        "64 个 key 路由查询成功，primary 分布: {'192.168.0.218': 10, '192.168.0.214': 54}",
-        "本地 primary 写入未转发: key=fn_route_1777874867999_348962_0 primary=192.168.0.218",
-        "远端 primary 写入已转发到 peer: key=fn_route_1777874868000_348962_10 primary=192.168.0.214 transport=tcp_data_channel",
-        "本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=27"
+        "64 个 key 路由查询成功，primary 分布: {'192.168.0.214': 50, '192.168.0.218': 14}",
+        "本地 primary 写入未转发: key=fn_route_1779862452574_3851616_28 primary=192.168.0.218",
+        "远端 primary 写入已通过 RDMA 转发到 peer: key=fn_route_1779862452570_3851616_0 primary=192.168.0.214 offset=134217728 qp_idx=0",
+        "本地 GET 与 peer GET 均完成同值读回；replica 为空样本数=34"
       ]
     },
     {
       "module": "mempool",
       "fn_id": "FN-1",
       "function": "RDMA 语义远程内存访问与零拷贝",
-      "status": "SKIP",
-      "completion": "未完成",
+      "status": "PASS",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-1/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-1/raw.json",
-      "exit_code": 2,
+      "exit_code": 0,
       "evidence": [
-        "REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证"
+        "RPC_KV_PUT_RDMA 走 RDMA: transport=rdma degraded=False repl_ns=25490",
+        "远端 slab 元数据有效: base=140609299718144 len=4294967296 rkey=71936 qps=32",
+        "offset/size 在 peer slab 范围内: offset=4190208 size=20",
+        "RPC_TCP_GET_PEER 从 peer 读回同一 value: key=fn_zero_copy_1779862452682_3851696"
       ]
     },
     {
@@ -194,20 +197,25 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-2/raw.json",
       "exit_code": 0,
       "evidence": [
-        "PUT/GET 闭环成功: key=fn_pool_api_1777822913874_2982476 hit=local size=26"
+        "UDS 封装 API 闭环成功: RPC_KV_PUT -> RPC_KV_GET key=fn_pool_api_1779862452759_3851711 hit=local size=26",
+        "RPC_KV_PUT 屏蔽底层 RDMA 细节但返回 transport=rdma degraded=False offset=5238784",
+        "本地与 peer slab/MR 元数据有效，offset/size 同时落在两端 slab 范围内",
+        "RPC_TCP_GET_PEER 从 peer 读回同一 value，证明分布式内存池 API 的远端副本可见"
       ]
     },
     {
       "module": "mempool",
       "fn_id": "FN-3",
       "function": "内存池统一命名机制",
-      "status": "SKIP",
-      "completion": "未完成",
+      "status": "PASS",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-3/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-3/raw.json",
-      "exit_code": 2,
+      "exit_code": 0,
       "evidence": [
-        "REQUIRE_PEER=1 且 peer_alive=false，跳过需要双节点的验证"
+        "统一 pool 名称有效: local=default/slab1k remote=default/slab1k peer_id=192.168.0.214",
+        "本地 registry 与 cluster slab 元数据一致: base=139778631000064 len=4294967296 lkey=96256 rkey=96256",
+        "远端 registry 与 OOB peer slab 元数据一致: base=140609299718144 len=4294967296 rkey=71936 qps=32"
       ]
     },
     {
@@ -215,13 +223,15 @@
       "fn_id": "FN-4",
       "function": "跨节点内存自适应分配与热数据迁移",
       "status": "PASS",
-      "completion": "部分完成",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-4/raw.json",
       "exit_code": 0,
       "evidence": [
-        "当前可观测热数据迁移闭环成功: demote->nvme, GET hit=nvme_promote",
-        "TierEngine 初始化日志存在: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log"
+        "冷对象自适应放置到远端 RDMA slab: remote_offset=67108864 size=32",
+        "首次访问保持远端放置并通过 RDMA READ 读取: hit=remote_rdma_read access_count=1",
+        "热点阈值 3 次访问后迁回本地 slab: local_offset=9433088 rdma_read_ns=9002",
+        "迁移后普通 RPC_KV_GET 本地命中: hit=local"
       ]
     },
     {
@@ -234,7 +244,9 @@
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-5/raw.json",
       "exit_code": 0,
       "evidence": [
-        "tenant=23914 完成拒绝->允许->读取->撤销->拒绝闭环"
+        "tenant=63453 完成拒绝->允许->读取->撤销->拒绝闭环",
+        "tenant=63453 与 tenant=163453 使用同一逻辑 key 时读回各自 value，证明命名空间隔离",
+        "RPC_ISO_LIST 证明 ACL 授权/撤销状态生效: 63453|default/slab1k allow 后存在，最终撤销后不存在"
       ]
     },
     {
@@ -242,13 +254,14 @@
       "fn_id": "FN-6",
       "function": "内存池高可靠机制",
       "status": "PASS",
-      "completion": "部分完成",
+      "completion": "完成",
       "summary": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-6/summary.md",
       "raw": "/home/wangshouxin/native-rdma-web/functions/mempool/FN-6/raw.json",
       "exit_code": 0,
       "evidence": [
-        "HA 字段完备: peer_alive=False degraded_puts=19 degraded_bytes=4255",
-        "默认未执行主动 kill peer；完整演练需 ALLOW_DESTRUCTIVE=1 且提供 PEER_SSH/PEER_DP_PATH"
+        "主动故障演练成功: peer_alive true->false, degraded_puts 0->1",
+        "故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1779862457339_3851802",
+        "恢复命令执行后 peer_alive=true，后续 PUT 重新走 RDMA 非降级复制并可从 peer 读回"
       ]
     }
   ]

@@ -1,0 +1,4 @@
+mempool/FN-4 SKIP - 跨节点内存自适应分配与热数据迁移
+- UDS socket 不存在或不可用: /tmp/native_rdma-dp.sock
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-4/logs/run_20260526_232443.log

@@ -1,0 +1,6 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/run.sh
+
+rdma/FN-2 SKIP - 聚合数据传输
+- REQUIRE_PEER=1 且 peer_alive=false，不能证明批量 RDMA 聚合传输到 xfusion4
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215131_fn_rdma_FN2_20260507_215131_0aeffa9a/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-2/history/web_20260507_215131_fn_rdma_FN2_20260507_215131_0aeffa9a/logs/run_20260507_215131.log

@@ -152,6 +152,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
     wait_s = float(os.environ.get("FN2_AUTO_WAIT_SECONDS", "16"))
     interval_s = float(os.environ.get("FN2_HOT_ACCESS_INTERVAL_SECONDS", "1"))
     deadline = time.time() + wait_s
+    wait_started = time.time()
     hot_hits: list[dict[str, Any]] = []
     stats_samples: list[dict[str, Any]] = []
     while time.time() < deadline:
@@ -168,6 +169,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
         ):
             break
         time.sleep(interval_s)
+    wait_elapsed_s = max(0.0, time.time() - wait_started)
 
     stats_after_wait = ctx.rpc_json("RPC_TIER_STATS")
     _require_ok(stats_after_wait, "RPC_TIER_STATS after auto wait")
@@ -231,7 +233,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
 
     return pass_result(
         f"手动冷热迁移闭环成功: {manual_key} demote->nvme, GET hit={manual_hit}",
-        f"自动冷热分离成功: 冷对象 {auto_cold_key} 等待 {wait_s:.1f}s 后 GET hit={cold_hit}",
+        f"自动冷热分离成功: 冷对象 {auto_cold_key} 等待 {wait_elapsed_s:.1f}s 后 GET hit={cold_hit}",
         f"热对象 {auto_hot_key} 持续访问期间未发生下沉，最终 hit={hot_final.get('hit')}",
         details={
             "flush": flush,
@@ -247,6 +249,7 @@ def storage_fn2(ctx: FnContext) -> CheckResult:
                 "cold_demote_event": cold_demote_event,
                 "hot_demote_event": hot_demote_event,
                 "wait_s": wait_s,
+                "wait_elapsed_s": wait_elapsed_s,
                 "interval_s": interval_s,
             },
         },
@@ -387,40 +390,69 @@ def storage_fn3(ctx: FnContext) -> CheckResult:
 
 
 def storage_fn4(ctx: FnContext) -> CheckResult:
+    def compressible_payload(tag: str, size: int = 4096) -> str:
+        unit = f"{tag}|"
+        repeat = (size // len(unit)) + 1
+        return (unit * repeat)[:size]
+
     before_compress = ctx.rpc_json("RPC_COMPRESS_STATS")
     _require_ok(before_compress, "RPC_COMPRESS_STATS before")
     before_dedup = ctx.rpc_json("RPC_DEDUP_STATS")
     _require_ok(before_dedup, "RPC_DEDUP_STATS before")
 
-    key_a = _unique("fn_compress_dedup_a")
-    key_b = _unique("fn_compress_dedup_b")
-    payload = ("A" * 4096).encode()
-    put = ctx.kv_put(key_a, payload)
-    if not _ok(put) and "value too large" in str(put.get("err", "")):
+    compress_key_a = _unique("fn_compress_unique_a")
+    compress_key_b = _unique("fn_compress_unique_b")
+    dedup_key_a = _unique("fn_dedup_unique_a")
+    dedup_key_b = _unique("fn_dedup_unique_b")
+    compress_value_a = compressible_payload(f"compress-a-{compress_key_a}")
+    compress_value_b = compressible_payload(f"compress-b-{compress_key_b}")
+    dedup_value = compressible_payload(f"dedup-shared-{_unique('fn_dedup_payload')}")
+
+    put_a = ctx.kv_put(compress_key_a, compress_value_a)
+    if not _ok(put_a) and "value too large" in str(put_a.get("err", "")):
         return skip_result(
             "当前 SLAB_SLOT_SIZE 无法容纳 4096 字节压缩探针，需以 SLAB_SLOT_SIZE>=4096 重启后验证",
-            details={"compress_stats": before_compress, "dedup_stats": before_dedup, "put": put},
+            details={
+                "compress_stats": before_compress,
+                "dedup_stats": before_dedup,
+                "put_a": put_a,
+            },
         )
-    _require_ok(put, "RPC_KV_PUT compress/dedup probe A")
-    put_b = ctx.kv_put(key_b, payload)
-    _require_ok(put_b, "RPC_KV_PUT compress/dedup probe B")
+    _require_ok(put_a, "RPC_KV_PUT compress probe A")
+    put_b = ctx.kv_put(compress_key_b, compress_value_b)
+    _require_ok(put_b, "RPC_KV_PUT compress probe B")
 
-    demote_a = ctx.rpc_json("RPC_TIER_DEMOTE", key_a.encode() + b"\x00hdd")
+    demote_a = ctx.rpc_json("RPC_TIER_DEMOTE", compress_key_a.encode() + b"\x00hdd")
     _require_ok(demote_a, "RPC_TIER_DEMOTE hdd A")
     after_first_compress = ctx.rpc_json("RPC_COMPRESS_STATS")
     _require_ok(after_first_compress, "RPC_COMPRESS_STATS after first demote")
 
-    demote_b = ctx.rpc_json("RPC_TIER_DEMOTE", key_b.encode() + b"\x00hdd")
+    demote_b = ctx.rpc_json("RPC_TIER_DEMOTE", compress_key_b.encode() + b"\x00hdd")
     _require_ok(demote_b, "RPC_TIER_DEMOTE hdd B")
     after_compress = ctx.rpc_json("RPC_COMPRESS_STATS")
     _require_ok(after_compress, "RPC_COMPRESS_STATS after second demote")
+
+    dedup_put_a = ctx.kv_put(dedup_key_a, dedup_value)
+    _require_ok(dedup_put_a, "RPC_KV_PUT dedup probe A")
+    dedup_put_b = ctx.kv_put(dedup_key_b, dedup_value)
+    _require_ok(dedup_put_b, "RPC_KV_PUT dedup probe B")
+    dedup_demote_a = ctx.rpc_json("RPC_TIER_DEMOTE", dedup_key_a.encode() + b"\x00hdd")
+    _require_ok(dedup_demote_a, "RPC_TIER_DEMOTE hdd dedup A")
+    after_first_dedup = ctx.rpc_json("RPC_DEDUP_STATS")
+    _require_ok(after_first_dedup, "RPC_DEDUP_STATS after first dedup demote")
+    dedup_demote_b = ctx.rpc_json("RPC_TIER_DEMOTE", dedup_key_b.encode() + b"\x00hdd")
+    _require_ok(dedup_demote_b, "RPC_TIER_DEMOTE hdd dedup B")
     after_dedup = ctx.rpc_json("RPC_DEDUP_STATS")
     _require_ok(after_dedup, "RPC_DEDUP_STATS after")
 
-    get_a = ctx.kv_get(key_a)
-    _require_ok(get_a, "RPC_KV_GET hdd compressed/dedup A")
-    get_b = ctx.kv_get(key_b)
-    _require_ok(get_b, "RPC_KV_GET hdd compressed/dedup B")
+    get_a = ctx.kv_get(compress_key_a)
+    _require_ok(get_a, "RPC_KV_GET hdd compressed A")
+    get_b = ctx.kv_get(compress_key_b)
+    _require_ok(get_b, "RPC_KV_GET hdd compressed B")
+    dedup_get_a = ctx.kv_get(dedup_key_a)
+    _require_ok(dedup_get_a, "RPC_KV_GET hdd dedup A")
+    dedup_get_b = ctx.kv_get(dedup_key_b)
+    _require_ok(dedup_get_b, "RPC_KV_GET hdd dedup B")
 
     before_objects = int(before_compress.get("objects", 0) or 0)
     after_objects = int(after_compress.get("objects", 0) or 0)
@@ -433,41 +465,53 @@ def storage_fn4(ctx: FnContext) -> CheckResult:
 
     if not (after_objects > before_objects or after_saved > before_saved):
         return fail_result(
-            "demote 到 HDD 后压缩统计未增加",
+            "unique compressible payload demote 到 HDD 后压缩统计未增加",
             details={
                 "before_compress": before_compress,
                 "after_first_compress": after_first_compress,
                 "after_compress": after_compress,
                 "before_dedup": before_dedup,
                 "after_dedup": after_dedup,
-                "put_a": put,
+                "put_a": put_a,
                 "put_b": put_b,
                 "demote_a": demote_a,
                 "demote_b": demote_b,
                 "get_a": get_a,
                 "get_b": get_b,
+                "dedup_put_a": dedup_put_a,
+                "dedup_put_b": dedup_put_b,
+                "dedup_demote_a": dedup_demote_a,
+                "dedup_demote_b": dedup_demote_b,
+                "dedup_get_a": dedup_get_a,
+                "dedup_get_b": dedup_get_b,
             },
         )
     if not (after_dups > before_dups and after_dedup_saved > before_dedup_saved):
         return fail_result(
-            "重复对象 demote 到 HDD 后去重统计未增加",
+            "duplicate payload demote 到 HDD 后去重统计未增加",
             details={
                 "before_compress": before_compress,
                 "after_first_compress": after_first_compress,
                 "after_compress": after_compress,
                 "before_dedup": before_dedup,
                 "after_dedup": after_dedup,
-                "put_a": put,
+                "put_a": put_a,
                 "put_b": put_b,
                 "demote_a": demote_a,
                 "demote_b": demote_b,
                 "get_a": get_a,
                 "get_b": get_b,
+                "dedup_put_a": dedup_put_a,
+                "dedup_put_b": dedup_put_b,
+                "dedup_demote_a": dedup_demote_a,
+                "dedup_demote_b": dedup_demote_b,
+                "dedup_get_a": dedup_get_a,
+                "dedup_get_b": dedup_get_b,
             },
         )
     if "hdd" not in str(get_a.get("hit", "")) or "hdd" not in str(get_b.get("hit", "")):
         return fail_result(
-            f"压缩/去重对象读回未显示 HDD 提升: hit_a={get_a.get('hit')} hit_b={get_b.get('hit')}",
+            f"压缩对象读回未显示 HDD 提升: hit_a={get_a.get('hit')} hit_b={get_b.get('hit')}",
             details={
                 "before_compress": before_compress,
                 "after_compress": after_compress,
@@ -475,25 +519,48 @@ def storage_fn4(ctx: FnContext) -> CheckResult:
                 "after_dedup": after_dedup,
                 "get_a": get_a,
                 "get_b": get_b,
+                "dedup_get_a": dedup_get_a,
+                "dedup_get_b": dedup_get_b,
+            },
+        )
+    if "hdd" not in str(dedup_get_a.get("hit", "")) or "hdd" not in str(dedup_get_b.get("hit", "")):
+        return fail_result(
+            f"去重对象读回未显示 HDD 提升: hit_a={dedup_get_a.get('hit')} hit_b={dedup_get_b.get('hit')}",
+            details={
+                "before_compress": before_compress,
+                "after_compress": after_compress,
+                "before_dedup": before_dedup,
+                "after_dedup": after_dedup,
+                "get_a": get_a,
+                "get_b": get_b,
+                "dedup_get_a": dedup_get_a,
+                "dedup_get_b": dedup_get_b,
             },
         )
 
     return pass_result(
         f"压缩统计增加: objects {before_objects}->{after_objects}, saved_bytes {before_saved}->{after_saved}",
         f"去重统计增加: duplicate_objects {before_dups}->{after_dups}, saved_bytes {before_dedup_saved}->{after_dedup_saved}",
-        f"HDD 读回闭环成功: A hit={get_a.get('hit')}, B hit={get_b.get('hit')}",
+        f"HDD 读回闭环成功: compress A hit={get_a.get('hit')}, compress B hit={get_b.get('hit')}, dedup B hit={dedup_get_b.get('hit')}",
         details={
             "before_compress": before_compress,
             "after_first_compress": after_first_compress,
             "after_compress": after_compress,
             "before_dedup": before_dedup,
             "after_dedup": after_dedup,
-            "put_a": put,
+            "after_first_dedup": after_first_dedup,
+            "put_a": put_a,
             "put_b": put_b,
             "demote_a": demote_a,
             "demote_b": demote_b,
             "get_a": get_a,
             "get_b": get_b,
+            "dedup_put_a": dedup_put_a,
+            "dedup_put_b": dedup_put_b,
+            "dedup_demote_a": dedup_demote_a,
+            "dedup_demote_b": dedup_demote_b,
+            "dedup_get_a": dedup_get_a,
+            "dedup_get_b": dedup_get_b,
         },
     )
 
@@ -1032,10 +1099,28 @@ def rdma_fn3(ctx: FnContext) -> CheckResult:
             details=details,
         )
 
-    hi_peer = ctx.rpc_json("RPC_TCP_GET_PEER", hi_key)
-    lo_peer = ctx.rpc_json("RPC_TCP_GET_PEER", lo_key)
+    readback_timeout = float(os.environ.get("FN3_PEER_READBACK_TIMEOUT", "3.0"))
+    readback_interval = float(os.environ.get("FN3_PEER_READBACK_INTERVAL", "0.05"))
+
+    def wait_peer_readback(key: str, expected: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        deadline = time.time() + max(0.1, readback_timeout)
+        samples: list[dict[str, Any]] = []
+        last: dict[str, Any] = {}
+        while True:
+            last = ctx.rpc_json("RPC_TCP_GET_PEER", key)
+            samples.append(last)
+            if _ok(last) and str(last.get("val", "")) == expected:
+                return last, samples
+            if time.time() >= deadline:
+                return last, samples
+            time.sleep(max(0.01, readback_interval))
+
+    hi_peer, hi_peer_samples = wait_peer_readback(hi_key, hi_value)
+    lo_peer, lo_peer_samples = wait_peer_readback(lo_key, lo_value)
     details["hi_peer"] = hi_peer
     details["lo_peer"] = lo_peer
+    details["hi_peer_samples"] = hi_peer_samples
+    details["lo_peer_samples"] = lo_peer_samples
     if not (
         _ok(hi_peer)
         and _ok(lo_peer)
@@ -1075,18 +1160,6 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
     details["gdr_status_local"] = gdr_status
     if not _ok(gdr_status):
         return fail_result("RPC_GDR_STATUS 返回失败", details=details)
-    if not bool(gdr_status.get("peer_gpu_enabled", False)):
-        return waived_result(
-            "peer GPU MR 未启用，当前未满足 GPUDirect RDMA 验收硬件/启动条件；"
-            "需要 NR_GDR_ENABLE=1、xfusion4 NVIDIA GPU 和 nvidia_peermem/nv_peer_mem 后重跑",
-            details=details,
-        )
-    if not (
-        _positive_int(gdr_status.get("peer_gpu_base"))
-        and _positive_int(gdr_status.get("peer_gpu_rkey"))
-        and _positive_int(gdr_status.get("peer_gpu_len"))
-    ):
-        return fail_result("peer GPU MR base/rkey/len 无效", details=details)
 
     peer_host = (
         os.environ.get("PEER_HOST")
@@ -1114,17 +1187,20 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
     hw_text = hw.stdout + "\n" + hw.stderr
     if hw.returncode != 0:
         return skip_result(f"无法通过 SSH 检查 {peer_host} GDR 硬件状态", details=details)
-    if "NVIDIA" not in hw_text or (
-        "nvidia_peermem" not in hw_text and "nv_peer_mem" not in hw_text
-    ):
+    missing_prereqs: list[str] = []
+    if "NVIDIA" not in hw_text:
+        missing_prereqs.append("NVIDIA GPU")
+    if "nvidia_peermem" not in hw_text and "nv_peer_mem" not in hw_text:
+        missing_prereqs.append("nvidia_peermem/nv_peer_mem")
+    if "Cuda compilation tools" not in hw_text and "release 12" not in hw_text:
+        missing_prereqs.append("CUDA 编译工具")
+    if "hca_id:\tmlx5_0" not in hw_text and "hca_id: mlx5_0" not in hw_text:
+        missing_prereqs.append("mlx5_0 RDMA 设备")
+    if missing_prereqs:
         return waived_result(
-            "xfusion4 未同时证明 NVIDIA GPU 与 nvidia_peermem/nv_peer_mem 可用",
+            "xfusion4 GDR 硬件前置条件缺失: " + "、".join(missing_prereqs),
             details=details,
         )
-    if "Cuda compilation tools" not in hw_text and "release 12" not in hw_text:
-        return waived_result("xfusion4 未证明 CUDA 编译工具可用", details=details)
-    if "hca_id:\tmlx5_0" not in hw_text and "hca_id: mlx5_0" not in hw_text:
-        return fail_result("xfusion4 未证明 mlx5_0 RDMA 设备可用", details=details)
 
     def remote_rpc(kind: str, body: str = "", timeout: float = 20.0) -> dict[str, Any]:
         code = (
@@ -1161,6 +1237,36 @@ def rdma_fn4(ctx: FnContext) -> CheckResult:
 
     peer_gdr_status = remote_rpc("RPC_GDR_STATUS")
     details["gdr_status_peer"] = peer_gdr_status
+
+    startup_issues: list[str] = []
+    if not bool(gdr_status.get("gdr_requested", False)):
+        startup_issues.append("xfusion3/A gdr_requested=false")
+    if not bool(gdr_status.get("peer_gpu_enabled", False)):
+        startup_issues.append("xfusion3/A peer_gpu_enabled=false")
+    if not bool(peer_gdr_status.get("gdr_requested", False)):
+        startup_issues.append("xfusion4/B gdr_requested=false")
+    if not bool(peer_gdr_status.get("gdr_compiled", False)):
+        startup_issues.append("xfusion4/B gdr_compiled=false")
+    if not bool(peer_gdr_status.get("peer_memory_loaded", False)):
+        startup_issues.append("xfusion4/B peer_memory_loaded=false")
+    if not bool(peer_gdr_status.get("local_gpu_enabled", False)):
+        startup_issues.append("xfusion4/B local_gpu_enabled=false")
+    if startup_issues:
+        peer_err = str(peer_gdr_status.get("local_gpu_error") or "")
+        suffix = f"；B local_gpu_error={peer_err}" if peer_err else ""
+        return fail_result(
+            "xfusion4 GDR 硬件前置条件存在，但当前数据面未暴露可被 A 直接访问的 GPU MR: "
+            + "、".join(startup_issues)
+            + suffix,
+            details=details,
+        )
+
+    if not (
+        _positive_int(gdr_status.get("peer_gpu_base"))
+        and _positive_int(gdr_status.get("peer_gpu_rkey"))
+        and _positive_int(gdr_status.get("peer_gpu_len"))
+    ):
+        return fail_result("peer GPU MR base/rkey/len 无效", details=details)
     if not (
         _ok(peer_gdr_status)
         and bool(peer_gdr_status.get("local_gpu_enabled", False))
@@ -1232,7 +1338,7 @@ def rdma_fn5(ctx: FnContext) -> CheckResult:
         )
     if not bool(cluster.get("tcp_data_ready", False)):
         return fail_result(
-            "路由转发闭环需要 TCP data channel 作为 primary 转发通道，当前 tcp_data_ready=false",
+            "路由转发闭环需要 TCP data channel 作为 peer 读回校验通道，当前 tcp_data_ready=false",
             details=details,
         )
 
@@ -1282,13 +1388,32 @@ def rdma_fn5(ctx: FnContext) -> CheckResult:
         return fail_result("本地 primary route PUT 不应发生跨节点转发", details=details)
     if not bool(remote_put.get("route_forwarded", False)):
         return fail_result("远端 primary route PUT 未发生跨节点转发", details=details)
-    if str(remote_put.get("forward_transport", "")) != "tcp_data_channel":
-        return fail_result("远端 primary route PUT 未走 TCP data channel 转发通道", details=details)
+    if str(remote_put.get("forward_transport", "")) != "rdma":
+        return fail_result("远端 primary route PUT 未走 RDMA 转发写入路径", details=details)
+    if bool(remote_put.get("degraded", True)):
+        return fail_result("远端 primary route PUT 返回 degraded=true，不能作为 RDMA 转发证据", details=details)
+    if not _positive_int(remote_put.get("offset")):
+        return fail_result("远端 primary route PUT 缺少 peer slab offset 证据", details=details)
+    if not _positive_int(remote_put.get("route_ns")):
+        return fail_result("远端 primary route PUT 缺少 RDMA route_ns 计时证据", details=details)
 
     local_get = ctx.kv_get(local_key)
-    remote_peer_get = ctx.rpc_json("RPC_TCP_GET_PEER", remote_key)
+    readback_timeout = float(os.environ.get("FN5_PEER_READBACK_TIMEOUT", "3.0"))
+    readback_interval = float(os.environ.get("FN5_PEER_READBACK_INTERVAL", "0.05"))
+    readback_deadline = time.time() + max(0.1, readback_timeout)
+    remote_peer_get: dict[str, Any] = {}
+    remote_peer_get_samples: list[dict[str, Any]] = []
+    while True:
+        remote_peer_get = ctx.rpc_json("RPC_TCP_GET_PEER", remote_key)
+        remote_peer_get_samples.append(remote_peer_get)
+        if _ok(remote_peer_get) and str(remote_peer_get.get("val", "")) == remote_value:
+            break
+        if time.time() >= readback_deadline:
+            break
+        time.sleep(max(0.01, readback_interval))
     details["local_get"] = local_get
     details["remote_peer_get"] = remote_peer_get
+    details["remote_peer_get_samples"] = remote_peer_get_samples
     if not (_ok(local_get) and str(local_get.get("val", "")) == local_value):
         return fail_result("本地 primary route PUT 后本地 GET 读回失败", details=details)
     if not (_ok(remote_peer_get) and str(remote_peer_get.get("val", "")) == remote_value):
@@ -1299,7 +1424,7 @@ def rdma_fn5(ctx: FnContext) -> CheckResult:
     return pass_result(
         f"{sample_n} 个 key 路由查询成功，primary 分布: {counts}",
         f"本地 primary 写入未转发: key={local_key} primary={local_put.get('primary')}",
-        f"远端 primary 写入已转发到 peer: key={remote_key} primary={remote_put.get('primary')} transport={remote_put.get('forward_transport')}",
+        f"远端 primary 写入已通过 RDMA 转发到 peer: key={remote_key} primary={remote_put.get('primary')} offset={remote_put.get('offset')} qp_idx={remote_put.get('qp_idx')}",
         f"本地 GET 与 peer GET 均完成同值读回；replica 为空样本数={empty_replica}",
         details=details,
         )

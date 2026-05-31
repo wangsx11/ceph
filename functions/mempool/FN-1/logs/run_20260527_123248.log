@@ -1,0 +1,10 @@
+[12:32:48] start mempool/FN-1 RDMA 语义远程内存访问与零拷贝
+[12:32:48] repo_root=/home/wangshouxin/native-rdma-web
+[12:32:48] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:32:48] rpc RPC_CLUSTER_STATUS body_len=0
+[12:32:48] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":140471935643648,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140185499746304,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:32:48] rpc RPC_KV_PUT_RDMA body_len=55
+[12:32:48] rpc RPC_KV_PUT_RDMA resp_len=364 resp={"ok":true,"key":"fn_zero_copy_1779856368950_3679966","tenant_id":0,"size":20,"offset":4190208,"repl_ns":26129,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":0,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:32:48] rpc RPC_TCP_GET_PEER body_len=34
+[12:32:48] rpc RPC_TCP_GET_PEER resp_len=127 resp={"ok":true,"transport":"tcp","key":"fn_zero_copy_1779856368950_3679966","size":20,"tcp_ns":306297,"val":"rdma-zero-copy-probe"}
+[12:32:48] result=PASS completion=完成

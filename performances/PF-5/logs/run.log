@@ -1,33 +1,23 @@
-[warmup] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=3 --batch=64
+[reuse] existing data plane UDS is connectable; restart skipped
+
+[warmup] skipped
+
+[measured] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=1 --require-peer=1 --batch=64
 exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=3s val_size=1024 keyspace=10000 prio=default require_peer=false batch=64
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64 max_iops=0
 
 ==== nr_bench result ====
-  elapsed       : 3.00 s
-  elapsed_ms    : 3000.30
+  elapsed       : 1.00 s
+  elapsed_ms    : 1000.57
   threads       : 4
   op            : put
-  ops ok/fail   : 3428544 / 0
-  ops degraded  : 0
-  ops/s         : 1142734
-  req_bytes     : 3562088769 (1187.24 MB/s)
-  resp_bytes    : 1499988 (0.50 MB/s)
-  latency us    : avg=3.33  p50=3.10  p90=4.22  p99=5.98  p99.9=74.48  max=412.04
-
-
-[measured] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=15 --require-peer=1 --batch=64
-exit=0
-[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=15s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64
-
-==== nr_bench result ====
-  elapsed       : 15.00 s
-  elapsed_ms    : 15000.35
-  threads       : 4
-  op            : put
-  ops ok/fail   : 19573248 / 0
+  ops ok/fail   : 1565184 / 0
   ops degraded  : 0 (rejected)
-  ops/s         : 1304853
-  req_bytes     : 20335652462 (1355.68 MB/s)
-  resp_bytes    : 8563296 (0.57 MB/s)
-  latency us    : avg=2.88  p50=2.85  p90=3.23  p99=4.32  p99.9=43.15  max=322.45
+  ops/s         : 1564293
+  req_bytes     : 1626147716 (1625.22 MB/s)
+  resp_bytes    : 4745804 (4.74 MB/s)
+  latency us    : avg=2.33  p50=2.08  p90=2.71  p99=4.56  p99.9=64.58  max=153.98
 
+
+
+[restore] skipped (no PF-5 restart)

@@ -1,0 +1,658 @@
+{
+  "module": "rdma",
+  "module_name": "RDMA 分布式仿真计算模块",
+  "fn_id": "FN-1",
+  "function": "RDMA 与 TCP/IP 统一通信层",
+  "source": "docs/功能要求.md / RDMA 分布式仿真计算模块 / 第 1 条",
+  "started_at": "2026-05-07T22:10:20+0800",
+  "finished_at": "2026-05-07T22:10:20+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "最近一次数据面启动日志包含 RDMA QP、TcpFallback 和 OOB exchange 证据: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "peer_alive=True peer_num_qp=32 peer_slab_rkey=71936",
+    "TCP 协议切换闭环成功: RPC_KV_PUT transport=tcp -> RPC_TCP_GET_PEER size=19",
+    "RDMA/TCP 复制时延对比: RDMA avg=32.132us p95=27.456us; TCP avg=264.135us p95=345.231us; samples=8"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140256041947136,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 140554269507584,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "tcp",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "has_qp": true,
+    "has_tcp": true,
+    "has_oob": true,
+    "peer_meta_ok": true,
+    "checked_recent_log_from_last_start": true,
+    "tcp_put": {
+      "ok": true,
+      "key": "fn_tcp_transport_1778163020631_1966346",
+      "tenant_id": 0,
+      "size": 19,
+      "offset": 2093056,
+      "repl_ns": 405596,
+      "degraded": false,
+      "transport": "tcp",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "qos": {
+        "priority": "hi",
+        "qp_idx": 0,
+        "hi_qp_start": 0,
+        "hi_qp_count": 16,
+        "lo_qp_start": 16,
+        "lo_qp_count": 13
+      },
+      "route": {
+        "primary": "192.168.0.214",
+        "replica": "192.168.0.218",
+        "local_is_primary": false
+      }
+    },
+    "tcp_get_peer": {
+      "ok": true,
+      "transport": "tcp",
+      "key": "fn_tcp_transport_1778163020631_1966346",
+      "size": 19,
+      "tcp_ns": 247635,
+      "val": "tcp-transport-probe"
+    },
+    "latency_compare": {
+      "count": 8,
+      "rdma": {
+        "kind": "RPC_KV_PUT_RDMA",
+        "transport": "rdma",
+        "degraded": 0,
+        "stats": {
+          "n": 8,
+          "avg_ns": 32132,
+          "p50_ns": 24771,
+          "p95_ns": 27456,
+          "min_ns": 17935,
+          "max_ns": 98788,
+          "avg_us": 32.132,
+          "p50_us": 24.771,
+          "p95_us": 27.456,
+          "min_us": 17.935,
+          "max_us": 98.788
+        },
+        "responses": [
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020632_1966346_0",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 3141632,
+            "repl_ns": 98788,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 1,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.214",
+              "replica": "",
+              "local_is_primary": false
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020633_1966346_1",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 4190208,
+            "repl_ns": 26546,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 2,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020633_1966346_2",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 5238784,
+            "repl_ns": 27456,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 3,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020633_1966346_3",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 6287360,
+            "repl_ns": 24771,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 4,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020633_1966346_4",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 7335936,
+            "repl_ns": 23231,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 5,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020634_1966346_5",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 8384512,
+            "repl_ns": 18522,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 6,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020634_1966346_6",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 9433088,
+            "repl_ns": 17935,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 7,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_rdma_1778163020634_1966346_7",
+            "tenant_id": 0,
+            "size": 20,
+            "offset": 10481664,
+            "repl_ns": 19808,
+            "degraded": false,
+            "transport": "rdma",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 8,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "",
+              "local_is_primary": true
+            }
+          }
+        ]
+      },
+      "tcp": {
+        "kind": "RPC_KV_PUT",
+        "transport": "tcp",
+        "degraded": 0,
+        "stats": {
+          "n": 8,
+          "avg_ns": 264135,
+          "p50_ns": 250878,
+          "p95_ns": 345231,
+          "min_ns": 161988,
+          "max_ns": 400220,
+          "avg_us": 264.135,
+          "p50_us": 250.878,
+          "p95_us": 345.231,
+          "min_us": 161.988,
+          "max_us": 400.22
+        },
+        "responses": [
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020634_1966346_0",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 11530240,
+            "repl_ns": 400220,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 9,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020634_1966346_1",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 12578816,
+            "repl_ns": 248426,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 10,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020635_1966346_2",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 13627392,
+            "repl_ns": 271995,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 11,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.214",
+              "replica": "",
+              "local_is_primary": false
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020635_1966346_3",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 14675968,
+            "repl_ns": 345231,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 12,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.214",
+              "replica": "",
+              "local_is_primary": false
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020636_1966346_4",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 15724544,
+            "repl_ns": 250878,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 13,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020637_1966346_5",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 16773120,
+            "repl_ns": 202495,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 14,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "192.168.0.214",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020637_1966346_6",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 17821696,
+            "repl_ns": 161988,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 15,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "",
+              "local_is_primary": true
+            }
+          },
+          {
+            "ok": true,
+            "key": "fn_rdmavtcp_tcp_1778163020637_1966346_7",
+            "tenant_id": 0,
+            "size": 19,
+            "offset": 18870272,
+            "repl_ns": 231853,
+            "degraded": false,
+            "transport": "tcp",
+            "async_repl": false,
+            "tcp_data_ready": true,
+            "qos": {
+              "priority": "hi",
+              "qp_idx": 0,
+              "hi_qp_start": 0,
+              "hi_qp_count": 16,
+              "lo_qp_start": 16,
+              "lo_qp_count": 13
+            },
+            "route": {
+              "primary": "192.168.0.218",
+              "replica": "",
+              "local_is_primary": true
+            }
+          }
+        ]
+      },
+      "note": "repl_ns 为同步复制路径耗时；本项要求 NR_ASYNC_REPL=0。"
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260507_221003_fn_rdma_FN1_20260507_221003_e44da925/logs/run_20260507_221003.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260507_221003_fn_rdma_FN1_20260507_221003_e44da925/logs/run_20260507_221003.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/rdma/FN-1/history/web_20260507_221003_fn_rdma_FN1_20260507_221003_e44da925/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 572,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140256041947136,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":140554269507584,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\""
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 58,
+      "response_len": 381,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_tcp_transport_1778163020631_1966346\",\"tenant_id\":0,\"size\":19,\"offset\":2093056,\"repl_ns\":405596,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":0,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TCP_GET_PEER",
+      "body_len": 38,
+      "response_len": 130,
+      "response_preview": "{\"ok\":true,\"transport\":\"tcp\",\"key\":\"fn_tcp_transport_1778163020631_1966346\",\"size\":19,\"tcp_ns\":247635,\"val\":\"tcp-transport-probe\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 370,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020632_1966346_0\",\"tenant_id\":0,\"size\":20,\"offset\":3141632,\"repl_ns\":98788,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":1,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020633_1966346_1\",\"tenant_id\":0,\"size\":20,\"offset\":4190208,\"repl_ns\":26546,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020633_1966346_2\",\"tenant_id\":0,\"size\":20,\"offset\":5238784,\"repl_ns\":27456,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":3,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020633_1966346_3\",\"tenant_id\":0,\"size\":20,\"offset\":6287360,\"repl_ns\":24771,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":4,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020633_1966346_4\",\"tenant_id\":0,\"size\":20,\"offset\":7335936,\"repl_ns\":23231,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":5,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 369,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020634_1966346_5\",\"tenant_id\":0,\"size\":20,\"offset\":8384512,\"repl_ns\":18522,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":6,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020634_1966346_6\",\"tenant_id\":0,\"size\":20,\"offset\":9433088,\"repl_ns\":17935,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":7,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT_RDMA",
+      "body_len": 61,
+      "response_len": 370,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_rdma_1778163020634_1966346_7\",\"tenant_id\":0,\"size\":20,\"offset\":10481664,\"repl_ns\":19808,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":8,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 382,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020634_1966346_0\",\"tenant_id\":0,\"size\":19,\"offset\":11530240,\"repl_ns\":400220,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":9,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 383,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020634_1966346_1\",\"tenant_id\":0,\"size\":19,\"offset\":12578816,\"repl_ns\":248426,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":10,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 371,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020635_1966346_2\",\"tenant_id\":0,\"size\":19,\"offset\":13627392,\"repl_ns\":271995,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":11,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 371,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020635_1966346_3\",\"tenant_id\":0,\"size\":19,\"offset\":14675968,\"repl_ns\":345231,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":12,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 383,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020636_1966346_4\",\"tenant_id\":0,\"size\":19,\"offset\":15724544,\"repl_ns\":250878,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":13,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 383,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020637_1966346_5\",\"tenant_id\":0,\"size\":19,\"offset\":16773120,\"repl_ns\":202495,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":14,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 370,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020637_1966346_6\",\"tenant_id\":0,\"size\":19,\"offset\":17821696,\"repl_ns\":161988,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":15,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 369,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_rdmavtcp_tcp_1778163020637_1966346_7\",\"tenant_id\":0,\"size\":19,\"offset\":18870272,\"repl_ns\":231853,\"degraded\":false,\"transport\":\"tcp\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":0,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"\",\"local_is_primary\":true}}"
+    }
+  ]
+}

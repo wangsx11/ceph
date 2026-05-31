@@ -2,8 +2,8 @@
 
 - Metric: 多级存储读写能力
 - Source: `docs/性能要求.md` 第 6 条
-- Generated At: 2026-05-04T00:22:11+0800
-- Key Result: write=11.899 GB/s, read=20.948 GB/s
+- Generated At: 2026-05-29T13:43:03+0800
+- Key Result: write=11.501 GB/s, read=21.686 GB/s
 - Threshold: 写入 >= 10GB/s；读取 >= 20GB/s
 - Result: PASS
 - Result Dir: /home/wangshouxin/native-rdma-web/performances/PF-6
@@ -14,9 +14,9 @@
 
 | Key | Value |
 |---|---:|
-| `write_gbs` | 11.899 |
-| `write_tx_bytes` | 118991871595 |
-| `write_ops` | 11347.0 |
+| `write_gbs` | 11.501 |
+| `write_tx_bytes` | 34502798242 |
+| `write_ops` | 10963.0 |
 | `write_fail` | 0 |
 | `write_degraded` | 0 |
 
@@ -24,9 +24,9 @@
 
 | Key | Value |
 |---|---:|
-| `read_gbs` | 20.948 |
-| `read_rx_bytes` | 209482366437 |
-| `read_ops_total` | 199777 |
+| `read_gbs` | 21.686 |
+| `read_rx_bytes` | 65058159564 |
+| `read_ops_total` | 62044 |
 | `read_fail` | 0 |
 | `read_avg_resp_bytes` | 1048581 |
 | `read_hit_ratio` | 1.0 |

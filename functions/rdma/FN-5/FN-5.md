@@ -21,17 +21,17 @@
 
 批量 `RPC_ROUTE_QUERY` 均返回 `ok=true`，`primary` 非空，并观察到至少两个 primary 分布桶。脚本必须同时找到本地 primary key 和远端 primary key。
 
-`RPC_ROUTE_PUT` 对本地 primary key 必须返回 `route_forwarded=false`，并可由本地 `RPC_KV_GET` 读回；对远端 primary key 必须返回 `route_forwarded=true`、`forward_transport=tcp_data_channel`，并可由 `RPC_TCP_GET_PEER` 从 xfusion4 读回同一 value。
+`RPC_ROUTE_PUT` 对本地 primary key 必须返回 `route_forwarded=false`，并可由本地 `RPC_KV_GET` 读回；对远端 primary key 必须返回 `route_forwarded=true`、`forward_transport=rdma`、`degraded=false`，并可由 `RPC_TCP_GET_PEER` 从 xfusion4 读回同一 value。
 
 `replica` 为空时记录为当前路由策略细节，不单独判失败。
 
 ## 测试方案
 
-前置条件：数据面 UDS 在线；xfusion4 peer 在线；TCP data channel 在线。
+前置条件：数据面 UDS 在线；xfusion4 peer 在线；RDMA transport 在线；TCP data channel 在线用于 peer 读回校验。
 
 当前验证口径：对至少 64 个 key 执行路由查询，统计 primary 分布；随后分别执行本地 primary routed PUT 和远端 primary routed PUT，验证本地读回与 peer 读回。
 
-不验证内容：不验证多跳网络转发性能；当前 routed PUT 的 remote-primary 转发通道使用 TCP data channel，不表述为纯 RDMA 远端 primary 写入。
+不验证内容：不验证多跳网络转发性能；`RPC_TCP_GET_PEER` 只作为 peer 内容读回校验通道。
 
 ## 交互
 

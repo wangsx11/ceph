@@ -7,8 +7,10 @@
     summary: null,
     currentDetail: null,
     currentJob: null,
+    lastCompletedJob: null,
     pollTimer: null,
     scriptTab: "结果摘要",
+    profile: "presentation",
     env: {
       CTRL_URL: window.location && window.location.origin ? window.location.origin : "http://127.0.0.1:5000",
       UDS: "/tmp/native_rdma-dp.sock",

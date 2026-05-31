@@ -1,0 +1,46 @@
+[12:37:53] start mempool/FN-5 任务级与用户级内存隔离
+[12:37:53] repo_root=/home/wangshouxin/native-rdma-web
+[12:37:53] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:37:53] rpc RPC_ISO_DENY body_len=20
+[12:37:53] rpc RPC_ISO_DENY resp_len=69 resp={"ok":true,"action":"deny","tenant_id":57673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_ISO_DENY body_len=21
+[12:37:53] rpc RPC_ISO_DENY resp_len=70 resp={"ok":true,"action":"deny","tenant_id":157673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_KV_PUT body_len=62
+[12:37:53] rpc RPC_KV_PUT resp_len=68 resp={"ok":false,"err":"tenant 57673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_KV_PUT body_len=63
+[12:37:53] rpc RPC_KV_PUT resp_len=69 resp={"ok":false,"err":"tenant 157673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_ISO_ALLOW body_len=20
+[12:37:53] rpc RPC_ISO_ALLOW resp_len=70 resp={"ok":true,"action":"allow","tenant_id":57673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_ISO_LIST body_len=0
+[12:37:53] rpc RPC_ISO_LIST resp_len=65 resp={"ok":true,"allowed":["57673|default/slab1k","0|default/slab1k"]}
+[12:37:53] rpc RPC_KV_PUT body_len=65
+[12:37:53] rpc RPC_KV_PUT resp_len=370 resp={"ok":true,"key":"fn_iso_shared_1779856673470_3689795","tenant_id":57673,"size":22,"offset":10481664,"repl_ns":25897,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":2,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:37:53] rpc RPC_KV_GET body_len=42
+[12:37:53] rpc RPC_KV_GET resp_len=66 resp={"ok":true,"hit":"local","size":22,"val":"tenant-a-private-value"}
+[12:37:53] rpc RPC_KV_GET body_len=43
+[12:37:53] rpc RPC_KV_GET resp_len=69 resp={"ok":false,"err":"tenant 157673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_ISO_ALLOW body_len=21
+[12:37:53] rpc RPC_ISO_ALLOW resp_len=71 resp={"ok":true,"action":"allow","tenant_id":157673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_KV_GET body_len=43
+[12:37:53] rpc RPC_KV_GET resp_len=30 resp={"ok":false,"err":"not found"}
+[12:37:53] rpc RPC_KV_PUT body_len=66
+[12:37:53] rpc RPC_KV_PUT resp_len=371 resp={"ok":true,"key":"fn_iso_shared_1779856673470_3689795","tenant_id":157673,"size":22,"offset":11530240,"repl_ns":21268,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":3,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[12:37:53] rpc RPC_KV_GET body_len=43
+[12:37:53] rpc RPC_KV_GET resp_len=66 resp={"ok":true,"hit":"local","size":22,"val":"tenant-b-private-value"}
+[12:37:53] rpc RPC_KV_GET body_len=42
+[12:37:53] rpc RPC_KV_GET resp_len=66 resp={"ok":true,"hit":"local","size":22,"val":"tenant-a-private-value"}
+[12:37:53] rpc RPC_ISO_DENY body_len=20
+[12:37:53] rpc RPC_ISO_DENY resp_len=69 resp={"ok":true,"action":"deny","tenant_id":57673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_KV_GET body_len=42
+[12:37:53] rpc RPC_KV_GET resp_len=68 resp={"ok":false,"err":"tenant 57673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_KV_PUT body_len=68
+[12:37:53] rpc RPC_KV_PUT resp_len=68 resp={"ok":false,"err":"tenant 57673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_KV_GET body_len=43
+[12:37:53] rpc RPC_KV_GET resp_len=66 resp={"ok":true,"hit":"local","size":22,"val":"tenant-b-private-value"}
+[12:37:53] rpc RPC_ISO_DENY body_len=21
+[12:37:53] rpc RPC_ISO_DENY resp_len=70 resp={"ok":true,"action":"deny","tenant_id":157673,"pool":"default/slab1k"}
+[12:37:53] rpc RPC_KV_PUT body_len=69
+[12:37:53] rpc RPC_KV_PUT resp_len=69 resp={"ok":false,"err":"tenant 157673 not allowed on pool default/slab1k"}
+[12:37:53] rpc RPC_ISO_LIST body_len=0
+[12:37:53] rpc RPC_ISO_LIST resp_len=42 resp={"ok":true,"allowed":["0|default/slab1k"]}
+[12:37:53] result=PASS completion=完成

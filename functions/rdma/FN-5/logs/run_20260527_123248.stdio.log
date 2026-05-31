@@ -1,0 +1,4 @@
+rdma/FN-5 FAIL - 分布式节点路由转发与负载均衡
+- 远端 primary route PUT 后 peer GET 读回失败
+summary: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/rdma/FN-5/logs/run_20260527_123248.log

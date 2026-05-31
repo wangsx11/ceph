@@ -25,6 +25,7 @@ export NR_BUILD_DIR
 export NR_ASYNC_REPL="${NR_ASYNC_REPL:-0}"
 export NR_TRANSPORT="${NR_TRANSPORT:-rdma}"
 export NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT:-18516}"
+export NR_RDMA_TRAFFIC_CLASS="${NR_RDMA_TRAFFIC_CLASS:-0}"
 export NR_GDR_ENABLE="${NR_GDR_ENABLE:-0}"
 export NR_CUDA_DEVICE="${NR_CUDA_DEVICE:-0}"
 export NR_GDR_BYTES="${NR_GDR_BYTES:-67108864}"
@@ -46,7 +47,8 @@ for optional_name in \
     SLAB_TOTAL_BYTES \
     NR_LO_RATE_KOPS \
     NR_QOS_HI_WINDOW_US \
-    NR_QOS_LO_BURST_MS
+    NR_QOS_LO_BURST_MS \
+    NR_RDMA_TRAFFIC_CLASS
 do
     add_optional_env "${optional_name}"
 done
@@ -58,6 +60,7 @@ if [ "${NR_GDR_ENABLE}" = "1" ] || [ "${NR_GDR_ENABLE}" = "true" ]; then
 fi
 
 say() { printf '[start] %s\n' "$*"; }
+SSH_OPTS=(-o ServerAliveInterval=15 -o ServerAliveCountMax=6 -o TCPKeepAlive=yes)
 
 say "repo=${REPO_ROOT}"
 say "build=${NR_BUILD_DIR}"
@@ -68,11 +71,12 @@ cmake -S "${ROOT}" -B "${NR_BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release "${LOCAL_CUDA
 cmake --build "${NR_BUILD_DIR}" -j
 
 say "check peer ssh"
-ssh "${PEER_HOST}" "hostname >/dev/null"
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" "hostname >/dev/null"
 
 say "sync repo to peer"
-ssh "${PEER_HOST}" "mkdir -p '${PEER_REPO_ROOT}'"
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" "mkdir -p '${PEER_REPO_ROOT}'"
 rsync -avz \
+    -e "ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -o TCPKeepAlive=yes" \
     --exclude 'native_rdma/build/' \
     --exclude 'native_rdma/build-current/' \
     --exclude 'native_rdma/logs/' \
@@ -85,26 +89,26 @@ rsync -avz \
     "${REPO_ROOT}/" "${PEER_HOST}:${PEER_REPO_ROOT}/"
 
 say "build peer"
-ssh "${PEER_HOST}" \
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" \
     "cd '${PEER_NATIVE_ROOT}' && cmake -S . -B build-current -DCMAKE_BUILD_TYPE=Release ${PEER_CUDA_FLAG} -GNinja && cmake --build build-current -j"
 
 say "clean cold-tier leftovers"
 rm -rf /home/wangshouxin/nr_cold/* 2>/dev/null || true
-ssh "${PEER_HOST}" "rm -rf /tmp/nr_cold/* 2>/dev/null || true" || true
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" "rm -rf /tmp/nr_cold/* 2>/dev/null || true" || true
 
 say "stop old local stack"
 NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_down.sh" 2>/dev/null || true
 
 say "stop old peer stack"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_down.sh" 2>/dev/null || true
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_SKIP_FLASK='${NR_SKIP_FLASK}' bash scripts/demo_down.sh" 2>/dev/null || true
 
 say "start peer role B"
-ssh "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} ROLE=B bash scripts/demo_up.sh"
+ssh "${SSH_OPTS[@]}" "${PEER_HOST}" "cd '${PEER_NATIVE_ROOT}' && NR_BUILD_DIR='${PEER_NATIVE_ROOT}/build-current' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} ROLE=B bash scripts/demo_up.sh"
 sleep 3
 
 say "start local role A"
 if [ -n "${LOCAL_HOST}" ]; then
-    ssh "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} bash scripts/demo_up.sh"
+    ssh "${SSH_OPTS[@]}" "${LOCAL_HOST}" "cd '${ROOT}' && ROLE=A NR_BUILD_DIR='${NR_BUILD_DIR}' NR_ASYNC_REPL='${NR_ASYNC_REPL}' NR_TRANSPORT='${NR_TRANSPORT}' NR_TCP_DATA_PORT='${NR_TCP_DATA_PORT}' NR_GDR_ENABLE='${NR_GDR_ENABLE}' NR_CUDA_DEVICE='${NR_CUDA_DEVICE}' NR_GDR_BYTES='${NR_GDR_BYTES}' NR_SKIP_FLASK='${NR_SKIP_FLASK}'${REMOTE_EXTRA_ENV} bash scripts/demo_up.sh"
 else
     env "${LOCAL_EXTRA_ENV[@]}" ROLE=A NR_BUILD_DIR="${NR_BUILD_DIR}" NR_ASYNC_REPL="${NR_ASYNC_REPL}" NR_TRANSPORT="${NR_TRANSPORT}" NR_TCP_DATA_PORT="${NR_TCP_DATA_PORT}" NR_GDR_ENABLE="${NR_GDR_ENABLE}" NR_CUDA_DEVICE="${NR_CUDA_DEVICE}" NR_GDR_BYTES="${NR_GDR_BYTES}" NR_SKIP_FLASK="${NR_SKIP_FLASK}" bash "${ROOT}/scripts/demo_up.sh"
 fi

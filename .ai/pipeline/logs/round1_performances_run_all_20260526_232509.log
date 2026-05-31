@@ -1,0 +1,263 @@
+round1 performances/run_all diagnosis
+started_at=2026-05-26T23:25:09+08:00
+
+[ssh-before]
+xfusion4
+ssh_before_rc=0
+================================================================
+  Performance Test Suite - 2026-05-26 23:25:09
+  NR_ASYNC_REPL=1
+================================================================
+
+================================================================
+  Start Data Plane
+================================================================
+[start] 启动双节点数据面 (NR_ASYNC_REPL=1)...
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+.codex
+.agents/
+.ai/pipeline/logs/
+.ai/pipeline/logs/round-01.stdout.log
+.ai/pipeline/logs/round1_functions_run_all_20260526_232442.log
+.ai/pipeline/logs/round1_performances_run_all_20260526_232509.log
+.ai/pipeline/logs/round1_start_20260526_232216.log
+functions/raw.json
+functions/summary.md
+functions/logs/
+functions/logs/run_all_20260526_232442.log
+functions/logs/run_all_20260526_232442.stdio.log
+functions/mempool/FN-1/raw.json
+functions/mempool/FN-1/run_all.last.log
+functions/mempool/FN-1/summary.md
+functions/mempool/FN-1/logs/
+functions/mempool/FN-1/logs/run_20260526_232443.json
+functions/mempool/FN-1/logs/run_20260526_232443.log
+functions/mempool/FN-1/logs/run_20260526_232443.stdio.log
+functions/mempool/FN-2/raw.json
+functions/mempool/FN-2/run_all.last.log
+functions/mempool/FN-2/summary.md
+functions/mempool/FN-2/logs/
+functions/mempool/FN-2/logs/run_20260526_232443.json
+functions/mempool/FN-2/logs/run_20260526_232443.log
+functions/mempool/FN-2/logs/run_20260526_232443.stdio.log
+functions/mempool/FN-3/raw.json
+functions/mempool/FN-3/run_all.last.log
+functions/mempool/FN-3/summary.md
+functions/mempool/FN-3/logs/
+functions/mempool/FN-3/logs/run_20260526_232443.json
+functions/mempool/FN-3/logs/run_20260526_232443.log
+functions/mempool/FN-3/logs/run_20260526_232443.stdio.log
+functions/mempool/FN-4/raw.json
+functions/mempool/FN-4/run_all.last.log
+functions/mempool/FN-4/summary.md
+functions/mempool/FN-4/logs/
+functions/mempool/FN-4/logs/run_20260526_232443.json
+functions/mempool/FN-4/logs/run_20260526_232443.log
+functions/mempool/FN-4/logs/run_20260526_232443.stdio.log
+functions/mempool/FN-5/raw.json
+functions/mempool/FN-5/run_all.last.log
+functions/mempool/FN-5/summary.md
+functions/mempool/FN-5/logs/
+functions/mempool/FN-5/logs/run_20260526_232443.json
+functions/mempool/FN-5/logs/run_20260526_232443.log
+functions/mempool/FN-5/logs/run_20260526_232443.stdio.log
+functions/mempool/FN-6/raw.json
+functions/mempool/FN-6/run_all.last.log
+functions/mempool/FN-6/summary.md
+functions/mempool/FN-6/logs/
+functions/mempool/FN-6/logs/run_20260526_232443.json
+functions/mempool/FN-6/logs/run_20260526_232443.log
+functions/mempool/FN-6/logs/run_20260526_232443.stdio.log
+functions/rdma/FN-1/raw.json
+functions/rdma/FN-1/run_all.last.log
+functions/rdma/FN-1/summary.md
+functions/rdma/FN-1/logs/
+functions/rdma/FN-1/logs/run_20260526_232443.json
+functions/rdma/FN-1/logs/run_20260526_232443.log
+functions/rdma/FN-1/logs/run_20260526_232443.stdio.log
+functions/rdma/FN-2/raw.json
+functions/rdma/FN-2/run_all.last.log
+functions/rdma/FN-2/summary.md
+functions/rdma/FN-2/logs/
+functions/rdma/FN-2/logs/run_20260526_232443.json
+functions/rdma/FN-2/logs/run_20260526_232443.log
+functions/rdma/FN-2/logs/run_20260526_232443.stdio.log
+functions/rdma/FN-3/raw.json
+functions/rdma/FN-3/run_all.last.log
+functions/rdma/FN-3/summary.md
+functions/rdma/FN-3/logs/
+functions/rdma/FN-3/logs/run_20260526_232443.json
+functions/rdma/FN-3/logs/run_20260526_232443.log
+functions/rdma/FN-3/logs/run_20260526_232443.stdio.log
+functions/rdma/FN-4/raw.json
+functions/rdma/FN-4/run_all.last.log
+functions/rdma/FN-4/summary.md
+functions/rdma/FN-4/logs/
+functions/rdma/FN-4/logs/run_20260526_232443.json
+functions/rdma/FN-4/logs/run_20260526_232443.log
+functions/rdma/FN-4/logs/run_20260526_232443.stdio.log
+functions/rdma/FN-5/raw.json
+functions/rdma/FN-5/run_all.last.log
+functions/rdma/FN-5/summary.md
+functions/rdma/FN-5/logs/
+functions/rdma/FN-5/logs/run_20260526_232443.json
+functions/rdma/FN-5/logs/run_20260526_232443.log
+functions/rdma/FN-5/logs/run_20260526_232443.stdio.log
+functions/storage/FN-1/raw.json
+functions/storage/FN-1/run_all.last.log
+functions/storage/FN-1/summary.md
+functions/storage/FN-1/logs/
+functions/storage/FN-1/logs/run_20260526_232442.json
+functions/storage/FN-1/logs/run_20260526_232442.log
+functions/storage/FN-1/logs/run_20260526_232442.stdio.log
+functions/storage/FN-2/raw.json
+functions/storage/FN-2/run_all.last.log
+functions/storage/FN-2/summary.md
+functions/storage/FN-2/logs/
+functions/storage/FN-2/logs/run_20260526_232442.json
+functions/storage/FN-2/logs/run_20260526_232442.log
+functions/storage/FN-2/logs/run_20260526_232442.stdio.log
+functions/storage/FN-3/raw.json
+functions/storage/FN-3/run_all.last.log
+functions/storage/FN-3/summary.md
+functions/storage/FN-3/logs/
+functions/storage/FN-3/logs/run_20260526_232442.json
+functions/storage/FN-3/logs/run_20260526_232442.log
+functions/storage/FN-3/logs/run_20260526_232442.stdio.log
+functions/storage/FN-4/raw.json
+functions/storage/FN-4/run_all.last.log
+functions/storage/FN-4/summary.md
+functions/storage/FN-4/logs/
+functions/storage/FN-4/logs/run_20260526_232442.json
+functions/storage/FN-4/logs/run_20260526_232442.log
+functions/storage/FN-4/logs/run_20260526_232442.stdio.log
+functions/storage/FN-5/raw.json
+functions/storage/FN-5/run_all.last.log
+functions/storage/FN-5/summary.md
+functions/storage/FN-5/logs/
+functions/storage/FN-5/logs/run_20260526_232442.json
+functions/storage/FN-5/logs/run_20260526_232442.log
+functions/storage/FN-5/logs/run_20260526_232442.stdio.log
+functions/storage/FN-6/raw.json
+functions/storage/FN-6/run_all.last.log
+functions/storage/FN-6/summary.md
+functions/storage/FN-6/logs/
+functions/storage/FN-6/logs/run_20260526_232442.json
+functions/storage/FN-6/logs/run_20260526_232442.log
+functions/storage/FN-6/logs/run_20260526_232442.stdio.log
+
+sent 269,239 bytes  received 6,728 bytes  551,934.00 bytes/sec
+total size is 142,892,507  speedup is 517.79
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2479294
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[36m[demo_up][0m 启动 Flask (port=5001, role=B)
+[36m[demo_up][0m   peer url = http://192.168.0.218:5000 （将作为反向代理目标注入 Flask）
+[36m[demo_up][0m   Flask pid=2479339  dash_dir=/home/wangshouxin/native-rdma-web/dashboard
+[32m[  OK  ][0m Flask 就绪 (http://127.0.0.1:5001/)
+
+[32m═══════════════════════════════════════════════════════════════[0m
+  [32m演示栈启动完成 (role=B, self=192.168.0.214)[0m
+[32m═══════════════════════════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.214:5001/
+  ➤ Dashboard:    http://192.168.0.214:5001/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.214:5001/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.214:5001/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_B.log
+      tail -f logs/cp_B.stdout.log
+
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=68
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:25:16] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:653 QP_HB entered ERROR state, starting in-place self-heal (RESET->INIT->RTR->RTS + re-post recv)
+[2026-05-26 23:25:16] [INFO ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/rdma/rdma_core.cpp:305 reset_qp(31): now in INIT, caller should connect_qp() next
+[2026-05-26 23:25:16] [INFO ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/rdma/rdma_core.cpp:360 qp[31] connected: peer_qpn=0x14aeb lid=0
+[2026-05-26 23:25:16] [INFO ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:676 QP_HB self-heal complete; heartbeat should resume shortly
+[2026-05-26 23:25:19] [INFO ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:228 native_rdma_dp starting role=A dev=mlx5_0 gid_idx=3 traffic_class=0 self=192.168.0.218 peer=192.168.0.214 async_repl=true transport=rdma tcp_data_port=18516 gdr_enable=false cuda_device=0 gdr_bytes=67108864
+[2026-05-26 23:25:19] [ERROR] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/rdma/rdma_core.cpp:44 no RDMA devices found
+[2026-05-26 23:25:19] [ERROR] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:245 RdmaCore init failed; exiting.
+[31m[ FAIL ][0m DP 已退出，检查 logs/dp_A.log
+[start] 数据面启动失败，停止性能测试。
+
+[command-result]
+cmd=bash performances/run_all.sh
+exit_code=2
+elapsed_s=10
+finished_at=2026-05-26T23:25:19+08:00
+
+[ssh-after]
+xfusion4
+ssh_after_rc=0

@@ -1,0 +1,40 @@
+[reuse] existing data plane UDS is connectable; restart skipped
+
+[cluster-ready] {"ok": true, "self": "A", "peer_alive": true, "local_slab_base": 140310411243520, "local_slab_len": 4294967296, "local_slab_lkey": 96256, "local_slab_rkey": 96256, "peer_slab_base": 140239308361728, "peer_slab_len": 4294967296, "peer_slab_rkey": 71936, "peer_num_qp": 32, "local_gpu_enabled": false, "local_gpu_len": 0, "local_gpu_lkey": 0, "local_gpu_rkey": 0, "peer_gpu_enabled": false, "peer_gpu_base": 0, "peer_gpu_len": 0, "peer_gpu_rkey": 0, "degraded_puts": 0, "degraded_bytes": 0, "transport": "rdma", "async_repl": false, "tcp_data_ready": true, "tcp_data_port": 18516, "tcp_puts_received": 0, "tcp_gets_received": 0}
+
+[scenario-A-1] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=100 --count=1000 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=100 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.14 s
+  elapsed_ms    : 143.05
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 699050
+  req_bytes     : 103793000 (725.56 MB/s)
+  resp_bytes    : 197005 (1.38 MB/s)
+  latency us    : avg=0.00  p50=0.00  p90=0.00  p99=0.00  p99.9=0.00  max=0.00
+
+
+[scenario-B-1] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --batch=1000 --count=100 --val-size=1024 --keyspace=1000 --require-peer=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=8 duration=10s val_size=1024 keyspace=1000 prio=default require_peer=true batch=1000 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 0.13 s
+  elapsed_ms    : 134.39
+  threads       : 8
+  op            : put
+  ops ok/fail   : 100000 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 744081
+  req_bytes     : 103789400 (772.28 MB/s)
+  resp_bytes    : 20100 (0.15 MB/s)
+  latency us    : avg=0.00  p50=0.00  p90=0.00  p99=0.00  p99.9=0.00  max=0.00
+
+
+
+[restore] skipped (no PF-4 restart)

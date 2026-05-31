@@ -1,0 +1,213 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-5",
+  "function": "IO 调度与优先级管理",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 5 条",
+  "started_at": "2026-05-27T20:07:24+0800",
+  "finished_at": "2026-05-27T20:07:24+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "数据面日志包含 IoScheduler 前台/后台队列初始化: /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "前台 NVMe I/O 计数增加: fg_write_ops +1, fg_read_ops +1",
+    "后台 HDD I/O 计数增加: bg_write_ops +1, bg_read_ops +1"
+  ],
+  "details": {
+    "cluster": {
+      "ok": true,
+      "self": "A",
+      "peer_alive": true,
+      "local_slab_base": 140122853072896,
+      "local_slab_len": 4294967296,
+      "local_slab_lkey": 96256,
+      "local_slab_rkey": 96256,
+      "peer_slab_base": 139971038003200,
+      "peer_slab_len": 4294967296,
+      "peer_slab_rkey": 71936,
+      "peer_num_qp": 32,
+      "local_gpu_enabled": false,
+      "local_gpu_len": 0,
+      "local_gpu_lkey": 0,
+      "local_gpu_rkey": 0,
+      "peer_gpu_enabled": false,
+      "peer_gpu_base": 0,
+      "peer_gpu_len": 0,
+      "peer_gpu_rkey": 0,
+      "degraded_puts": 0,
+      "degraded_bytes": 0,
+      "transport": "rdma",
+      "async_repl": false,
+      "tcp_data_ready": true,
+      "tcp_data_port": 18516,
+      "tcp_puts_received": 0,
+      "tcp_gets_received": 0
+    },
+    "log": "/home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log",
+    "before": {
+      "ok": true,
+      "fg_read_ops": 9,
+      "fg_write_ops": 23,
+      "fg_read_bytes": 166,
+      "fg_write_bytes": 8565,
+      "bg_read_ops": 3,
+      "bg_write_ops": 6,
+      "bg_read_bytes": 57,
+      "bg_write_bytes": 110
+    },
+    "after": {
+      "ok": true,
+      "fg_read_ops": 10,
+      "fg_write_ops": 24,
+      "fg_read_bytes": 190,
+      "fg_write_bytes": 8589,
+      "bg_read_ops": 4,
+      "bg_write_ops": 7,
+      "bg_read_bytes": 80,
+      "bg_write_bytes": 133
+    },
+    "fg": {
+      "put": {
+        "ok": true,
+        "key": "fn_io_fg_nvme_1779883644507_177646",
+        "tenant_id": 0,
+        "size": 24,
+        "offset": 29356032,
+        "repl_ns": 33789,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 2,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.218",
+          "replica": "192.168.0.214",
+          "local_is_primary": true
+        }
+      },
+      "demote": {
+        "ok": true,
+        "key": "fn_io_fg_nvme_1779883644507_177646",
+        "to": "nvme"
+      },
+      "get": {
+        "ok": true,
+        "hit": "nvme_promote",
+        "size": 24,
+        "val": "foreground-nvme-io-probe"
+      }
+    },
+    "bg": {
+      "put": {
+        "ok": true,
+        "key": "fn_io_bg_hdd_1779883644510_177646",
+        "tenant_id": 0,
+        "size": 23,
+        "offset": 31453184,
+        "repl_ns": 25859,
+        "degraded": false,
+        "transport": "rdma",
+        "async_repl": false,
+        "tcp_data_ready": true,
+        "qos": {
+          "priority": "hi",
+          "qp_idx": 3,
+          "hi_qp_start": 0,
+          "hi_qp_count": 16,
+          "lo_qp_start": 16,
+          "lo_qp_count": 13
+        },
+        "route": {
+          "primary": "192.168.0.214",
+          "replica": "192.168.0.218",
+          "local_is_primary": false
+        }
+      },
+      "demote": {
+        "ok": true,
+        "key": "fn_io_bg_hdd_1779883644510_177646",
+        "to": "hdd"
+      },
+      "get": {
+        "ok": true,
+        "hit": "hdd_promote",
+        "size": 23,
+        "val": "background-hdd-io-probe"
+      }
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": "A"
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260527_200724_fn_storage_FN5_20260527_200724_1c661a8a/logs/run_20260527_200724.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260527_200724_fn_storage_FN5_20260527_200724_1c661a8a/logs/run_20260527_200724.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-5/history/web_20260527_200724_fn_storage_FN5_20260527_200724_1c661a8a/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_CLUSTER_STATUS",
+      "body_len": 0,
+      "response_len": 573,
+      "response_preview": "{\"ok\":true,\"self\":\"A\",\"peer_alive\":true,\"local_slab_base\":140122853072896,\"local_slab_len\":4294967296,\"local_slab_lkey\":96256,\"local_slab_rkey\":96256,\"peer_slab_base\":139971038003200,\"peer_slab_len\":4294967296,\"peer_slab_rkey\":71936,\"peer_num_qp\":32,\"local_gpu_enabled\":false,\"local_gpu_len\":0,\"local_gpu_lkey\":0,\"local_gpu_rkey\":0,\"peer_gpu_enabled\":false,\"peer_gpu_base\":0,\"peer_gpu_len\":0,\"peer_gpu_rkey\":0,\"degraded_puts\":0,\"degraded_bytes\":0,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready"
+    },
+    {
+      "kind": "RPC_IO_STATS",
+      "body_len": 0,
+      "response_len": 160,
+      "response_preview": "{\"ok\":true,\"fg_read_ops\":9,\"fg_write_ops\":23,\"fg_read_bytes\":166,\"fg_write_bytes\":8565,\"bg_read_ops\":3,\"bg_write_ops\":6,\"bg_read_bytes\":57,\"bg_write_bytes\":110}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 59,
+      "response_len": 377,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_io_fg_nvme_1779883644507_177646\",\"tenant_id\":0,\"size\":24,\"offset\":29356032,\"repl_ns\":33789,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":2,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.218\",\"replica\":\"192.168.0.214\",\"local_is_primary\":true}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 39,
+      "response_len": 66,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_io_fg_nvme_1779883644507_177646\",\"to\":\"nvme\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 34,
+      "response_len": 75,
+      "response_preview": "{\"ok\":true,\"hit\":\"nvme_promote\",\"size\":24,\"val\":\"foreground-nvme-io-probe\"}"
+    },
+    {
+      "kind": "RPC_KV_PUT",
+      "body_len": 57,
+      "response_len": 377,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_io_bg_hdd_1779883644510_177646\",\"tenant_id\":0,\"size\":23,\"offset\":31453184,\"repl_ns\":25859,\"degraded\":false,\"transport\":\"rdma\",\"async_repl\":false,\"tcp_data_ready\":true,\"qos\":{\"priority\":\"hi\",\"qp_idx\":3,\"hi_qp_start\":0,\"hi_qp_count\":16,\"lo_qp_start\":16,\"lo_qp_count\":13},\"route\":{\"primary\":\"192.168.0.214\",\"replica\":\"192.168.0.218\",\"local_is_primary\":false}}"
+    },
+    {
+      "kind": "RPC_TIER_DEMOTE",
+      "body_len": 37,
+      "response_len": 64,
+      "response_preview": "{\"ok\":true,\"key\":\"fn_io_bg_hdd_1779883644510_177646\",\"to\":\"hdd\"}"
+    },
+    {
+      "kind": "RPC_KV_GET",
+      "body_len": 33,
+      "response_len": 73,
+      "response_preview": "{\"ok\":true,\"hit\":\"hdd_promote\",\"size\":23,\"val\":\"background-hdd-io-probe\"}"
+    },
+    {
+      "kind": "RPC_IO_STATS",
+      "body_len": 0,
+      "response_len": 161,
+      "response_preview": "{\"ok\":true,\"fg_read_ops\":10,\"fg_write_ops\":24,\"fg_read_bytes\":190,\"fg_write_bytes\":8589,\"bg_read_ops\":4,\"bg_write_ops\":7,\"bg_read_bytes\":80,\"bg_write_bytes\":133}"
+    }
+  ]
+}

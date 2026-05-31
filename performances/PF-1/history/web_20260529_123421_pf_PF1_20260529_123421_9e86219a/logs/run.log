@@ -1,0 +1,107 @@
+============================================================
+Sub-test B: large-object bandwidth utilization
+============================================================
+
+[restart] env: {'SLAB_SLOT_SIZE': '1048576', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+
+[restart] exit=0
+LF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=1048576  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3701535
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[warmup-bw] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1048576 --duration=1 --keyspace=512 --shared-keyspace=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=1s val_size=1048576 keyspace=512(shared) prio=default require_peer=false batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 1.00 s
+  elapsed_ms    : 1001.17
+  threads       : 4
+  op            : put
+  ops ok/fail   : 6759 / 0
+  ops degraded  : 4848
+  ops/s         : 6751
+  req_bytes     : 7087371006 (7079.12 MB/s)
+  resp_bytes    : 2331284 (2.33 MB/s)
+  latency us    : avg=534.92  p50=483.45  p90=654.24  p99=1045.11  p99.9=2653.80  max=20284.61
+
+
+[measured-bw threads=4] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1048576 --duration=4 --keyspace=512 --shared-keyspace=1 --require-peer=1 --batch=1
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=4s val_size=1048576 keyspace=512(shared) prio=default require_peer=true batch=1 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 4.00 s
+  elapsed_ms    : 4000.93
+  threads       : 4
+  op            : put
+  ops ok/fail   : 27363 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 6839
+  req_bytes     : 28692370716 (7171.42 MB/s)
+  resp_bytes    : 9476833 (2.37 MB/s)
+  latency us    : avg=526.36  p50=486.28  p90=651.65  p99=917.18  p99.9=2097.36  max=9339.66
+
+network_samples={"samples": [{"ts_ns": 9659329591114438, "bw_tx_gbps": 57.7186311641791}, {"ts_ns": 9659329791290385, "bw_tx_gbps": 58.59442687999999}, {"ts_ns": 9659329991435587, "bw_tx_gbps": 57.4619648}, {"ts_ns": 9659330191526168, "bw_tx_gbps": 55.91007232}, {"ts_ns": 9659330391620688, "bw_tx_gbps": 56.45533183999999}, {"ts_ns": 9659330591782002, "bw_tx_gbps": 57.08447743999999}, {"ts_ns": 9659330792040999, "bw_tx_gbps": 54.90343936}, {"ts_ns": 9659330992189210, "bw_tx_gbps": 58.17770921393034}, {"ts_ns": 9659331192355445, "bw_tx_gbps": 60.69157888}, {"ts_ns": 9659331392500973, "bw_tx_gbps": 56.32950272}, {"ts_ns": 9659331592756760, "bw_tx_gbps": 55.574528}, {"ts_ns": 9659331792875570, "bw_tx_gbps": 58.67831296}, {"ts_ns": 9659331993045487, "bw_tx_gbps": 56.79087616}, {"ts_ns": 9659332193211784, "bw_tx_gbps": 57.7186311641791}, {"ts_ns": 9659332393375738, "bw_tx_gbps": 54.77761024}, {"ts_ns": 9659332593549671, "bw_tx_gbps": 56.874762239999995}, {"ts_ns": 9659332793697672, "bw_tx_gbps": 57.33613568}, {"ts_ns": 9659332993824938, "bw_tx_gbps": 56.245616639999994}, {"ts_ns": 9659333193952378, "bw_tx_gbps": 57.4619648}, {"ts_ns": 9659333394080995, "bw_tx_gbps": 57.843834268656714}, {"ts_ns": 9659333594203503, "bw_tx_gbps": 60.85935103999999}], "positive_samples": 21, "network_tx_gbps_avg": 57.30898846718787, "network_tx_gbps_peak": 60.85935103999999}
+
+
+============================================================
+Sub-test A: 1KB ops throughput
+============================================================
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '1'}
+
+[restart] exit=0
+ SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3702072
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+
+
+[measured-ops] $ /home/wangshouxin/native-rdma-web/native_rdma/build-current/bin/nr_bench --uds=/tmp/native_rdma-dp.sock --op=put --threads=4 --val-size=1024 --duration=4 --require-peer=1 --batch=64
+exit=0
+[nr_bench] uds=/tmp/native_rdma-dp.sock op=put threads=4 duration=4s val_size=1024 keyspace=10000 prio=default require_peer=true batch=64 max_iops=0
+
+==== nr_bench result ====
+  elapsed       : 4.00 s
+  elapsed_ms    : 4000.35
+  threads       : 4
+  op            : put
+  ops ok/fail   : 6882176 / 0
+  ops degraded  : 0 (rejected)
+  ops/s         : 1720395
+  req_bytes     : 7150245154 (1787.41 MB/s)
+  resp_bytes    : 20756256 (5.19 MB/s)
+  latency us    : avg=2.11  p50=1.81  p90=2.52  p99=4.01  p99.9=53.00  max=376.76
+
+
+
+============================================================
+Restore functional data-plane defaults
+============================================================
+
+[restart] env: {'SLAB_SLOT_SIZE': '4096', 'SLAB_TOTAL_BYTES': '4294967296', 'NR_ASYNC_REPL': '0'}
+
+[restart] exit=0
+ SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=3702497
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[32m[  OK  ][0m Data Plane (A) 握手完成 (uds=/tmp/native_rdma-dp.sock)
+[32m[  OK  ][0m 跳过 Flask 重启 (NR_SKIP_FLASK=1)，保留现有控制面
+

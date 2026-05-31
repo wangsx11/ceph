@@ -1,0 +1,42 @@
+[20:04:24] start storage/FN-2 多层感知、冷热分离与调度
+[20:04:24] repo_root=/home/wangshouxin/native-rdma-web
+[20:04:24] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[20:04:24] rpc RPC_ADMIN_FLUSH body_len=0
+[20:04:24] rpc RPC_ADMIN_FLUSH resp_len=27 resp={"ok":true,"freed_slabs":2}
+[20:04:24] rpc RPC_KV_PUT body_len=65
+[20:04:24] rpc RPC_KV_PUT resp_len=373 resp={"ok":true,"key":"fn_storage_tier_manual_1779883464480_172218","tenant_id":0,"size":21,"offset":6287360,"repl_ns":38788,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":2,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"","local_is_primary":false}}
+[20:04:24] rpc RPC_TIER_DEMOTE body_len=48
+[20:04:24] rpc RPC_TIER_DEMOTE resp_len=75 resp={"ok":true,"key":"fn_storage_tier_manual_1779883464480_172218","to":"nvme"}
+[20:04:24] rpc RPC_KV_GET body_len=43
+[20:04:24] rpc RPC_KV_GET resp_len=72 resp={"ok":true,"hit":"nvme_promote","size":21,"val":"tiering_probe_payload"}
+[20:04:24] rpc RPC_KV_PUT body_len=67
+[20:04:24] rpc RPC_KV_PUT resp_len=384 resp={"ok":true,"key":"fn_storage_tier_cold_1779883464481_172218","tenant_id":0,"size":25,"offset":8384512,"repl_ns":18890,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":3,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[20:04:24] rpc RPC_KV_PUT body_len=65
+[20:04:24] rpc RPC_KV_PUT resp_len=383 resp={"ok":true,"key":"fn_storage_tier_hot_1779883464481_172218","tenant_id":0,"size":24,"offset":9433088,"repl_ns":16052,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":4,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false}}
+[20:04:24] rpc RPC_KV_GET body_len=40
+[20:04:24] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:24] rpc RPC_TIER_STATS body_len=0
+[20:04:24] rpc RPC_TIER_STATS resp_len=312 resp={"ok":true,"dram":3,"nvme":0,"hdd":0,"demoted_d_n":1,"demoted_n_h":0,"events":[{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:25] rpc RPC_KV_GET body_len=40
+[20:04:25] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:25] rpc RPC_TIER_STATS body_len=0
+[20:04:25] rpc RPC_TIER_STATS resp_len=312 resp={"ok":true,"dram":3,"nvme":0,"hdd":0,"demoted_d_n":1,"demoted_n_h":0,"events":[{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:26] rpc RPC_KV_GET body_len=40
+[20:04:26] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:26] rpc RPC_TIER_STATS body_len=0
+[20:04:26] rpc RPC_TIER_STATS resp_len=312 resp={"ok":true,"dram":3,"nvme":0,"hdd":0,"demoted_d_n":1,"demoted_n_h":0,"events":[{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:27] rpc RPC_KV_GET body_len=40
+[20:04:27] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:27] rpc RPC_TIER_STATS body_len=0
+[20:04:27] rpc RPC_TIER_STATS resp_len=312 resp={"ok":true,"dram":3,"nvme":0,"hdd":0,"demoted_d_n":1,"demoted_n_h":0,"events":[{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:28] rpc RPC_KV_GET body_len=40
+[20:04:28] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:28] rpc RPC_TIER_STATS body_len=0
+[20:04:28] rpc RPC_TIER_STATS resp_len=426 resp={"ok":true,"dram":2,"nvme":1,"hdd":0,"demoted_d_n":2,"demoted_n_h":0,"events":[{"ts_ns":9513521814704322,"key":"fn_storage_tier_cold_1779883464481_172218","from":"dram","to":"nvme","bytes":25},{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:28] rpc RPC_TIER_STATS body_len=0
+[20:04:28] rpc RPC_TIER_STATS resp_len=426 resp={"ok":true,"dram":2,"nvme":1,"hdd":0,"demoted_d_n":2,"demoted_n_h":0,"events":[{"ts_ns":9513521814704322,"key":"fn_storage_tier_cold_1779883464481_172218","from":"dram","to":"nvme","bytes":25},{"ts_ns":9513518670640312,"key":"fn_storage_tier_manual_1779883464480_172218","from":"nvme","to":"dram","bytes":21},{"ts_ns":9513518670533168,"key":"fn_storage_tier_manual_1779883464480_172218","from":"dram","to":"nvme","bytes":21}]}
+[20:04:28] rpc RPC_KV_GET body_len=41
+[20:04:28] rpc RPC_KV_GET resp_len=76 resp={"ok":true,"hit":"nvme_promote","size":25,"val":"auto-cold-tiering-payload"}
+[20:04:28] rpc RPC_KV_GET body_len=40
+[20:04:28] rpc RPC_KV_GET resp_len=68 resp={"ok":true,"hit":"local","size":24,"val":"auto-hot-tiering-payload"}
+[20:04:28] result=PASS completion=完成

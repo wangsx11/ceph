@@ -1,0 +1,36 @@
+{
+  "metric": "perf_02_latency",
+  "samples": 31801,
+  "ops_fail": 0,
+  "ops_degraded": 0,
+  "lat_avg_us": 31.02,
+  "lat_p50_us": 27.44,
+  "lat_p99_us": 56.95,
+  "lat_p99_9_us": 591.63,
+  "lat_max_us": 6053.65,
+  "thresholds": {
+    "samples": 100000,
+    "samples_max": 120000,
+    "avg_us": 50.0,
+    "p99_us": 100.0
+  },
+  "target_samples": 105000,
+  "max_iops": 105000,
+  "measured_duration_s": 1.0,
+  "passed": false,
+  "raw": {
+    "elapsed_s": 1.0,
+    "threads": 1,
+    "ops_ok": 31801,
+    "ops_fail": 0,
+    "ops_degraded": 0,
+    "ops_per_sec": 31797.0,
+    "lat_avg_us": 31.02,
+    "lat_p50_us": 27.44,
+    "lat_p99_us": 56.95,
+    "lat_p99_9_us": 591.63,
+    "lat_max_us": 6053.65,
+    "val_size": 1024
+  },
+  "status": "FAIL"
+}

@@ -1,0 +1,33 @@
+[12:32:04] start rdma/FN-3 流量优先级机制
+[12:32:04] repo_root=/home/wangshouxin/native-rdma-web
+[12:32:04] uds=/tmp/native_rdma-dp.sock ctrl_url=http://127.0.0.1:5000
+[12:32:04] rpc RPC_CLUSTER_STATUS body_len=0
+[12:32:04] rpc RPC_CLUSTER_STATUS resp_len=573 resp={"ok":true,"self":"A","peer_alive":true,"local_slab_base":139886739165184,"local_slab_len":4294967296,"local_slab_lkey":96256,"local_slab_rkey":96256,"peer_slab_base":140455530098688,"peer_slab_len":4294967296,"peer_slab_rkey":71936,"peer_num_qp":32,"local_gpu_enabled":false,"local_gpu_len":0,"local_gpu_lkey":0,"local_gpu_rkey":0,"peer_gpu_enabled":false,"peer_gpu_base":0,"peer_gpu_len":0,"peer_gpu_rkey":0,"degraded_puts":0,"degraded_bytes":0,"transport":"rdma","async_repl":false,"tcp_data_ready
+[12:32:04] read data-plane log /home/wangshouxin/native-rdma-web/native_rdma/logs/dp_A.log bytes=5138107
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=146 resp={"ok":true,"key":"fn_qos_hi_1779856324872068964_3678588_0","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=146 resp={"ok":true,"key":"fn_qos_hi_1779856324872547929_3678588_1","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=146 resp={"ok":true,"key":"fn_qos_hi_1779856324872843023_3678588_2","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=145 resp={"ok":true,"key":"fn_qos_hi_1779856324872996367_3678588_3","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=159 resp={"ok":true,"key":"fn_qos_lo_1779856324873245000_3678588_0","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=159 resp={"ok":true,"key":"fn_qos_lo_1779856324873426717_3678588_1","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=146 resp={"ok":true,"key":"fn_qos_lo_1779856324873631791_3678588_2","primary":"192.168.0.214","replica":"","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=159 resp={"ok":true,"key":"fn_qos_lo_1779856324873800574_3678588_3","primary":"192.168.0.214","replica":"192.168.0.218","local_is_primary":false,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_ROUTE_QUERY body_len=39
+[12:32:04] rpc RPC_ROUTE_QUERY resp_len=145 resp={"ok":true,"key":"fn_qos_lo_1779856324873932720_3678588_4","primary":"192.168.0.218","replica":"","local_is_primary":true,"self":"192.168.0.218"}
+[12:32:04] rpc RPC_KV_PUT_HI body_len=51
+[12:32:04] rpc RPC_KV_PUT_HI resp_len=368 resp={"ok":true,"key":"fn_qos_hi_1779856324872996367_3678588_3","tenant_id":0,"size":11,"offset":2125824,"repl_ns":24264,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"hi","qp_idx":8,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:32:04] rpc RPC_KV_PUT_LO body_len=51
+[12:32:04] rpc RPC_KV_PUT_LO resp_len=369 resp={"ok":true,"key":"fn_qos_lo_1779856324873932720_3678588_4","tenant_id":0,"size":11,"offset":3174400,"repl_ns":14664,"degraded":false,"transport":"rdma","async_repl":false,"tcp_data_ready":true,"qos":{"priority":"lo","qp_idx":16,"hi_qp_start":0,"hi_qp_count":16,"lo_qp_start":16,"lo_qp_count":13},"route":{"primary":"192.168.0.218","replica":"","local_is_primary":true}}
+[12:32:04] rpc RPC_TCP_GET_PEER body_len=39
+[12:32:04] rpc RPC_TCP_GET_PEER resp_len=123 resp={"ok":true,"transport":"tcp","key":"fn_qos_hi_1779856324872996367_3678588_3","size":11,"tcp_ns":368896,"val":"hi-priority"}
+[12:32:04] rpc RPC_TCP_GET_PEER body_len=39
+[12:32:04] rpc RPC_TCP_GET_PEER resp_len=123 resp={"ok":true,"transport":"tcp","key":"fn_qos_lo_1779856324873932720_3678588_4","size":11,"tcp_ns":336161,"val":"lo-priority"}
+[12:32:04] result=PASS completion=完成

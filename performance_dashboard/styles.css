@@ -428,6 +428,24 @@ p { margin: 0; color: var(--muted); line-height: 1.55; }
   max-height: 300px;
 }
 
+.raw-json-box {
+  max-height: 420px;
+}
+
+.raw-json-line {
+  display: block;
+  min-height: 1.5em;
+}
+
+.raw-highlight {
+  color: #ffe08a;
+  font-weight: 700;
+  background: rgba(255, 204, 92, .12);
+  border-left: 3px solid #f0b63b;
+  padding-left: 7px;
+  margin-left: -10px;
+}
+
 .markdown-box { max-height: 260px; }
 .markdown-rendered {
   white-space: normal;

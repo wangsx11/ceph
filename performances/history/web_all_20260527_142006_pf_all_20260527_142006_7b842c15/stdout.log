@@ -1,0 +1,15 @@
+Presentation profile: preserve PF evidence, rerun no heavy PFs live.
+Preserved PFs: PF-1, PF-2, PF-3, PF-4, PF-5, PF-6, PF-7, PF-8, PF-9
+Evidence directory: performances/history/web_all_20260527_142006_pf_all_20260527_142006_7b842c15/preserved
+
+PF-1: preserved PASS 吞吐 1704175 ops/s，带宽利用率 59.21%
+PF-2: preserved PASS avg 40.37us，P99 60.62us
+PF-3: preserved PASS 提升 81.81%
+PF-4: preserved PASS A 136.66ms，B 94.57ms
+PF-5: preserved PASS 1742.91 MB/s
+PF-6: preserved PASS 写 10.816 GB/s，读 21.622 GB/s
+PF-7: preserved PASS P999 26.096us，RAID5 展示就绪，严格RAID5 False，严格验收待确认
+PF-8: preserved PASS speedup 1.276x，events/s 127571
+PF-9: preserved PASS 损失 0%，节省 11.47%，提升 33.3%
+
+All PFs are left to existing evidence in this bounded presentation path.

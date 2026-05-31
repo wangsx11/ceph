@@ -1,0 +1,8 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/run.sh
+
+mempool/FN-6 PASS - 内存池高可靠机制
+- 主动故障演练成功: peer_alive true->false, degraded_puts 0->1
+- 故障期间 RPC_KV_PUT 返回 degraded=true 且本地 RPC_KV_GET 读回: key=fn_ha_degraded_1778132382574_1174263
+- 恢复命令执行后 peer_alive=true，后续 PUT 重新走 RDMA 非降级复制并可从 peer 读回
+summary: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260507_133938_fn_mempool_FN6_20260507_133938_5b554bbb/summary.md
+log: /home/wangshouxin/native-rdma-web/functions/mempool/FN-6/history/web_20260507_133938_fn_mempool_FN6_20260507_133938_5b554bbb/logs/run_20260507_133938.log

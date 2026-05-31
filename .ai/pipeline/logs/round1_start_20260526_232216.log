@@ -1,0 +1,178 @@
+round1 start.sh diagnosis
+started_at=2026-05-26T23:22:16+08:00
+
+[ssh-before]
+xfusion4
+ssh_before_rc=0
+[start] repo=/home/wangshouxin/native-rdma-web
+[start] build=/home/wangshouxin/native-rdma-web/native_rdma/build-current
+[start] peer=xfusion4:/home/wangshouxin/native-rdma-web
+[start] build local
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+ninja: no work to do.
+[start] check peer ssh
+[start] sync repo to peer
+sending incremental file list
+./
+.codex
+.agents/
+.ai/
+.ai/pipeline/
+.ai/pipeline/README.md
+.ai/pipeline/current_round
+.ai/pipeline/plan.md
+.ai/pipeline/run.sh
+.ai/pipeline/state.md
+.ai/pipeline/logs/
+.ai/pipeline/logs/round-01.prompt.md
+.ai/pipeline/logs/round-01.stdout.log
+.ai/pipeline/logs/round1_start_20260526_232216.log
+.ai/pipeline/prompts/
+.ai/pipeline/prompts/round-01.md
+.ai/pipeline/prompts/round-02.md
+.ai/pipeline/prompts/round-03.md
+.ai/pipeline/prompts/round-04.md
+.ai/pipeline/prompts/round-05.md
+.ai/pipeline/reports/
+docs/
+docs/AI自动多会话流水线执行说明.md
+docs/project-onboarding-skill/SKILL.md
+
+sent 277,689 bytes  received 807 bytes  556,992.00 bytes/sec
+total size is 142,837,176  speedup is 512.89
+[start] build peer
+-- ==== native_rdma build config ====
+--   Build type   : Release
+--   C++ std      : 17
+--   io_uring     : ON
+--   zstd         : ON
+--   lz4          : ON
+--   cuda/gdr     : OFF
+--   tests        : ON
+-- ==================================
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/wangshouxin/native-rdma-web/native_rdma/build-current
+[1/33] Building CXX object data_plane/CMakeFiles/nr_storage.dir/storage/compress.cpp.o
+[2/33] Building CXX object data_plane/CMakeFiles/nr_common.dir/common/logger.cpp.o
+[3/33] Building CXX object data_plane/CMakeFiles/nr_router.dir/router/object_router.cpp.o
+[4/33] Building CXX object data_plane/CMakeFiles/nr_rdma.dir/rdma/tcp_fallback.cpp.o
+[5/33] Building CXX object data_plane/CMakeFiles/nr_common.dir/common/numa.cpp.o
+[6/33] Building CXX object data_plane/CMakeFiles/nr_api.dir/api/metrics_agent.cpp.o
+[7/33] Building CXX object data_plane/CMakeFiles/nr_storage.dir/storage/snapshot.cpp.o
+[8/33] Linking CXX static library data_plane/libnr_common.a
+[9/33] Building CXX object data_plane/CMakeFiles/nr_storage.dir/storage/dedup.cpp.o
+[10/33] Building CXX object data_plane/CMakeFiles/nr_replication.dir/replication/heartbeat.cpp.o
+[11/33] Building CXX object data_plane/CMakeFiles/nr_mempool.dir/mempool/pool_registry.cpp.o
+[12/33] Building CXX object data_plane/CMakeFiles/nr_api.dir/api/uds_server.cpp.o
+[13/33] Building CXX object data_plane/CMakeFiles/nr_mempool.dir/mempool/isolation.cpp.o
+[14/33] Building CXX object data_plane/CMakeFiles/nr_sim.dir/sim/sim_engine.cpp.o
+[15/33] Building CXX object data_plane/CMakeFiles/nr_rdma.dir/rdma/tcp_data_channel.cpp.o
+[16/33] Linking CXX static library data_plane/libnr_rdma.a
+[17/33] Building CXX object data_plane/CMakeFiles/nr_router.dir/router/consistent_hash.cpp.o
+[18/33] Linking CXX static library data_plane/libnr_mempool.a
+[19/33] Building CXX object data_plane/CMakeFiles/nr_storage.dir/storage/io_scheduler.cpp.o
+[20/33] Linking CXX static library data_plane/libnr_router.a
+[21/33] Linking CXX static library data_plane/libnr_replication.a
+[22/33] Linking CXX executable bin/nr_ping_demo
+[23/33] Building CXX object data_plane/CMakeFiles/nr_mempool_bench.dir/tests_unit/nr_mempool_bench.cpp.o
+[24/33] Building CXX object data_plane/CMakeFiles/nr_sim.dir/sim/sim_capture.cpp.o
+[25/33] Linking CXX executable bin/nr_mempool_bench
+[26/33] Building CXX object data_plane/CMakeFiles/nr_storage.dir/storage/prefetcher.cpp.o
+[27/33] Linking CXX static library data_plane/libnr_storage.a
+[28/33] Linking CXX static library data_plane/libnr_sim.a
+[29/33] Building CXX object proto/CMakeFiles/native_rdma_proto.dir/control.pb.cc.o
+[30/33] Building CXX object proto/CMakeFiles/native_rdma_proto.dir/metrics.pb.cc.o
+[31/33] Linking CXX static library proto/libnative_rdma_proto.a
+[32/33] Linking CXX static library data_plane/libnr_api.a
+[33/33] Linking CXX executable bin/native_rdma_dp
+[start] clean cold-tier leftovers
+[start] stop old local stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] stop old peer stack
+[demo_down] 精确匹配 native_rdma_dp ...
+[demo_down] 已清理
+[start] start peer role B
+[36m[demo_up][0m ROLE=B  SELF=192.168.0.214  PEER=192.168.0.218  FLASK_PORT=5001
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=B)
+[36m[demo_up][0m   DP pid=2478219
+[36m[demo_up][0m role=B 是 OOB listener，等 TCP:18515 进入 LISTEN（最多 20s）
+[32m[  OK  ][0m Data Plane (B) 已监听 TCP:18515，等待 A 端 connect 即可完成握手
+[36m[demo_up][0m 启动 Flask (port=5001, role=B)
+[36m[demo_up][0m   peer url = http://192.168.0.218:5000 （将作为反向代理目标注入 Flask）
+[36m[demo_up][0m   Flask pid=2478257  dash_dir=/home/wangshouxin/native-rdma-web/dashboard
+[32m[  OK  ][0m Flask 就绪 (http://127.0.0.1:5001/)
+
+[32m═══════════════════════════════════════════════════════════════[0m
+  [32m演示栈启动完成 (role=B, self=192.168.0.214)[0m
+[32m═══════════════════════════════════════════════════════════════[0m
+
+  ➤ 本端 Flask:   http://192.168.0.214:5001/
+  ➤ Dashboard:    http://192.168.0.214:5001/
+                  （前端只连本端 Flask；对端数据自动走 /api/peer/ 反向代理，无需配置 ?b= 参数）
+
+  ➤ 健康检查:
+      curl -s http://192.168.0.214:5001/api/demo3/cluster | python3 -m json.tool
+      curl -s http://192.168.0.214:5001/api/peer/demo3/cluster | python3 -m json.tool
+
+  ➤ 停止本端栈:
+      bash scripts/demo_down.sh
+
+  ➤ 日志:
+      tail -f logs/dp_B.log
+      tail -f logs/cp_B.stdout.log
+
+[start] start local role A
+[36m[demo_up][0m ROLE=A  SELF=192.168.0.218  PEER=192.168.0.214  FLASK_PORT=5000
+[36m[demo_up][0m SLAB_SLOT_SIZE=4096  SLAB_TOTAL_BYTES=4294967296
+[36m[demo_up][0m NR_GDR_ENABLE=0  NR_CUDA_DEVICE=0  NR_GDR_BYTES=67108864
+[36m[demo_up][0m 清理残留进程 / IPC
+[36m[demo_up][0m 启动 native_rdma_dp (role=A)
+[36m[demo_up][0m   DP pid=65
+[36m[demo_up][0m role=A 等 UDS 就绪（最多 15s，要求对端 B 已在 listen）
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=128
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[2026-05-26 23:22:29] [WARN ] /home/wangshouxin/native-rdma-web/native_rdma/data_plane/main.cpp:686 hb qp WC err status=5 opcode=0
+[31m[ FAIL ][0m DP 已退出，检查 logs/dp_A.log
+
+[command-result]
+cmd=cd native_rdma && bash start.sh
+exit_code=2
+elapsed_s=13
+finished_at=2026-05-26T23:22:29+08:00
+
+[ssh-after]
+xfusion4
+ssh_after_rc=0

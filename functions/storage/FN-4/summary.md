@@ -3,17 +3,17 @@
 - Module: 多级异构的高效能存储模块
 - Function: 可配置压缩与去重
 - Source: docs/功能要求.md / 多级异构的高效能存储模块 / 第 4 条
-- Last Run: 2026-05-04T11:57:54+0800
+- Last Run: 2026-05-29T12:10:45+0800
 - Result: PASS
 - Completion: 完成
-- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260504_115754.log
+- Log: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/logs/run_20260529_121045.log
 - Raw: /home/wangshouxin/native-rdma-web/functions/storage/FN-4/raw.json
 
 ## 关键证据
 
-- 压缩统计增加: objects 0->1, saved_bytes 0->4077
-- 去重统计增加: duplicate_objects 0->1, saved_bytes 0->19
-- HDD 读回闭环成功: A hit=hdd_promote, B hit=hdd_promote
+- 压缩统计增加: objects 0->2, saved_bytes 0->8052
+- 去重统计增加: duplicate_objects 0->1, saved_bytes 0->68
+- HDD 读回闭环成功: compress A hit=hdd_promote, compress B hit=hdd_promote, dedup B hit=hdd_promote
 
 ## 统计口径
 

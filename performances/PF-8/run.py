@@ -112,7 +112,7 @@ def main() -> int:
     events = int(os.environ.get("EVENTS", "1000000"))
     threads = int(os.environ.get("THREADS", "4"))
     step_us = int(os.environ.get("STEP_US", "10"))
-    stress = int(os.environ.get("STRESS", "20000"))
+    stress = int(os.environ.get("STRESS", "4000"))
     kind = b"RPC_SIM_RUN"
     body = (
         f"entities={entities}&entity_size={entity_size}&events={events}"

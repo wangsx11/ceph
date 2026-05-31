@@ -1,0 +1,89 @@
+{
+  "module": "storage",
+  "module_name": "多级异构的高效能存储模块",
+  "fn_id": "FN-6",
+  "function": "仿真数据运行中采集",
+  "source": "docs/功能要求.md / 多级异构的高效能存储模块 / 第 6 条",
+  "started_at": "2026-05-27T01:24:04+0800",
+  "finished_at": "2026-05-27T01:24:04+0800",
+  "status": "PASS",
+  "passed": true,
+  "completion": "完成",
+  "evidence": [
+    "仿真采集成功: captured=200 pushed=200 flushed=200",
+    "多类型采集成功: ObjectAttr=100, InteractionEvent=100",
+    "WAL 落盘成功: path=/tmp/nr_sim_capture/sim_A.log, events=200, bytes=11200"
+  ],
+  "details": {
+    "reset": {
+      "ok": true,
+      "action": "sim_capture_reset"
+    },
+    "sim": {
+      "ok": true,
+      "entities": 1000,
+      "entity_size": 1024,
+      "entity_bytes": 1024000,
+      "events": 2000,
+      "threads": 2,
+      "step_us": 10,
+      "stress": 32,
+      "wall_s": 0.000282,
+      "sim_s": 0.02,
+      "speedup": 70.7965,
+      "events_per_sec": 7079646,
+      "capture_every_n": 10,
+      "captured_events": 200,
+      "captured_dropped": 0
+    },
+    "capture_stats": {
+      "ok": true,
+      "pushed_events": 200,
+      "pushed_bytes": 11200,
+      "flushed_events": 200,
+      "flushed_bytes": 11200,
+      "dropped_events": 0,
+      "object_attr_events": 100,
+      "interaction_events": 100,
+      "wal_bytes": 11200,
+      "wal_path": "/tmp/nr_sim_capture/sim_A.log"
+    },
+    "wal_scan": {
+      "bytes": 11200,
+      "events": 200,
+      "object_attr_events": 100,
+      "interaction_events": 100,
+      "truncated_or_bad": false
+    }
+  },
+  "env": {
+    "UDS": "/tmp/native_rdma-dp.sock",
+    "CTRL_URL": "http://127.0.0.1:5000",
+    "REQUIRE_PEER": true,
+    "ALLOW_DESTRUCTIVE": false,
+    "CURRENT_NODE": ""
+  },
+  "log": "/home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260527_012403.log",
+  "run_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-6/logs/run_20260527_012403.json",
+  "raw_json": "/home/wangshouxin/native-rdma-web/functions/storage/FN-6/raw.json",
+  "rpc_calls": [
+    {
+      "kind": "RPC_SIM_CAPTURE_RESET",
+      "body_len": 0,
+      "response_len": 40,
+      "response_preview": "{\"ok\":true,\"action\":\"sim_capture_reset\"}"
+    },
+    {
+      "kind": "RPC_SIM_RUN",
+      "body_len": 54,
+      "response_len": 262,
+      "response_preview": "{\"ok\":true,\"entities\":1000,\"entity_size\":1024,\"entity_bytes\":1024000,\"events\":2000,\"threads\":2,\"step_us\":10,\"stress\":32,\"wall_s\":0.000282,\"sim_s\":0.020000,\"speedup\":70.7965,\"events_per_sec\":7079646,\"capture_every_n\":10,\"captured_events\":200,\"captured_dropped\":0}"
+    },
+    {
+      "kind": "RPC_SIM_CAPTURE_STATS",
+      "body_len": 0,
+      "response_len": 225,
+      "response_preview": "{\"ok\":true,\"pushed_events\":200,\"pushed_bytes\":11200,\"flushed_events\":200,\"flushed_bytes\":11200,\"dropped_events\":0,\"object_attr_events\":100,\"interaction_events\":100,\"wal_bytes\":11200,\"wal_path\":\"/tmp/nr_sim_capture/sim_A.log\"}"
+    }
+  ]
+}

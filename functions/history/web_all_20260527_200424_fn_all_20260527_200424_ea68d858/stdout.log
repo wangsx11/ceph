@@ -1,0 +1,36 @@
+Command: bash /home/wangshouxin/native-rdma-web/functions/run_all.sh
+
+==> storage/FN-1 仿真引擎异构存储统一访问接口
+    PASS 完成
+==> storage/FN-2 多层感知、冷热分离与调度
+    PASS 完成
+==> storage/FN-3 多策略预取机制
+    PASS 完成
+==> storage/FN-4 可配置压缩与去重
+    PASS 完成
+==> storage/FN-5 IO 调度与优先级管理
+    PASS 完成
+==> storage/FN-6 仿真数据运行中采集
+    PASS 完成
+==> rdma/FN-1 RDMA 与 TCP/IP 统一通信层
+    PASS 完成
+==> rdma/FN-2 聚合数据传输
+    PASS 完成
+==> rdma/FN-3 流量优先级机制
+    PASS 完成
+==> rdma/FN-4 CPU 与 GPU 高速直通访问
+    PASS 完成
+==> rdma/FN-5 分布式节点路由转发与负载均衡
+    PASS 完成
+==> mempool/FN-1 RDMA 语义远程内存访问与零拷贝
+    PASS 完成
+==> mempool/FN-2 分布式内存池 API
+    PASS 完成
+==> mempool/FN-3 内存池统一命名机制
+    PASS 完成
+==> mempool/FN-4 跨节点内存自适应分配与热数据迁移
+    PASS 完成
+==> mempool/FN-5 任务级与用户级内存隔离
+    PASS 完成
+==> mempool/FN-6 内存池高可靠机制
+    PASS 完成
